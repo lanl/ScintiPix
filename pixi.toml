@@ -1,0 +1,34 @@
+[workspace]
+name = "g4emi"
+version = "0.1.0"
+description = "Python tooling for lens propagation studies using Geant4 optical-interface-hit output."
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+[dependencies]
+python = ">=3.11,<3.13"
+pip = ">=24.0"
+cmake = ">=3.28,<4"
+ninja = ">=1.12,<2"
+cxx-compiler = ">=1.9,<2"
+geant4 = { version = "==11.3.2", build = "*_0" }
+hdf5 = ">=1.14,<2"
+h5py = ">=3.10,<4"
+jupyterlab = ">=4,<5"
+matplotlib = ">=3.8,<4"
+pandas = ">=2.2,<3"
+pydantic = ">=2.8,<3"
+pyyaml = ">=6.0,<7"
+
+[pypi-dependencies]
+rayoptics = ">=0.9,<1"
+pytest = ">=9.0.2, <10"
+loguru = ">=0.7,<1"
+
+[tasks]
+check-enviornment = "python -c \"import importlib.util, os; from pathlib import Path; prefix = Path(os.environ['CONDA_PREFIX']); cfg = prefix / 'lib/cmake/Geant4/Geant4Config.cmake'; has_ro = importlib.util.find_spec('rayoptics') is not None; print(f'Geant4 CMake config: {cfg} (exists={cfg.exists()})'); print(f'rayoptics import OK={has_ro}'); raise SystemExit(0 if cfg.exists() and has_ro else 1)\""
+build-sim = "bash -lc 'if [ \"$(uname)\" = \"Darwin\" ]; then export CC=/usr/bin/clang CXX=/usr/bin/clang++; fi; cmake --fresh -S . -B build -G Ninja -DGeant4_DIR=$CONDA_PREFIX/lib/cmake/Geant4 -DHDF5_ROOT=$CONDA_PREFIX -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=Release && cmake --build build -j && ln -sf $PIXI_PROJECT_ROOT/build/g4emi $CONDA_PREFIX/bin/g4emi'"
+clean-sim = "cmake --build build --target clean"
+rebuild-sim = { depends-on = ["clean-sim", "build-sim"] }
+config-run = "g4emi sim/macros/neutron_gps.mac"
+run-vis = "g4emi"
