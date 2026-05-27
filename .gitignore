@@ -1,0 +1,51 @@
+# Build directories
+/build/
+/cmake-build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+compile_commands.json
+
+# Binaries / objects
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Local data outputs (large; use Git LFS if versioning is required)
+*.dat
+*.csv
+*.h5
+*.log
+
+# Data directory contents (keep placeholder only)
+/data/**
+!/data/.gitkeep
+
+# Versioned scintillator catalog (static reference data, not output)
+!/scintillators/
+!/scintillators/**
+
+# Local scratch dirs (common spelling variants)
+/.scratch/
+/docs/temp/
+
+# Temporary design notes
+/docs/temp/
+
+# Editor/OS artifacts
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
