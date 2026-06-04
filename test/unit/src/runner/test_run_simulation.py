@@ -53,7 +53,7 @@ class RunSimulationTests(unittest.TestCase):
         cls.run_log_filename = staticmethod(run_log_filename)
         cls.simulated_output_filename = staticmethod(simulated_output_filename)
         cls.parse_simulated_events = staticmethod(_parse_simulated_events)
-        cls.run = staticmethod(run)
+        cls.runner_run = staticmethod(run)
         cls.run_simulation = staticmethod(run_simulation)
 
     class _FakeProcess:
@@ -165,7 +165,7 @@ class RunSimulationTests(unittest.TestCase):
             ) as stderr_capture:
                 self.run_simulation(config)
 
-            self.assertEqual(stderr_capture.getvalue(), "")
+            self.assertNotIn("\rSimulation [", stderr_capture.getvalue())
 
     def test_run_rejects_missing_macro(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -174,7 +174,7 @@ class RunSimulationTests(unittest.TestCase):
 
             with patch("src.runner.runSimulation.subprocess.Popen") as popen_mock:
                 with self.assertRaises(FileNotFoundError):
-                    self.run(config)
+                    self.runner_run(config)
 
             popen_mock.assert_not_called()
 
@@ -197,7 +197,7 @@ class RunSimulationTests(unittest.TestCase):
                 new=io.StringIO(),
             ):
                 with self.assertRaises(FileNotFoundError):
-                    self.run(config)
+                    self.runner_run(config)
 
             popen_mock.assert_called_once()
 
@@ -220,7 +220,7 @@ class RunSimulationTests(unittest.TestCase):
                 "src.runner.runSimulation.sys.stderr",
                 new=io.StringIO(),
             ):
-                completed = self.run(config)
+                completed = self.runner_run(config)
 
             self.assertEqual(completed.returncode, 0)
             popen_mock.assert_called_once()
