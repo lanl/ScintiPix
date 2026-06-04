@@ -1,17 +1,35 @@
-# Bundled Catalogs
+# Catalogs of predefined objects for ScintiPix
 
-This directory is the single repository home for predefined catalog assets used
+This directory is the single repository home for predefined catalog ojects, like lenses and scintillators, used
 by ScintiPix.
 
-Layout:
+Main Layout:
 
 - `lenses/`: optical lens catalog, Zemax prescriptions, and optional SMX sidecars.
 - `scintillators/`: scintillator material catalog, material definitions, and optical curves.
 
-Migration note:
+## Lenses ##
 
-- Lens assets moved from root-level `lenses/` to `catalogs/lenses/`.
-- Scintillator assets moved from root-level `scintillators/` to `catalogs/scintillators/`.
-- Default catalog-loading APIs resolve the new locations automatically. Code that
-  passes explicit filesystem paths should update those paths when using the
-  bundled catalogs.
+Selection:
+- Canon EF 50mm f/1.8 STM
+- Nikon AF-S NIKKOR 50mm f/1.8G
+
+Lens Layout:
+- `catalog.yaml`: lens catalog entries with metadata and references to Zemax/SMX files.
+- `zmxFiles/`: Zemax lens prescription files.
+- `smxFiles/`: optional SMX sidecar files for lenses.
+
+## Scintillators ##
+Selection:
+- NaI(Tl): Sodium Iodide doped with Thallium
+- CsI(Tl): Cesium Iodide doped with Thallium
+- CsI(Na): Cesium Iodide doped with Sodium
+- EJ-200: Plastic scintillator from Eljen Technology
+- EJ-276D: Plastic scintillator from Eljen Technology with pulse shape discrimination properties
+- EJ-276G: Plastic scintillator from Eljen Technology with pulse shape discrimination properties and improved gamma sensitivity
+- EJ-426: Plastic scintillator from Eljen Technology with pulse shape discrimination properties and improved neutron sensitivity
+
+Scintillator Layout:
+- `catalog.yaml`: scintillator catalog entries with metadata and references to material/curve files.
+- `materials/`: material definition files for scintillators.
+- `curves/`: optical curve files for scintillators.
