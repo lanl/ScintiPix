@@ -106,7 +106,7 @@ class RunSimulationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            config.runner.binary = "pixi run g4emi"
+            config.runner.binary = "pixi run scintipix"
             paths = self.resolve_run_environment_paths(config)
             paths.macro.mkdir(parents=True, exist_ok=True)
             paths.simulated_photons.mkdir(parents=True, exist_ok=True)
@@ -130,7 +130,7 @@ class RunSimulationTests(unittest.TestCase):
 
             self.assertIsInstance(completed, subprocess.CompletedProcess)
             popen_mock.assert_called_once_with(
-                ["pixi", "run", "g4emi", str(paths.macro_file.resolve())],
+                ["pixi", "run", "scintipix", str(paths.macro_file.resolve())],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

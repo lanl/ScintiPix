@@ -49,6 +49,6 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
       << "Create directories in Python before launching Geant4 "
       << "(for example via ConfigIO.ensure_output_directories / write_macro).";
 
-  G4Exception("RunAction::BeginOfRunAction", "g4emi/output/missing-directory",
+  G4Exception("RunAction::BeginOfRunAction", "scintipix/output/missing-directory",
               FatalException, message);
 }

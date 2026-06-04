@@ -1,6 +1,6 @@
 # Analysis Helpers
 
-This directory contains lightweight analysis helpers for `g4emi` HDF5 outputs.
+This directory contains lightweight analysis helpers for ScintiPix HDF5 outputs.
 
 These modules are intended for quick inspection, plotting, and small analysis
 tasks. They are not meant to be a full analysis framework.

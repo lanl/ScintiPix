@@ -1,6 +1,6 @@
 # Run Simulation Examples
 
-This folder contains scripts that generate macros from YAML and launch `g4emi`.
+This folder contains scripts that generate macros from YAML and launch `scintipix`.
 
 Entry points:
 - `run_simulation_from_yaml.py`: one YAML -> one macro -> one run

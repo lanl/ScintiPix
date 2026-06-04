@@ -1,7 +1,7 @@
 id: EJ200
 name: Eljen EJ-200
 description: >
-  Default plastic scintillator used by g4emi.
+  Default plastic scintillator used by ScintiPix.
   Values mirror the current EJ200 baseline in DetectorConstruction.
 
 composition:

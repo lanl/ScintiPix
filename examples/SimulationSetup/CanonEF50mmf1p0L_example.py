@@ -105,7 +105,7 @@ def main() -> None:
         f"{paths.simulated_photons / simulated_output_filename(config)}"
     )
     logger.info("Start Geant4 interactively:")
-    logger.info("  pixi run g4emi")
+    logger.info("  pixi run scintipix")
     logger.info("Then in the Geant4 prompt execute:")
     logger.info(f"  /control/execute {mask_vis_macro_path}")
 

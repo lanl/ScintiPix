@@ -1,6 +1,6 @@
 # Scintillator Catalog
 
-This directory stores a Python-native scintillator catalog for `g4emi`.
+This directory stores a Python-native scintillator catalog for ScintiPix.
 
 Current materials:
 - `EJ200` (default baseline)

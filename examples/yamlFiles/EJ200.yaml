@@ -95,7 +95,7 @@ simulation:
     printProgress: 500
 
 runner:
-  binary: g4emi
+  binary: scintipix
   showProgress: true
   verifyOutput: true
 

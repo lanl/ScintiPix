@@ -24,7 +24,7 @@ def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for timing-analysis input/output paths."""
 
     parser = argparse.ArgumentParser(
-        description="Generate lightweight timing-analysis plots from a g4emi HDF5 file."
+        description="Generate lightweight timing-analysis plots from a ScintiPix HDF5 file."
     )
     parser.add_argument(
         "hdf5_path",

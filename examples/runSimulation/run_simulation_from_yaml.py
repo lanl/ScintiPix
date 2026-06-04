@@ -1,4 +1,4 @@
-"""Generate macro from YAML and run g4emi in one step."""
+"""Generate macro from YAML and run scintipix in one step."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from src.runner.runSimulation import run_simulation  # noqa: E402
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Load SimConfig YAML, generate macro, and run g4emi with that macro."
+            "Load SimConfig YAML, generate macro, and run scintipix with that macro."
         )
     )
     parser.add_argument(
@@ -31,7 +31,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Generate macro and print run command without launching g4emi.",
+        help="Generate macro and print run command without launching scintipix.",
     )
     parser.add_argument(
         "--beam-on",

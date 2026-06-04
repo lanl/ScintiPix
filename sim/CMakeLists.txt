@@ -32,36 +32,36 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 file(GLOB APP_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 file(GLOB APP_HEADERS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hh)
 
-add_executable(g4emi ${CMAKE_CURRENT_SOURCE_DIR}/apps/g4emi_main.cc ${APP_SOURCES} ${APP_HEADERS})
+add_executable(scintipix ${CMAKE_CURRENT_SOURCE_DIR}/apps/scintipix_main.cc ${APP_SOURCES} ${APP_HEADERS})
 
-target_include_directories(g4emi PRIVATE
+target_include_directories(scintipix PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${HDF5_INCLUDE_DIRS}
 )
 
-target_link_libraries(g4emi PRIVATE
+target_link_libraries(scintipix PRIVATE
   ${Geant4_LIBRARIES}
 )
 
 if(TARGET HDF5::HDF5)
-  target_link_libraries(g4emi PRIVATE HDF5::HDF5)
+  target_link_libraries(scintipix PRIVATE HDF5::HDF5)
 else()
-  target_link_libraries(g4emi PRIVATE ${HDF5_LIBRARIES})
+  target_link_libraries(scintipix PRIVATE ${HDF5_LIBRARIES})
 endif()
 
-target_compile_definitions(g4emi PRIVATE
-  G4EMI_REPO_ROOT="${CMAKE_SOURCE_DIR}"
+target_compile_definitions(scintipix PRIVATE
+  SCINTIPIX_REPO_ROOT="${CMAKE_SOURCE_DIR}"
 )
 
-# Keep executable path stable as ./build/g4emi.
-set_target_properties(g4emi PROPERTIES
+# Keep executable path stable as ./build/scintipix.
+set_target_properties(scintipix PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
 )
 
 if(DEFINED ENV{CONDA_PREFIX})
   # Conda/Pixi toolchains already inject an rpath via linker flags.
   # Skip CMake's build-tree rpath to avoid duplicate -rpath warnings.
-  set_target_properties(g4emi PROPERTIES
+  set_target_properties(scintipix PROPERTIES
     SKIP_BUILD_RPATH TRUE
     INSTALL_RPATH "$ENV{CONDA_PREFIX}/lib"
     INSTALL_RPATH_USE_LINK_PATH FALSE

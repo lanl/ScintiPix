@@ -427,8 +427,8 @@ std::filesystem::path ResolveAgainstRepositoryRoot(std::filesystem::path path) {
   if (!path.is_relative()) {
     return path;
   }
-#ifdef G4EMI_REPO_ROOT
-  return std::filesystem::path(G4EMI_REPO_ROOT) / path;
+#ifdef SCINTIPIX_REPO_ROOT
+  return std::filesystem::path(SCINTIPIX_REPO_ROOT) / path;
 #else
   return std::filesystem::current_path() / path;
 #endif
@@ -468,8 +468,8 @@ std::string ComposeOutputPath(const std::string& base,
     // No output override and no run name: use base parent + simulatedPhotons/.
     std::filesystem::path root = basePath.parent_path();
     if (root.empty()) {
-#ifdef G4EMI_REPO_ROOT
-      root = std::filesystem::path(G4EMI_REPO_ROOT) / "data";
+#ifdef SCINTIPIX_REPO_ROOT
+      root = std::filesystem::path(SCINTIPIX_REPO_ROOT) / "data";
 #else
       root = std::filesystem::current_path() / "data";
 #endif
@@ -479,9 +479,9 @@ std::string ComposeOutputPath(const std::string& base,
   }
 
   // With run name and no output override, route through data/<runName>/simulatedPhotons.
-#ifdef G4EMI_REPO_ROOT
+#ifdef SCINTIPIX_REPO_ROOT
   std::filesystem::path runDir =
-      std::filesystem::path(G4EMI_REPO_ROOT) / "data" / runName;
+      std::filesystem::path(SCINTIPIX_REPO_ROOT) / "data" / runName;
 #else
   std::filesystem::path runDir =
       std::filesystem::current_path() / "data" / runName;

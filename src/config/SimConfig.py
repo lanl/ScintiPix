@@ -897,7 +897,7 @@ class RunnerConfig(StrictModel):
     terminal progress bar is off unless explicitly enabled.
     """
 
-    binary: str = Field(min_length=1, default="g4emi")
+    binary: str = Field(min_length=1, default="scintipix")
     show_progress: bool = Field(default=False, alias="showProgress")
     verify_output: bool = Field(default=True, alias="verifyOutput")
 
@@ -1029,7 +1029,7 @@ def default_sim_config() -> SimConfig:
                 "numberOfParticles": 10000,
             },
             "runner": {
-                "binary": "g4emi",
+                "binary": "scintipix",
                 "showProgress": True,
                 "verifyOutput": True,
             },

@@ -1,4 +1,4 @@
-"""Canonical HDF5 dataset and field names for g4emi outputs.
+"""Canonical HDF5 dataset and field names for ScintiPix outputs.
 
 This module is the Python-side schema reference for analysis consumers.
 

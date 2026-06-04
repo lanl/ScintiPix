@@ -1,10 +1,10 @@
 # HDF5 Schema
 
-This document describes the current `g4emi` HDF5 output structure.
+This document describes the current ScintiPix HDF5 output structure.
 
 It covers:
 
-- simulation output written by `g4emi`
+- simulation output written by `scintipix`
 - optical transport output written by `src/optics/OpticalTransport.py`
 
 The current intensifier module consumes this transport output in memory. It

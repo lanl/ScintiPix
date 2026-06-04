@@ -19,7 +19,7 @@ from analysis.secondaries import (  # noqa: E402
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Overlay secondary-track-length histograms by species from a g4emi HDF5 file."
+            "Overlay secondary-track-length histograms by species from a ScintiPix HDF5 file."
         )
     )
     parser.add_argument(

@@ -31,7 +31,7 @@ from src.sensor.timepix import timepix_params_from_sim_config  # noqa: E402
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Run full pipeline from SimConfig YAML: write macro, run g4emi, "
+            "Run full pipeline from SimConfig YAML: write macro, run scintipix, "
             "transport photons to the intensifier plane, then run the "
             "intensifier and Timepix sensor stages."
         )
@@ -50,7 +50,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional override for simulation numberOfParticles.",
     )
     parser.add_argument(
-        "--g4emi-binary",
+        "--scintipix-binary",
         type=str,
         default=None,
         help="Optional override for `runner.binary` from the YAML config.",
@@ -79,8 +79,8 @@ def main() -> None:
             config.simulation = SimulationConfig(number_of_particles=args.beam_on)
         else:
             config.simulation.number_of_particles = args.beam_on
-    if args.g4emi_binary is not None:
-        config.runner.binary = args.g4emi_binary
+    if args.scintipix_binary is not None:
+        config.runner.binary = args.scintipix_binary
     logger = get_logger()
     paths = resolve_run_environment_paths(config)
     simulated_hdf5 = (paths.simulated_photons / simulated_output_filename(config)).resolve()

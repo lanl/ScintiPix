@@ -19,7 +19,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Load one SimConfig YAML, set `SubRunNumber` in memory for each "
-            "batch slot, generate a macro, and run g4emi sequentially."
+            "batch slot, generate a macro, and run scintipix sequentially."
         )
     )
     parser.add_argument(
@@ -48,7 +48,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional override for simulation numberOfParticles.",
     )
     parser.add_argument(
-        "--g4emi-binary",
+        "--scintipix-binary",
         type=str,
         default=None,
         help="Optional override for `runner.binary` from the YAML config.",
@@ -61,7 +61,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Generate per-sub-run macros and print planned paths without launching g4emi.",
+        help="Generate per-sub-run macros and print planned paths without launching scintipix.",
     )
     return parser
 
@@ -75,8 +75,8 @@ def _base_config_from_args(args: argparse.Namespace) -> SimConfig:
             config.simulation = SimulationConfig(number_of_particles=args.beam_on)
         else:
             config.simulation.number_of_particles = args.beam_on
-    if args.g4emi_binary is not None:
-        config.runner.binary = args.g4emi_binary
+    if args.scintipix_binary is not None:
+        config.runner.binary = args.scintipix_binary
     return config
 
 

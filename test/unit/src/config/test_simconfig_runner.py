@@ -109,7 +109,7 @@ class SimConfigRunnerTests(unittest.TestCase):
 
         config = self.SimConfig.model_validate(payload)
 
-        self.assertEqual(config.runner.binary, "g4emi")
+        self.assertEqual(config.runner.binary, "scintipix")
         self.assertFalse(config.runner.show_progress)
         self.assertTrue(config.runner.verify_output)
         self.assertTrue(config.optical.show_transport_progress)
@@ -118,7 +118,7 @@ class SimConfigRunnerTests(unittest.TestCase):
     def test_runner_accepts_verify_output_alias_and_serializes_by_alias(self) -> None:
         payload = self._base_payload()
         payload["runner"] = {
-            "binary": "pixi run g4emi",
+            "binary": "pixi run scintipix",
             "showProgress": False,
             "verifyOutput": False,
         }
@@ -127,10 +127,10 @@ class SimConfigRunnerTests(unittest.TestCase):
         config = self.SimConfig.model_validate(payload)
         dumped = config.model_dump(mode="python", by_alias=True)
 
-        self.assertEqual(config.runner.binary, "pixi run g4emi")
+        self.assertEqual(config.runner.binary, "pixi run scintipix")
         self.assertFalse(config.runner.show_progress)
         self.assertFalse(config.runner.verify_output)
-        self.assertEqual(dumped["runner"]["binary"], "pixi run g4emi")
+        self.assertEqual(dumped["runner"]["binary"], "pixi run scintipix")
         self.assertFalse(dumped["runner"]["showProgress"])
         self.assertFalse(dumped["runner"]["verifyOutput"])
         self.assertFalse(dumped["optical"]["showTransportProgress"])

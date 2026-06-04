@@ -34,7 +34,7 @@ def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for input/output paths."""
 
     parser = argparse.ArgumentParser(
-        description="Generate lightweight spatial analysis images from a g4emi HDF5 file."
+        description="Generate lightweight spatial analysis images from a ScintiPix HDF5 file."
     )
     parser.add_argument(
         "hdf5_path",

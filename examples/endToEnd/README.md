@@ -4,7 +4,7 @@ This example runs the full pipeline from one command:
 
 1. Load/validate SimConfig YAML
 2. Generate Geant4 macro
-3. Run `g4emi`
+3. Run `scintipix`
 4. Transport photons to intensifier plane
 5. Run the intensifier pipeline
 6. Run the Timepix sensor pipeline and write `timepix_hits_<subrun>.h5`
@@ -20,7 +20,7 @@ Optional flags:
 
 - `--beam-on <N>`: override `simulation.numberOfParticles`
 - `--dry-run`: print paths/commands only
-- `--g4emi-binary <path-or-name>`: override `runner.binary` for this invocation
+- `--scintipix-binary <path-or-name>`: override `runner.binary` for this invocation
 - `--no-overwrite-transport`: fail if transport HDF5 already exists
 
 The example YAML files now include a top-level `runner` block:
@@ -30,7 +30,7 @@ optical:
   showTransportProgress: true
 
 runner:
-  binary: g4emi
+  binary: scintipix
   showProgress: true
   verifyOutput: true
 ```

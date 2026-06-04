@@ -1,6 +1,6 @@
 # Lens Asset Catalog
 
-This directory stores all optical-lens assets used by g4emi.
+This directory stores all optical-lens assets used by ScintiPix.
 
 Layout:
 - `catalog.yaml`: index of available lens entries and default selection

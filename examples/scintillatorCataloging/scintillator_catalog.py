@@ -87,7 +87,7 @@ def main() -> None:
         "Expected transport target: "
         f"{paths.transported_photons / transport_output_filename(config)}"
     )
-    logger.info(f"Run with: pixi run g4emi {macro_path}")
+    logger.info(f"Run with: pixi run scintipix {macro_path}")
 
 
 if __name__ == "__main__":
