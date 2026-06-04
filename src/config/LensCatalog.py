@@ -19,7 +19,7 @@ class StrictModel(BaseModel):
 
 
 class LensCatalogEntryDefinition(StrictModel):
-    """One lens entry definition loaded from `lenses/catalog.yaml`."""
+    """One lens entry definition loaded from `catalogs/lenses/catalog.yaml`."""
 
     name: str = Field(min_length=1)
     description: str = ""
@@ -28,7 +28,7 @@ class LensCatalogEntryDefinition(StrictModel):
 
 
 class LensCatalogIndex(StrictModel):
-    """Top-level lens catalog file model (`lenses/catalog.yaml`)."""
+    """Top-level lens catalog file model (`catalogs/lenses/catalog.yaml`)."""
 
     version: int = Field(ge=1)
     default: str = Field(min_length=1)

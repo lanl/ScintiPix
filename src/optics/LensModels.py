@@ -277,13 +277,13 @@ class LensModel(BaseModel):
 def _default_zmx_dir() -> Path:
     """Return default repository location for bundled Zemax files."""
 
-    return Path(__file__).resolve().parents[2] / "lenses" / "zmxFiles"
+    return Path(__file__).resolve().parents[2] / "catalogs" / "lenses" / "zmxFiles"
 
 
 def _default_smx_dir() -> Path:
     """Return default repository location for bundled `.smx` replacement files."""
 
-    return Path(__file__).resolve().parents[2] / "lenses" / "smxFiles"
+    return Path(__file__).resolve().parents[2] / "catalogs" / "lenses" / "smxFiles"
 
 
 def resolve_lens_path(lens_ref: str | Path) -> Path:
@@ -298,7 +298,7 @@ def resolve_lens_path(lens_ref: str | Path) -> Path:
     Accepted lens_ref forms:
     - absolute or relative path
     - alias token
-    - filename or stem for file in `lenses/zmxFiles`
+    - filename or stem for file in `catalogs/lenses/zmxFiles`
     """
 
     if isinstance(lens_ref, Path):

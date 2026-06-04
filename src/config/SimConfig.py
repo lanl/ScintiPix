@@ -293,7 +293,7 @@ class LensConfig(StrictModel):
     """Individual optical lens descriptor.
 
     A lens can be specified either directly with `zmxFile` (and optional
-    `smxFile`) or via `catalogId` resolved from `lenses/catalog.yaml`.
+    `smxFile`) or via `catalogId` resolved from `catalogs/lenses/catalog.yaml`.
     `primary` indicates which lens entry should be treated as the principal
     lens for downstream assumptions.
     """
