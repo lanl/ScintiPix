@@ -16,9 +16,9 @@ All example YAMLs include:
 - an `intensifier` block for post-transport staged intensifier response
 - a `sensor.timepix` block for downstream centered single-chip Timepix3 readout
 
-Note: `source.timing` is currently documented and emitted by the Python
-configuration layer. The Geant4 messenger/runtime support for the emitted
-`/source/timing/*` commands is the next implementation stage.
+`source.timing` is emitted by the Python configuration layer as
+`/source/timing/*` macro commands and consumed by the Geant4 runtime when
+generating primary vertices.
 
 ## Schema Rules
 
@@ -159,8 +159,9 @@ Fields:
 
 Optional source-time model in global nanoseconds. When omitted, generated
 macros keep the current event-local Geant4 timing behavior. When present, the
-Python configuration layer emits `/source/timing/*` macro commands for the
-Geant4 timing implementation stage.
+Python configuration layer emits `/source/timing/*` macro commands, and the
+Geant4 primary generator assigns the resulting source time to each generated
+primary vertex.
 
 Common fields:
 - `mode`: one of `none`, `continuous`, or `pulsed`. Defaults to `none`.
@@ -201,10 +202,9 @@ Fields:
 - `neutrons_per_pulse`: required for `pulsed`; number of Geant4 events assigned
   to one pulse ID. Must be greater than zero. Accepted alias:
   `neutronsPerPulse`.
-- `pulse_width_ns`: required for `pulsed`; neutron creation times are intended
-  to be randomly distributed over this window during Geant4 primary generation.
-  Must be non-negative. Accepted aliases include `pulseWidthNs` and
-  `pulseWidth`.
+- `pulse_width_ns`: required for `pulsed`; neutron creation times are randomly
+  distributed over this window during Geant4 primary generation. Must be
+  non-negative. Accepted aliases include `pulseWidthNs` and `pulseWidth`.
 - `pulse_shape`: currently only `uniform` is accepted. Accepted alias:
   `pulseShape`.
 
@@ -216,8 +216,12 @@ pulse_start_time_ns = start_time_ns + pulse_id * pulse_period_ns
 source_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
 ```
 
-After the Geant4 timing stage is implemented, Geant4 transport should determine
-the relativistic neutron time of flight to the scintillator interaction.
+Geant4 transport then determines the relativistic neutron time of flight to the
+scintillator interaction.
+
+The simulation persists the assigned source creation time as
+`source_time_ns` in `/primaries`. Pulse ID and pulse-relative time are not
+persisted; they are intermediate values used only to compute `source_time_ns`.
 
 ## `optical`
 
