@@ -8,6 +8,22 @@
 #include <string>
 #include <vector>
 
+/// Source timing modes applied to generated primary vertices.
+enum class SourceTimingMode {
+  None,
+  Continuous,
+  Pulsed,
+};
+
+/// Per-event source timing values in Geant4 internal time units.
+struct SourceTimingInfo {
+  G4bool enabled = false;
+  G4double sourceTime = 0.0;
+  G4double pulseStartTime = 0.0;
+  G4double timeInPulse = 0.0;
+  G4int pulseId = -1;
+};
+
 /// Thread-safe runtime configuration shared across geometry/actions/messenger.
 class Config {
  public:
@@ -167,6 +183,25 @@ class Config {
   /// Get HDF5 output file path derived from output settings.
   std::string GetHdf5FilePath() const;
 
+  /// Get configured source timing mode.
+  SourceTimingMode GetSourceTimingMode() const;
+  /// Set source timing mode from UI/config token: none, continuous, or pulsed.
+  void SetSourceTimingMode(const std::string& value);
+  /// Set source timing start time in Geant4 internal units.
+  void SetSourceTimingStartTime(G4double value);
+  /// Set fixed event spacing for continuous source timing.
+  void SetSourceTimingEventSpacing(G4double value);
+  /// Set pulse period for pulsed source timing.
+  void SetSourceTimingPulsePeriod(G4double value);
+  /// Set number of Geant4 events assigned to each pulse.
+  void SetSourceTimingNeutronsPerPulse(G4int value);
+  /// Set finite pulse width for pulsed source timing.
+  void SetSourceTimingPulseWidth(G4double value);
+  /// Set pulsed source-time distribution shape.
+  void SetSourceTimingPulseShape(const std::string& value);
+  /// Compute per-event source timing values in Geant4 internal units.
+  SourceTimingInfo GetSourceTimingForEvent(G4int eventID) const;
+
  private:
   /// Guards all mutable config fields for cross-thread read/write safety.
   mutable std::mutex fMutex;
@@ -212,6 +247,15 @@ class Config {
   std::string fOutputFilename;
   std::string fOutputPath;
   std::string fOutputRunName;
+
+  /// Source timing settings in Geant4 internal units.
+  SourceTimingMode fSourceTimingMode = SourceTimingMode::None;
+  G4double fSourceTimingStartTime = 0.0;
+  G4double fSourceTimingEventSpacing = 0.0;
+  G4double fSourceTimingPulsePeriod = 0.0;
+  G4int fSourceTimingNeutronsPerPulse = 1;
+  G4double fSourceTimingPulseWidth = 0.0;
+  std::string fSourceTimingPulseShape = "uniform";
 };
 
 #endif
