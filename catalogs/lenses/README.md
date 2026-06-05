@@ -1,6 +1,8 @@
 # Lens Asset Catalog
 
-This directory stores all optical-lens assets used by ScintiPix.
+This directory stores all bundled optical-lens assets used by ScintiPix.
+
+Path: `catalogs/lenses/`
 
 Layout:
 - `catalog.yaml`: index of available lens entries and default selection

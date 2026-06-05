@@ -35,7 +35,7 @@ except ModuleNotFoundError:  # pragma: no cover - environment dependent
 
 
 DEFAULT_SCINTILLATOR_CATALOG_PATH = (
-    repo_root() / "scintillators" / "catalog.yaml"
+    repo_root() / "catalogs" / "scintillators" / "catalog.yaml"
 )
 
 

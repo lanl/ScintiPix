@@ -31,7 +31,7 @@ except ModuleNotFoundError:  # pragma: no cover - environment dependent
     yaml = None
 
 
-DEFAULT_LENS_CATALOG_PATH = repo_root() / "lenses" / "catalog.yaml"
+DEFAULT_LENS_CATALOG_PATH = repo_root() / "catalogs" / "lenses" / "catalog.yaml"
 DEFAULT_ZMX_SUBDIR = "zmxFiles"
 DEFAULT_SMX_SUBDIR = "smxFiles"
 

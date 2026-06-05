@@ -46,6 +46,7 @@ For analysis examples and module-level guidance, see
 - `sim/`: Geant4 application code, headers, and macro files
 - `src/config/`: YAML models, validation, and macro-generation utilities
 - `src/optics/`: optical transport and lens tooling
+- `catalogs/`: bundled lens and scintillator catalogs
 - `examples/`: runnable workflow examples
 - `analysis/`: lightweight analysis helpers for generated HDF5 outputs
 - `test/`: unit tests and test documentation
@@ -58,8 +59,9 @@ For analysis examples and module-level guidance, see
 - Intensifier module: [docs/intensifier.md](docs/intensifier.md)
 - End-to-end workflow: [examples/endToEnd/README.md](examples/endToEnd/README.md)
 - Tests: [test/README.md](test/README.md)
-- Lens catalog notes: [lenses/README.md](lenses/README.md)
-- Scintillator catalog notes: [scintillators/README.md](scintillators/README.md)
+- Catalog overview: [catalogs/README.md](catalogs/README.md)
+- Lens catalog notes: [catalogs/lenses/README.md](catalogs/lenses/README.md)
+- Scintillator catalog notes: [catalogs/scintillators/README.md](catalogs/scintillators/README.md)
 
 ## License ## 
 ScintiPix is distributed as open-source software under a GPLv3 License, with LANL open source approval (reference O5110). Please see LICENSE for more details. 

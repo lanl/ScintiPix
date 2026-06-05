@@ -1,6 +1,8 @@
 # Scintillator Catalog
 
-This directory stores a Python-native scintillator catalog for ScintiPix.
+This directory stores the bundled Python-native scintillator catalog for ScintiPix.
+
+Path: `catalogs/scintillators/`
 
 Current materials:
 - `EJ200` (default baseline)

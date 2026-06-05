@@ -47,11 +47,19 @@ class LensCatalogTests(unittest.TestCase):
         loaded = self._load_lens("CanonEF50mmf1.0L")
         self.assertEqual(loaded.id, "CanonEF50mmf1.0L")
         self.assertTrue(loaded.zmx_path.exists())
-        self.assertTrue(str(loaded.zmx_path).endswith("lenses/zmxFiles/CanonEF50mmf1.0L.zmx"))
+        self.assertTrue(
+            str(loaded.zmx_path).endswith(
+                "catalogs/lenses/zmxFiles/CanonEF50mmf1.0L.zmx"
+            )
+        )
         self.assertIsNotNone(loaded.smx_path)
         assert loaded.smx_path is not None
         self.assertTrue(loaded.smx_path.exists())
-        self.assertTrue(str(loaded.smx_path).endswith("lenses/smxFiles/CanonEF50mmf1.0L.smx"))
+        self.assertTrue(
+            str(loaded.smx_path).endswith(
+                "catalogs/lenses/smxFiles/CanonEF50mmf1.0L.smx"
+            )
+        )
 
     def test_from_yaml_hydrates_optical_lens_from_catalog_id(self) -> None:
         """`optical.lenses[*].catalogId` should backfill name/zmxFile/smxFile."""
@@ -134,7 +142,9 @@ class LensCatalogTests(unittest.TestCase):
             self.assertEqual(lens.zmx_file, "CanonEF50mmf1.0L.zmx")
             assert lens.smx_file is not None
             self.assertTrue(
-                lens.smx_file.endswith("lenses/smxFiles/CanonEF50mmf1.0L.smx")
+                lens.smx_file.endswith(
+                    "catalogs/lenses/smxFiles/CanonEF50mmf1.0L.smx"
+                )
             )
 
     def test_catalog_lens_payload_preserves_catalog_path_tokens(self) -> None:
