@@ -75,11 +75,19 @@ class MacroCommandGenerationTests(unittest.TestCase):
         working_directory: str | None = None,
         number_of_particles: int | None = None,
         runtime_controls: dict[str, object] | None = None,
+        source_timing: str | None = None,
     ) -> Path:
         """Write a representative hierarchical YAML config and return its path."""
 
         if working_directory is None:
             working_directory = destination.as_posix()
+        if source_timing is None:
+            source_timing_yaml = ""
+        else:
+            source_timing_yaml = textwrap.indent(
+                textwrap.dedent(source_timing).strip(),
+                "  ",
+            )
 
         yaml_sections = [
             textwrap.dedent(
@@ -161,6 +169,11 @@ class MacroCommandGenerationTests(unittest.TestCase):
             ).strip()
         ]
 
+        if source_timing_yaml:
+            marker = "    energy:\n      type: Mono\n      monoMeV: 6.0"
+            replacement = marker + "\n" + source_timing_yaml
+            yaml_sections[0] = yaml_sections[0].replace(marker, replacement)
+
         if number_of_particles is not None or runtime_controls is not None:
             simulation_lines = ["simulation:"]
             if number_of_particles is not None:
@@ -228,6 +241,68 @@ class MacroCommandGenerationTests(unittest.TestCase):
                 "/gps/ene/mono 6 MeV",
             ]
             self.assertEqual(commands, expected)
+
+    def test_continuous_source_timing_emits_macro_commands(self) -> None:
+        """Continuous source timing should emit explicit source-timing commands."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            yaml_path = self._write_yaml_config(
+                tmp_path,
+                source_timing="""
+                timing:
+                  mode: continuous
+                  start_time_ns: 25.0
+                  event_spacing_ns: 100.0
+                """,
+            )
+
+            config = self._from_yaml(yaml_path)
+            commands = self._macro_commands(config)
+
+            self.assertEqual(config.source.timing.mode, "continuous")
+            self.assertEqual(
+                commands[-3:],
+                [
+                    "/source/timing/mode continuous",
+                    "/source/timing/startTime 25 ns",
+                    "/source/timing/eventSpacing 100 ns",
+                ],
+            )
+
+    def test_pulsed_source_timing_emits_macro_commands(self) -> None:
+        """Pulsed source timing should include pulse grouping and width."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            yaml_path = self._write_yaml_config(
+                tmp_path,
+                source_timing="""
+                timing:
+                  mode: pulsed
+                  start_time_ns: 0.0
+                  pulse_period_ns: 1000000.0
+                  neutrons_per_pulse: 10
+                  pulse_width_ns: 270.0
+                  pulse_shape: uniform
+                """,
+            )
+
+            config = self._from_yaml(yaml_path)
+            commands = self._macro_commands(config)
+
+            self.assertEqual(config.source.timing.mode, "pulsed")
+            self.assertEqual(
+                commands[-6:],
+                [
+                    "/source/timing/mode pulsed",
+                    "/source/timing/startTime 0 ns",
+                    "/source/timing/pulsePeriod 1000000 ns",
+                    "/source/timing/neutronsPerPulse 10",
+                    "/source/timing/pulseWidth 270 ns",
+                    "/source/timing/pulseShape uniform",
+                ],
+            )
 
     def test_write_macro_outputs_same_lines(self) -> None:
         """write_macro should persist the same sequence returned by macro_commands."""
@@ -323,6 +398,39 @@ class MacroCommandGenerationTests(unittest.TestCase):
             imported = self._from_macro(macro_path, template=config)
             reconstructed = self._macro_commands(imported)
             self.assertEqual(reconstructed, expected)
+
+    def test_from_macro_parses_pulsed_source_timing(self) -> None:
+        """Source-timing macro commands should populate `source.timing`."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            macro_path = tmp_path / "pulsed_timing.mac"
+            macro_path.write_text(
+                "\n".join(
+                    [
+                        "/source/timing/mode pulsed",
+                        "/source/timing/startTime 5 ns",
+                        "/source/timing/pulsePeriod 1000000 ns",
+                        "/source/timing/neutronsPerPulse 10",
+                        "/source/timing/pulseWidth 270 ns",
+                        "/source/timing/pulseShape uniform",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            imported = self._from_macro(macro_path)
+            timing = imported.source.timing
+
+            self.assertIsNotNone(timing)
+            assert timing is not None
+            self.assertEqual(timing.mode, "pulsed")
+            self.assertEqual(timing.start_time_ns, 5.0)
+            self.assertEqual(timing.pulse_period_ns, 1000000.0)
+            self.assertEqual(timing.neutrons_per_pulse, 10)
+            self.assertEqual(timing.pulse_width_ns, 270.0)
+            self.assertEqual(timing.pulse_shape, "uniform")
 
     def test_from_macro_recovers_sub_run_number_from_macro_and_output_filename(self) -> None:
         """Macro import should recover run ID and sub-run number from suffixed artifacts."""
