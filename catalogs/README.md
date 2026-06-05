@@ -10,8 +10,8 @@ Main Layout:
 ## Lenses ##
 
 Selection:
-- Canon EF 50mm f/1.8 STM
-- Nikon AF-S NIKKOR 50mm f/1.8G
+- CanonEF50mmf1.0L
+- Nikkor80-200mmf2.8D
 
 Lens Layout:
 - `catalog.yaml`: lens catalog entries with metadata and references to Zemax/SMX files.
