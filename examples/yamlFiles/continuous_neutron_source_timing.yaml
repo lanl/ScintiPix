@@ -1,0 +1,127 @@
+# Lightweight Geant4-only continuous neutron timing example.
+#
+# The downstream optical/intensifier/sensor blocks are present only because the
+# shared SimConfig schema and Geant4 geometry expect them. This example inspects
+# only /primaries timing fields from the simulation HDF5 output.
+
+scintillator:
+  position_mm:
+    x_mm: 0.0
+    y_mm: 0.0
+    z_mm: 0.0
+  dimension_mm:
+    x_mm: 100.0
+    y_mm: 100.0
+    z_mm: 200.0
+  maskRadius: 0.0
+  properties:
+    name: EJ200
+    photonEnergy: [2.8, 3.0, 3.2]
+    rIndex: [1.58, 1.59, 1.60]
+    absLength: [380.0, 380.0, 300.0]
+    scintSpectrum: [0.2, 1.0, 0.2]
+    nKEntries: 3
+    density: 1.023
+    carbonAtoms: 9
+    hydrogenAtoms: 10
+    scintYield: 10000.0
+    resolutionScale: 1.0
+    timeComponents:
+      default:
+        - timeConstant: 2.1
+          yieldFraction: 1.0
+        - timeConstant: 0.0
+          yieldFraction: 0.0
+        - timeConstant: 0.0
+          yieldFraction: 0.0
+
+source:
+  gps:
+    particle: neutron
+    position:
+      type: Plane
+      shape: Circle
+      centerMm:
+        x_mm: 0.0
+        y_mm: 0.0
+        z_mm: -500.0
+      radiusMm: 2.0
+    angular:
+      type: beam2d
+      rot1: {x: 1.0, y: 0.0, z: 0.0}
+      rot2: {x: 0.0, y: 1.0, z: 0.0}
+      direction: {x: 0.0, y: 0.0, z: 1.0}
+    energy:
+      type: Mono
+      monoMeV: 20.0
+  timing:
+    mode: continuous
+    start_time_ns: 0.0
+    event_spacing_ns: 100.0
+
+optical:
+  lenses:
+    - catalogId: CanonEF50mmf1.0L
+      primary: true
+  geometry:
+    entranceDiameter: 60.55
+    sensorMaxWidth: 36.0
+  sensitiveDetectorConfig:
+    position_mm:
+      x_mm: 0.0
+      y_mm: 0.0
+      z_mm: 210.05
+    shape: circle
+    diameterRule: min(entranceDiameter,sensorMaxWidth)
+  showTransportProgress: false
+  transportAssumptions:
+    objectPlane: scintillator_back_face
+    opticalInterfaceRepresents: lens_entrance_plane
+
+intensifier:
+  model: Cricket2
+  write_output_hdf5: false
+  input_screen:
+    image_circle_diameter_mm: 18.0
+    center_mm: [0.0, 0.0]
+    magnification: 1.0
+    coordinate_frame: intensifier_input_plane
+    notes: Present for schema completeness; not used by this example.
+
+sensor:
+  model: Timepix3
+  timepix:
+    pixels_x: 256
+    pixels_y: 256
+    pixel_pitch_mm: 0.055
+    max_tot_ns: 25550.0
+    dead_time_ns: 475.0
+
+simulation:
+  numberOfParticles: 200
+  runtimeControls:
+    controlVerbose: 0
+    runVerbose: 0
+    eventVerbose: 0
+    trackingVerbose: 0
+    printProgress: 50
+
+runner:
+  binary: scintipix
+  showProgress: true
+  verifyOutput: true
+
+Metadata:
+  author: Alex Long
+  date: 2026-06-05
+  version: ScintPiX v0.1
+  description: Continuous neutron source timing example.
+  RunEnvironment:
+    SimulationRunID: continuous_neutron_source_timing
+    WorkingDirectory: data
+    MacroDirectory: macros
+    LogDirectory: logs
+    OutputInfo:
+      SimulatedPhotonsDirectory: simulatedPhotons
+      TransportedPhotonsDirectory: transportedPhotons
+
