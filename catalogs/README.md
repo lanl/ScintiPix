@@ -1,7 +1,6 @@
 # Catalogs of predefined objects for ScintiPix
 
-This directory is the single repository home for predefined catalog ojects, like lenses and scintillators, used
-by ScintiPix.
+This directory is the single repository home for predefined catalog objects, like lenses and scintillators, used by ScintiPix.
 
 Main Layout:
 
