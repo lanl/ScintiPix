@@ -50,6 +50,10 @@ source:
     energy:
       type: Mono
       monoMeV: 6.0
+  timing:
+    mode: continuous
+    start_time_ns: 0.0
+    event_spacing_ns: 100.0
 
 optical:
   lenses:

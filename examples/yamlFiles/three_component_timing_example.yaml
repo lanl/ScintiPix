@@ -47,6 +47,13 @@ source:
     energy:
       type: Mono
       monoMeV: 6.0
+  timing:
+    mode: pulsed
+    start_time_ns: 0.0
+    pulse_period_ns: 1000000.0
+    neutrons_per_pulse: 10
+    pulse_width_ns: 270.0
+    pulse_shape: uniform
 
 optical:
   lenses:
