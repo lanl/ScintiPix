@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 3.28)
+project(ScintiPixSim LANGUAGES C CXX)
+
 if(APPLE)
   # Under the Pixi/conda macOS toolchain, CMake's FindThreads try-compile may
   # incorrectly attempt to link pthread symbols as a separate library even
@@ -49,8 +52,9 @@ else()
   target_link_libraries(scintipix PRIVATE ${HDF5_LIBRARIES})
 endif()
 
+get_filename_component(SCINTIPIX_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 target_compile_definitions(scintipix PRIVATE
-  SCINTIPIX_REPO_ROOT="${CMAKE_SOURCE_DIR}"
+  SCINTIPIX_REPO_ROOT="${SCINTIPIX_REPO_ROOT}"
 )
 
 # Keep executable path stable as ./build/scintipix.
