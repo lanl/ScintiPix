@@ -7,8 +7,13 @@ same structure.
 
 Current files:
 - `CanonEF50mmf1p0L_example.yaml`: primary end-to-end example configuration
+- `continuous_neutron_source_timing.yaml`: lightweight continuous source timing
+  example for Geant4 `/primaries` timing. Uses fixed `event_spacing_ns`.
 - `EJ200.yaml`: catalog-driven scintillator example with overrides
 - `EJ276D.yaml`: catalog-driven EJ-276D timing-component example
+- `pulsed_neutron_source_timing.yaml`: lightweight pulsed source timing example
+  for Geant4 `/primaries` timing. Uses `neutrons_per_pulse`, `pulse_period_ns`,
+  and `pulse_width_ns`.
 - `three_component_timing_example.yaml`: explicit scintillation timing example
 
 All example YAMLs include:
@@ -19,6 +24,11 @@ All example YAMLs include:
 `source.timing` is emitted by the Python configuration layer as
 `/source/timing/*` macro commands and consumed by the Geant4 runtime when
 generating primary vertices.
+
+The source-neutron timing examples are consumed by
+[`examples/sourceTiming/README.md`](../sourceTiming/README.md). They are
+Geant4-only inspection inputs; downstream optical, intensifier, and sensor
+blocks are present for schema and geometry completeness.
 
 ## Schema Rules
 
