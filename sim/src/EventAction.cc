@@ -54,6 +54,7 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
   fPrimarySpecies = "unknown";
   fPrimaryPosition = G4ThreeVector();
   fPrimaryEnergy = -1.0;
+  fSourceTime = 0.0;
   fTrackInfo.clear();
   fPhotonCreationInfo.clear();
   fPendingPhotonOrigin.clear();
@@ -73,6 +74,7 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
   }
 
   fPrimaryPosition = primaryVertex->GetPosition();
+  fSourceTime = primaryVertex->GetT0();
   const auto* primaryParticle = primaryVertex->GetPrimary();
   if (!primaryParticle) {
     return;
@@ -134,6 +136,7 @@ void EventAction::EndOfEventAction(const G4Event* event) {
     row.primaryXmm = fPrimaryPosition.x() / mm;
     row.primaryYmm = fPrimaryPosition.y() / mm;
     row.primaryEnergyMeV = fPrimaryEnergy / MeV;
+    row.sourceTimeNs = fSourceTime / ns;
     row.primaryInteractionTimeNs = resolvePrimaryInteractionTimeNs(primaryTrackID);
     row.primaryCreatedSecondaryCount = activity.createdSecondaryCount;
     row.primaryGeneratedOpticalPhotonCount = activity.generatedOpticalPhotonCount;

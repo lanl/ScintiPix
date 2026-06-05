@@ -95,6 +95,12 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fOpticalInterfaceGeomDir = new G4UIdirectory("/optical_interface/geom/");
   fOpticalInterfaceGeomDir->SetGuidance("Optical-interface geometry controls");
 
+  fSourceDir = new G4UIdirectory("/source/");
+  fSourceDir->SetGuidance("Source controls");
+
+  fSourceTimingDir = new G4UIdirectory("/source/timing/");
+  fSourceTimingDir->SetGuidance("Source timing controls");
+
   fOutputDir = new G4UIdirectory("/output/");
   fOutputDir->SetGuidance("Output controls");
 
@@ -299,9 +305,73 @@ Messenger::Messenger(Config* config) : fConfig(config) {
       "Set optional run name; outputs go under <output/path>/<runname>/ when path is set, otherwise data/<runname>/. Use \"\" to clear.");
   fOutputRunNameCmd->SetParameterName("runname", false);
   fOutputRunNameCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSourceTimingModeCmd = new G4UIcmdWithAString("/source/timing/mode", this);
+  fSourceTimingModeCmd->SetGuidance(
+      "Set source timing mode: none, continuous, or pulsed");
+  fSourceTimingModeCmd->SetParameterName("mode", false);
+  fSourceTimingModeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSourceTimingStartTimeCmd =
+      new G4UIcmdWithADoubleAndUnit("/source/timing/startTime", this);
+  fSourceTimingStartTimeCmd->SetGuidance("Set source timing start time");
+  fSourceTimingStartTimeCmd->SetParameterName("startTime", false);
+  fSourceTimingStartTimeCmd->SetUnitCategory("Time");
+  fSourceTimingStartTimeCmd->SetRange("startTime >= 0.");
+  fSourceTimingStartTimeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSourceTimingEventSpacingCmd =
+      new G4UIcmdWithADoubleAndUnit("/source/timing/eventSpacing", this);
+  fSourceTimingEventSpacingCmd->SetGuidance(
+      "Set fixed source-time spacing for continuous mode");
+  fSourceTimingEventSpacingCmd->SetParameterName("eventSpacing", false);
+  fSourceTimingEventSpacingCmd->SetUnitCategory("Time");
+  fSourceTimingEventSpacingCmd->SetRange("eventSpacing > 0.");
+  fSourceTimingEventSpacingCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSourceTimingPulsePeriodCmd =
+      new G4UIcmdWithADoubleAndUnit("/source/timing/pulsePeriod", this);
+  fSourceTimingPulsePeriodCmd->SetGuidance("Set pulse period for pulsed mode");
+  fSourceTimingPulsePeriodCmd->SetParameterName("pulsePeriod", false);
+  fSourceTimingPulsePeriodCmd->SetUnitCategory("Time");
+  fSourceTimingPulsePeriodCmd->SetRange("pulsePeriod > 0.");
+  fSourceTimingPulsePeriodCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSourceTimingNeutronsPerPulseCmd =
+      new G4UIcmdWithAnInteger("/source/timing/neutronsPerPulse", this);
+  fSourceTimingNeutronsPerPulseCmd->SetGuidance(
+      "Set number of generated neutron events assigned to each pulse");
+  fSourceTimingNeutronsPerPulseCmd->SetParameterName("neutronsPerPulse", false);
+  fSourceTimingNeutronsPerPulseCmd->SetRange("neutronsPerPulse > 0");
+  fSourceTimingNeutronsPerPulseCmd->AvailableForStates(G4State_PreInit,
+                                                       G4State_Idle);
+
+  fSourceTimingPulseWidthCmd =
+      new G4UIcmdWithADoubleAndUnit("/source/timing/pulseWidth", this);
+  fSourceTimingPulseWidthCmd->SetGuidance(
+      "Set random source-time window width for pulsed mode");
+  fSourceTimingPulseWidthCmd->SetParameterName("pulseWidth", false);
+  fSourceTimingPulseWidthCmd->SetUnitCategory("Time");
+  fSourceTimingPulseWidthCmd->SetRange("pulseWidth >= 0.");
+  fSourceTimingPulseWidthCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSourceTimingPulseShapeCmd =
+      new G4UIcmdWithAString("/source/timing/pulseShape", this);
+  fSourceTimingPulseShapeCmd->SetGuidance(
+      "Set pulsed source-time distribution shape; currently uniform");
+  fSourceTimingPulseShapeCmd->SetParameterName("pulseShape", false);
+  fSourceTimingPulseShapeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 Messenger::~Messenger() {
+  delete fSourceTimingPulseShapeCmd;
+  delete fSourceTimingPulseWidthCmd;
+  delete fSourceTimingNeutronsPerPulseCmd;
+  delete fSourceTimingPulsePeriodCmd;
+  delete fSourceTimingEventSpacingCmd;
+  delete fSourceTimingStartTimeCmd;
+  delete fSourceTimingModeCmd;
+
   delete fOutputRunNameCmd;
   delete fOutputFilenameCmd;
   delete fOutputPathCmd;
@@ -339,6 +409,8 @@ Messenger::~Messenger() {
   delete fGeomMaterialCmd;
 
   delete fOutputDir;
+  delete fSourceTimingDir;
+  delete fSourceDir;
   delete fOpticalInterfaceGeomDir;
   delete fOpticalInterfaceDir;
   delete fScintillatorPropertiesDir;
@@ -565,6 +637,58 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     fConfig->SetOpticalInterfacePosZ(value);
     G4cout << "Optical-interface posZ set to " << value / mm << " mm." << G4endl;
     NotifyGeometryChanged();
+    return;
+  }
+
+  if (command == fSourceTimingModeCmd) {
+    fConfig->SetSourceTimingMode(newValue);
+    G4cout << "Source timing mode set to '" << newValue << "'." << G4endl;
+    return;
+  }
+
+  if (command == fSourceTimingStartTimeCmd) {
+    const auto value = fSourceTimingStartTimeCmd->GetNewDoubleValue(newValue);
+    fConfig->SetSourceTimingStartTime(value);
+    G4cout << "Source timing start time set to " << value / ns << " ns."
+           << G4endl;
+    return;
+  }
+
+  if (command == fSourceTimingEventSpacingCmd) {
+    const auto value = fSourceTimingEventSpacingCmd->GetNewDoubleValue(newValue);
+    fConfig->SetSourceTimingEventSpacing(value);
+    G4cout << "Source timing event spacing set to " << value / ns << " ns."
+           << G4endl;
+    return;
+  }
+
+  if (command == fSourceTimingPulsePeriodCmd) {
+    const auto value = fSourceTimingPulsePeriodCmd->GetNewDoubleValue(newValue);
+    fConfig->SetSourceTimingPulsePeriod(value);
+    G4cout << "Source timing pulse period set to " << value / ns << " ns."
+           << G4endl;
+    return;
+  }
+
+  if (command == fSourceTimingNeutronsPerPulseCmd) {
+    const auto value = fSourceTimingNeutronsPerPulseCmd->GetNewIntValue(newValue);
+    fConfig->SetSourceTimingNeutronsPerPulse(value);
+    G4cout << "Source timing neutrons per pulse set to " << value << "."
+           << G4endl;
+    return;
+  }
+
+  if (command == fSourceTimingPulseWidthCmd) {
+    const auto value = fSourceTimingPulseWidthCmd->GetNewDoubleValue(newValue);
+    fConfig->SetSourceTimingPulseWidth(value);
+    G4cout << "Source timing pulse width set to " << value / ns << " ns."
+           << G4endl;
+    return;
+  }
+
+  if (command == fSourceTimingPulseShapeCmd) {
+    fConfig->SetSourceTimingPulseShape(newValue);
+    G4cout << "Source timing pulse shape set to '" << newValue << "'." << G4endl;
     return;
   }
 

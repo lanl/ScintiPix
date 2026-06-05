@@ -13,7 +13,7 @@ ActionInitialization::ActionInitialization(const DetectorConstruction* detector,
 
 void ActionInitialization::Build() const {
   SetUserAction(new RunAction(fConfig));
-  SetUserAction(new PrimaryGeneratorAction());
+  SetUserAction(new PrimaryGeneratorAction(fConfig));
 
   auto* eventAction = new EventAction(fConfig);
   SetUserAction(eventAction);
