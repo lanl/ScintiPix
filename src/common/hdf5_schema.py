@@ -27,6 +27,7 @@ PRIMARY_FIELDS = (
     "primary_x_mm",
     "primary_y_mm",
     "primary_energy_MeV",
+    "source_time_ns",
     "primary_interaction_time_ns",
     "primary_created_secondary_count",
     "primary_generated_optical_photon_count",
@@ -112,6 +113,7 @@ TIMEPIX_HIT_FIELDS = (
 )
 
 PRIMARY_INTERACTION_TIME_FIELD = "primary_interaction_time_ns"
+SOURCE_TIME_FIELD = "source_time_ns"
 PHOTON_SCINT_EXIT_X_FIELD = "photon_scint_exit_x_mm"
 PHOTON_SCINT_EXIT_Y_FIELD = "photon_scint_exit_y_mm"
 PHOTON_SCINT_EXIT_Z_FIELD = "photon_scint_exit_z_mm"
