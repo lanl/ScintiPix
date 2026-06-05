@@ -446,17 +446,19 @@ Fields:
   optical-transport chunk sizing. Defaults to `32.0` and must be greater than
   zero.
 
-## Macro Generation Order
+## Going from YAML to Macro Generation
 
+The YAML configuration is processed into a sequence of Geant4 macro commands
+that initialize the simulation environment, geometry, source, and beam setup.
 `ConfigIO.macro_commands(...)` emits commands in this order:
 
-1. `simulation.runtimeControls`
-2. `/output/*` commands from `Metadata.RunEnvironment`
-3. scintillator and optical-interface geometry/material commands
-4. `/run/initialize`
-5. `/gps/*` source commands
-6. `/source/timing/*` commands when `source.timing` is present
-7. `/run/beamOn <N>` when `simulation.numberOfParticles` is set
+1. `simulation.runtimeControls`: runtime parameters and verbosity settings
+2. `/output/*` commands from `Metadata.RunEnvironment`: output directory setup
+3. scintillator and optical-interface geometry/material commands: physics models
+4. `/run/initialize`: initialize the Geant4 run
+5. `/gps/*` source commands: General Particle Source configuration
+6. `/source/timing/*` commands when `source.timing` is present: time structure
+7. `/run/beamOn <N>` when `simulation.numberOfParticles` is set: execute beam
 
 These YAMLs are consumed by scripts in:
 - [`SimulationSetup/`](../SimulationSetup/README.md)
