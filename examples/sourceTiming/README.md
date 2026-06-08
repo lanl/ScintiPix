@@ -8,38 +8,39 @@ is `examples/yamlFiles/pulsed_neutron_source_timing.yaml`.
 
 ## Timing Signal
 
-Both YAMLs assign `creation_time_ns` as the source neutron creation time. Geant4
-then transports each neutron with its configured kinetic energy, so the first
-scintillator interaction time is recorded in the same global time frame:
+Both YAMLs configure source creation timing internally. ScintiPix assigns that
+time to the Geant4 primary vertex, and Geant4 transports each neutron with its
+configured kinetic energy. The primary output records only the first
+scintillator interaction time:
 
 ```text
-primary_interaction_time_ns - creation_time_ns
+primary_interaction_time_ns
 ```
 
-That difference is the simulation-side timing signal for neutron flight and
-interaction. No pulse ID or pulse-relative time is persisted.
+No source creation time, pulse ID, or pulse-relative time is persisted in
+`/primaries`.
 
 For the pulsed example, source times cluster inside each pulse window:
 
 ```text
-creation_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
+creation_time = start_time + pulse_time_offset + random_uniform(0, pulse_time_width)
 ```
 
 For the continuous example, source times are assigned with fixed event spacing:
 
 ```text
-creation_time_ns = start_time_ns + event_id * event_spacing_ns
+creation_time = start_time + event_id * event_spacing
 ```
 
 Because `/primaries` only contains primaries that created scintillator secondary
-activity, the printed source-time gaps can be multiples of `event_spacing_ns`
-when non-interacting events are absent from the HDF5 table.
+activity, recorded interaction-time gaps can include missing non-interacting
+events.
 
 ## Inputs
 
 - `examples/yamlFiles/pulsed_neutron_source_timing.yaml`: 20 MeV neutron beam
-  with `neutrons_per_pulse: 10`, `pulse_period_ns: 1000000.0`, and
-  `pulse_width_ns: 270.0`.
+  with `neutrons_per_pulse: 10`, `pulse_period_ns: 1000000.0`,
+  `pulse_time_offset_ns: 0.0`, and `pulse_time_width_ns: 270.0`.
 - `examples/yamlFiles/continuous_neutron_source_timing.yaml`: same source and
   detector geometry, but with `event_spacing_ns: 100.0`.
 

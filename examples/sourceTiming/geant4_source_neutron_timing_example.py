@@ -68,7 +68,6 @@ def _require_fields(dtype_names: tuple[str, ...] | None) -> None:
         "gun_call_id",
         "primary_track_id",
         "primary_energy_MeV",
-        "creation_time_ns",
         "primary_interaction_time_ns",
     } - set(dtype_names)
     if missing:
@@ -100,58 +99,44 @@ def _print_timing_summary(hdf5_path: Path, rows_to_print: int) -> None:
         )
         return
 
-    order = np.lexsort((primaries["gun_call_id"], primaries["creation_time_ns"]))
+    interaction_time = primaries["primary_interaction_time_ns"].astype(float)
+    order = np.lexsort((primaries["gun_call_id"], interaction_time))
     sorted_rows = primaries[order]
-    creation_time = sorted_rows["creation_time_ns"].astype(float)
-    interaction_time = sorted_rows["primary_interaction_time_ns"].astype(float)
-    interaction_delay = interaction_time - creation_time
-    finite_delay = _finite(interaction_delay)
+    sorted_interaction_time = sorted_rows["primary_interaction_time_ns"].astype(float)
+    finite_interaction_time = _finite(sorted_interaction_time)
 
-    print("\nFirst primary rows sorted by creation_time_ns:")
+    print("\nFirst primary rows sorted by primary_interaction_time_ns:")
     print(
         "  gun_call_id  track_id  energy_MeV  "
-        "creation_time_ns  interaction_time_ns  interaction_delay_ns"
+        "primary_interaction_time_ns"
     )
-    for row, delay in zip(sorted_rows[:rows_to_print], interaction_delay[:rows_to_print]):
+    for row in sorted_rows[:rows_to_print]:
         interaction_value = float(row["primary_interaction_time_ns"])
         interaction_text = (
-            f"{interaction_value:19.3f}"
+            f"{interaction_value:27.3f}"
             if np.isfinite(interaction_value)
-            else "                NaN"
+            else "                        NaN"
         )
-        delay_text = f"{delay:20.3f}" if np.isfinite(delay) else "                 NaN"
         print(
             f"  {int(row['gun_call_id']):11d}"
             f"  {int(row['primary_track_id']):8d}"
             f"  {float(row['primary_energy_MeV']):10.3f}"
-            f"  {float(row['creation_time_ns']):14.3f}"
             f"  {interaction_text}"
-            f"  {delay_text}"
         )
 
-    unique_event_creation_times = []
-    seen_event_ids: set[int] = set()
-    for row in sorted_rows:
-        event_id = int(row["gun_call_id"])
-        if event_id in seen_event_ids:
-            continue
-        seen_event_ids.add(event_id)
-        unique_event_creation_times.append(float(row["creation_time_ns"]))
-    event_creation_times = np.asarray(unique_event_creation_times, dtype=float)
-
-    if event_creation_times.size > 1:
-        gaps = np.diff(np.sort(event_creation_times))
+    if finite_interaction_time.size > 1:
+        gaps = np.diff(np.sort(finite_interaction_time))
         finite_gaps = _finite(gaps)
         if finite_gaps.size:
             largest_gaps = np.sort(finite_gaps)[-min(5, finite_gaps.size) :]
-            print("\nLargest observed gaps between recorded event creation times:")
+            print("\nLargest observed gaps between recorded interaction times:")
             print("  " + ", ".join(f"{gap:.3f} ns" for gap in largest_gaps))
 
-    if finite_delay.size:
-        print("\nInteraction delay summary:")
-        print(f"  min:    {np.min(finite_delay):.3f} ns")
-        print(f"  median: {np.median(finite_delay):.3f} ns")
-        print(f"  max:    {np.max(finite_delay):.3f} ns")
+    if finite_interaction_time.size:
+        print("\nPrimary interaction time summary:")
+        print(f"  min:    {np.min(finite_interaction_time):.3f} ns")
+        print(f"  median: {np.median(finite_interaction_time):.3f} ns")
+        print(f"  max:    {np.max(finite_interaction_time):.3f} ns")
     else:
         print("\nNo finite primary_interaction_time_ns values were recorded.")
 
