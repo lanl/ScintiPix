@@ -535,13 +535,21 @@ SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {
   }
 
   const auto safeEventID = eventID < 0 ? 0 : eventID;
-  info.enabled = true;
   if (mode == SourceTimingMode::Continuous) {
+    if (eventSpacing <= 0.0) {
+      return info;
+    }
+    info.enabled = true;
     info.creationTime = startTime + static_cast<G4double>(safeEventID) * eventSpacing;
     return info;
   }
 
+  if (pulsePeriod <= 0.0) {
+    return info;
+  }
+
   const auto safeNeutronsPerPulse = neutronsPerPulse <= 0 ? 1 : neutronsPerPulse;
+  info.enabled = true;
   info.pulseId = safeEventID / safeNeutronsPerPulse;
   info.startTime = startTime + static_cast<G4double>(info.pulseId) * pulsePeriod;
   info.offsetTime = pulseTimeOffset;
