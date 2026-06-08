@@ -223,15 +223,15 @@ Pulsed event grouping uses:
 ```text
 pulse_id = event_id // neutrons_per_pulse
 pulse_start_time_ns = start_time_ns + pulse_id * pulse_period_ns
-source_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
+creation_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
 ```
 
 Geant4 transport determines the relativistic neutron time of flight from the
 configured source position to the scintillator interaction.
 
 The simulation persists the assigned source creation time as
-`source_time_ns` in `/primaries`. Pulse ID and pulse-relative time are not
-persisted; they are intermediate values used only to compute `source_time_ns`.
+`creation_time_ns` in `/primaries`. Pulse ID and pulse-relative time are not
+persisted; they are intermediate values used only to compute `creation_time_ns`.
 
 ## `optical`
 

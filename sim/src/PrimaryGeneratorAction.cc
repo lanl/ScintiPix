@@ -29,7 +29,7 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
   for (G4int index = 0; index < event->GetNumberOfPrimaryVertex(); ++index) {
     auto* vertex = event->GetPrimaryVertex(index);
     if (vertex) {
-      vertex->SetT0(timing.sourceTime);
+      vertex->SetT0(timing.creationTime);
     }
   }
 }

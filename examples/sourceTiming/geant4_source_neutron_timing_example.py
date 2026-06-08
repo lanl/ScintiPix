@@ -68,7 +68,7 @@ def _require_fields(dtype_names: tuple[str, ...] | None) -> None:
         "gun_call_id",
         "primary_track_id",
         "primary_energy_MeV",
-        "source_time_ns",
+        "creation_time_ns",
         "primary_interaction_time_ns",
     } - set(dtype_names)
     if missing:
@@ -100,17 +100,17 @@ def _print_timing_summary(hdf5_path: Path, rows_to_print: int) -> None:
         )
         return
 
-    order = np.lexsort((primaries["gun_call_id"], primaries["source_time_ns"]))
+    order = np.lexsort((primaries["gun_call_id"], primaries["creation_time_ns"]))
     sorted_rows = primaries[order]
-    source_time = sorted_rows["source_time_ns"].astype(float)
+    creation_time = sorted_rows["creation_time_ns"].astype(float)
     interaction_time = sorted_rows["primary_interaction_time_ns"].astype(float)
-    interaction_delay = interaction_time - source_time
+    interaction_delay = interaction_time - creation_time
     finite_delay = _finite(interaction_delay)
 
-    print("\nFirst primary rows sorted by source_time_ns:")
+    print("\nFirst primary rows sorted by creation_time_ns:")
     print(
         "  gun_call_id  track_id  energy_MeV  "
-        "source_time_ns  interaction_time_ns  interaction_delay_ns"
+        "creation_time_ns  interaction_time_ns  interaction_delay_ns"
     )
     for row, delay in zip(sorted_rows[:rows_to_print], interaction_delay[:rows_to_print]):
         interaction_value = float(row["primary_interaction_time_ns"])
@@ -124,27 +124,27 @@ def _print_timing_summary(hdf5_path: Path, rows_to_print: int) -> None:
             f"  {int(row['gun_call_id']):11d}"
             f"  {int(row['primary_track_id']):8d}"
             f"  {float(row['primary_energy_MeV']):10.3f}"
-            f"  {float(row['source_time_ns']):14.3f}"
+            f"  {float(row['creation_time_ns']):14.3f}"
             f"  {interaction_text}"
             f"  {delay_text}"
         )
 
-    unique_event_source_times = []
+    unique_event_creation_times = []
     seen_event_ids: set[int] = set()
     for row in sorted_rows:
         event_id = int(row["gun_call_id"])
         if event_id in seen_event_ids:
             continue
         seen_event_ids.add(event_id)
-        unique_event_source_times.append(float(row["source_time_ns"]))
-    event_source_times = np.asarray(unique_event_source_times, dtype=float)
+        unique_event_creation_times.append(float(row["creation_time_ns"]))
+    event_creation_times = np.asarray(unique_event_creation_times, dtype=float)
 
-    if event_source_times.size > 1:
-        gaps = np.diff(np.sort(event_source_times))
+    if event_creation_times.size > 1:
+        gaps = np.diff(np.sort(event_creation_times))
         finite_gaps = _finite(gaps)
         if finite_gaps.size:
             largest_gaps = np.sort(finite_gaps)[-min(5, finite_gaps.size) :]
-            print("\nLargest observed gaps between recorded event source times:")
+            print("\nLargest observed gaps between recorded event creation times:")
             print("  " + ", ".join(f"{gap:.3f} ns" for gap in largest_gaps))
 
     if finite_delay.size:

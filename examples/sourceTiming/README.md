@@ -8,12 +8,12 @@ is `examples/yamlFiles/pulsed_neutron_source_timing.yaml`.
 
 ## Timing Signal
 
-Both YAMLs assign `source_time_ns` as the source neutron creation time. Geant4
+Both YAMLs assign `creation_time_ns` as the source neutron creation time. Geant4
 then transports each neutron with its configured kinetic energy, so the first
 scintillator interaction time is recorded in the same global time frame:
 
 ```text
-primary_interaction_time_ns - source_time_ns
+primary_interaction_time_ns - creation_time_ns
 ```
 
 That difference is the simulation-side timing signal for neutron flight and
@@ -22,13 +22,13 @@ interaction. No pulse ID or pulse-relative time is persisted.
 For the pulsed example, source times cluster inside each pulse window:
 
 ```text
-source_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
+creation_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
 ```
 
 For the continuous example, source times are assigned with fixed event spacing:
 
 ```text
-source_time_ns = start_time_ns + event_id * event_spacing_ns
+creation_time_ns = start_time_ns + event_id * event_spacing_ns
 ```
 
 Because `/primaries` only contains primaries that created scintillator secondary

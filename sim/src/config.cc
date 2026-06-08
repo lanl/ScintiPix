@@ -527,7 +527,7 @@ SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {
   const auto safeEventID = eventID < 0 ? 0 : eventID;
   info.enabled = true;
   if (mode == SourceTimingMode::Continuous) {
-    info.sourceTime = startTime + static_cast<G4double>(safeEventID) * eventSpacing;
+    info.creationTime = startTime + static_cast<G4double>(safeEventID) * eventSpacing;
     return info;
   }
 
@@ -538,6 +538,6 @@ SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {
   if (pulseShape == "uniform" && pulseWidth > 0.0) {
     info.timeInPulse = G4UniformRand() * pulseWidth;
   }
-  info.sourceTime = info.pulseStartTime + info.timeInPulse;
+  info.creationTime = info.pulseStartTime + info.timeInPulse;
   return info;
 }

@@ -18,7 +18,7 @@ enum class SourceTimingMode {
 /// Per-event source timing values in Geant4 internal time units.
 struct SourceTimingInfo {
   G4bool enabled = false;
-  G4double sourceTime = 0.0;
+  G4double creationTime = 0.0;
   G4double pulseStartTime = 0.0;
   G4double timeInPulse = 0.0;
   G4int pulseId = -1;

@@ -68,7 +68,7 @@ class EventAction : public G4UserEventAction {
   std::string fPrimarySpecies = "unknown";
   G4ThreeVector fPrimaryPosition;
   G4double fPrimaryEnergy = -1.0;
-  G4double fSourceTime = 0.0;
+  G4double fCreationTime = 0.0;
   std::unordered_map<G4int, TrackInfo> fTrackInfo;
   std::unordered_map<G4int, PhotonCreationInfo> fPhotonCreationInfo;
   std::unordered_map<const void*, G4ThreeVector> fPendingPhotonOrigin;
