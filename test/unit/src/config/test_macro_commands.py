@@ -283,7 +283,8 @@ class MacroCommandGenerationTests(unittest.TestCase):
                   start_time_ns: 0.0
                   pulse_period_ns: 1000000.0
                   neutrons_per_pulse: 10
-                  pulse_width_ns: 270.0
+                  pulse_time_offset_ns: 50.0
+                  pulse_time_width_ns: 270.0
                   pulse_shape: uniform
                 """,
             )
@@ -293,13 +294,14 @@ class MacroCommandGenerationTests(unittest.TestCase):
 
             self.assertEqual(config.source.timing.mode, "pulsed")
             self.assertEqual(
-                commands[-6:],
+                commands[-7:],
                 [
                     "/source/timing/mode pulsed",
                     "/source/timing/startTime 0 ns",
                     "/source/timing/pulsePeriod 1000000 ns",
                     "/source/timing/neutronsPerPulse 10",
-                    "/source/timing/pulseWidth 270 ns",
+                    "/source/timing/pulseTimeOffset 50 ns",
+                    "/source/timing/pulseTimeWidth 270 ns",
                     "/source/timing/pulseShape uniform",
                 ],
             )
@@ -412,7 +414,8 @@ class MacroCommandGenerationTests(unittest.TestCase):
                         "/source/timing/startTime 5 ns",
                         "/source/timing/pulsePeriod 1000000 ns",
                         "/source/timing/neutronsPerPulse 10",
-                        "/source/timing/pulseWidth 270 ns",
+                        "/source/timing/pulseTimeOffset 50 ns",
+                        "/source/timing/pulseTimeWidth 270 ns",
                         "/source/timing/pulseShape uniform",
                     ]
                 )
@@ -429,7 +432,8 @@ class MacroCommandGenerationTests(unittest.TestCase):
             self.assertEqual(timing.start_time_ns, 5.0)
             self.assertEqual(timing.pulse_period_ns, 1000000.0)
             self.assertEqual(timing.neutrons_per_pulse, 10)
-            self.assertEqual(timing.pulse_width_ns, 270.0)
+            self.assertEqual(timing.pulse_time_offset_ns, 50.0)
+            self.assertEqual(timing.pulse_time_width_ns, 270.0)
             self.assertEqual(timing.pulse_shape, "uniform")
 
     def test_from_macro_recovers_sub_run_number_from_macro_and_output_filename(self) -> None:

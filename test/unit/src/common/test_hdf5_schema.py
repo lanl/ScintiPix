@@ -64,13 +64,13 @@ class Hdf5SchemaTests(unittest.TestCase):
             ),
         )
 
-    def test_primary_schema_constants_include_creation_time(self) -> None:
+    def test_primary_schema_constants_include_interaction_time(self) -> None:
         from src.common.hdf5_schema import DATASET_PRIMARIES
         from src.common.hdf5_schema import PRIMARY_FIELDS
-        from src.common.hdf5_schema import CREATION_TIME_FIELD
+        from src.common.hdf5_schema import PRIMARY_INTERACTION_TIME_FIELD
 
         self.assertEqual(DATASET_PRIMARIES, "primaries")
-        self.assertEqual(CREATION_TIME_FIELD, "creation_time_ns")
+        self.assertEqual(PRIMARY_INTERACTION_TIME_FIELD, "primary_interaction_time_ns")
         self.assertEqual(
             PRIMARY_FIELDS,
             (
@@ -80,7 +80,6 @@ class Hdf5SchemaTests(unittest.TestCase):
                 "primary_x_mm",
                 "primary_y_mm",
                 "primary_energy_MeV",
-                "creation_time_ns",
                 "primary_interaction_time_ns",
                 "primary_created_secondary_count",
                 "primary_generated_optical_photon_count",

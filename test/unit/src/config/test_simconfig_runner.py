@@ -172,7 +172,8 @@ class SimConfigRunnerTests(unittest.TestCase):
             "startTimeNs": 0.0,
             "pulsePeriodNs": 1000000.0,
             "neutronsPerPulse": 10,
-            "pulseWidthNs": 270.0,
+            "pulseTimeOffsetNs": 50.0,
+            "pulseTimeWidthNs": 270.0,
             "pulseShape": "uniform",
         }
 
@@ -184,7 +185,8 @@ class SimConfigRunnerTests(unittest.TestCase):
         self.assertEqual(timing.mode, "pulsed")
         self.assertEqual(timing.pulse_period_ns, 1000000.0)
         self.assertEqual(timing.neutrons_per_pulse, 10)
-        self.assertEqual(timing.pulse_width_ns, 270.0)
+        self.assertEqual(timing.pulse_time_offset_ns, 50.0)
+        self.assertEqual(timing.pulse_time_width_ns, 270.0)
         self.assertEqual(timing.pulse_shape, "uniform")
 
     def test_source_timing_pulsed_requires_width_period_and_count(self) -> None:
