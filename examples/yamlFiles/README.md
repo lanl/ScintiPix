@@ -177,6 +177,14 @@ Common fields:
 - `mode`: one of `none`, `continuous`, or `pulsed`. Defaults to `none`.
 - `start_time_ns`: global time of the first source event or pulse. Defaults to
   `0.0`. Accepted aliases include `startTimeNs` and `startTime`.
+- `eff_flight_path_length_mm`: optional effective source-to-detector flight
+  path length. When set with `continuous` or `pulsed` timing, Geant4 computes a
+  relativistic time-of-flight from this length and the generated primary kinetic
+  energy. That time is added to the primary vertex time so downstream
+  interaction, photon, and sensor timing include the effective beamline flight
+  time. Accepted aliases include `effFlightPathLengthMm`,
+  `effective_flight_path_length_mm`, `effectiveFlightPathLengthMm`, and
+  `effectiveFlightPathLength`.
 
 Continuous mode:
 
@@ -204,6 +212,7 @@ source:
     neutrons_per_pulse: 10
     pulse_width_ns: 270.0
     pulse_shape: uniform
+    eff_flight_path_length_mm: 10000.0
 ```
 
 Fields:
@@ -226,8 +235,15 @@ pulse_start_time_ns = start_time_ns + pulse_id * pulse_period_ns
 source_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
 ```
 
-Geant4 transport then determines the relativistic neutron time of flight to the
-scintillator interaction.
+When `eff_flight_path_length_mm` is omitted, Geant4 transport determines the
+relativistic neutron time of flight from the simulated source position to the
+scintillator interaction. When it is present, the effective flight-path TOF is
+added before Geant4 transport, so:
+
+```text
+primary_interaction_time_ns - source_time_ns =
+    effective_flight_path_tof_ns + simulated_transport_and_interaction_time_ns
+```
 
 The simulation persists the assigned source creation time as
 `source_time_ns` in `/primaries`. Pulse ID and pulse-relative time are not
