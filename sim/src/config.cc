@@ -3,8 +3,10 @@
 #include "utils.hh"
 
 #include "G4SystemOfUnits.hh"
+#include "G4PhysicalConstants.hh"
 #include "Randomize.hh"
 
+#include <cmath>
 #include <filesystem>
 #include <limits>
 
@@ -497,6 +499,47 @@ void Config::SetSourceTimingPulseShape(const std::string& value) {
   }
   std::lock_guard<std::mutex> lock(fMutex);
   fSourceTimingPulseShape = token;
+}
+
+G4double Config::GetSourceTimingEffectiveFlightPathLength() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fSourceTimingEffectiveFlightPathLength;
+}
+
+void Config::SetSourceTimingEffectiveFlightPathLength(G4double value) {
+  if (value < 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingEffectiveFlightPathLength = value;
+}
+
+G4double Config::GetSourceTimingEffectiveTimeOfFlight(G4double kineticEnergy,
+                                                      G4double restMass) const {
+  G4double flightPathLength = 0.0;
+  {
+    std::lock_guard<std::mutex> lock(fMutex);
+    flightPathLength = fSourceTimingEffectiveFlightPathLength;
+  }
+  if (flightPathLength <= 0.0) {
+    return 0.0;
+  }
+  if (restMass <= 0.0) {
+    return flightPathLength / c_light;
+  }
+  if (kineticEnergy <= 0.0) {
+    return 0.0;
+  }
+
+  const auto gamma = 1.0 + kineticEnergy / restMass;
+  if (gamma <= 1.0) {
+    return 0.0;
+  }
+  const auto betaSquared = 1.0 - 1.0 / (gamma * gamma);
+  if (betaSquared <= 0.0) {
+    return 0.0;
+  }
+  return flightPathLength / (std::sqrt(betaSquared) * c_light);
 }
 
 SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {

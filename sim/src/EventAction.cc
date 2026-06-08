@@ -80,10 +80,16 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
     return;
   }
 
+  G4double restMass = primaryParticle->GetMass();
   if (const auto* def = primaryParticle->GetParticleDefinition()) {
     fPrimarySpecies = ToSpeciesLabel(def->GetParticleName());
+    restMass = def->GetPDGMass();
   }
   fPrimaryEnergy = primaryParticle->GetKineticEnergy();
+  if (fConfig && fConfig->GetSourceTimingMode() != SourceTimingMode::None) {
+    fSourceTime -=
+        fConfig->GetSourceTimingEffectiveTimeOfFlight(fPrimaryEnergy, restMass);
+  }
 }
 
 void EventAction::EndOfEventAction(const G4Event* event) {
