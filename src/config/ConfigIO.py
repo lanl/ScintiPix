@@ -316,6 +316,11 @@ def source_timing_commands(config: SimConfig) -> list[str]:
         f"/source/timing/mode {timing.mode}",
         f"/source/timing/startTime {_format_macro_scalar(timing.start_time_ns)} ns",
     ]
+    if timing.eff_flight_path_length_mm is not None:
+        commands.append(
+            "/source/timing/effectiveFlightPathLength "
+            f"{_format_macro_scalar(timing.eff_flight_path_length_mm)} mm"
+        )
     if timing.mode == "continuous":
         if timing.event_spacing_ns is None:
             raise ValueError(
@@ -607,6 +612,11 @@ def from_macro(macro_path: str | Path, *, template: SimConfig | None = None) -> 
                 continue
             if command == "/source/timing/startTime":
                 source_timing["start_time_ns"] = _parse_time_to_ns(tokens, command)
+                continue
+            if command == "/source/timing/effectiveFlightPathLength":
+                source_timing["eff_flight_path_length_mm"] = _parse_length_tokens(
+                    tokens, command
+                )
                 continue
             if command == "/source/timing/eventSpacing":
                 source_timing["event_spacing_ns"] = _parse_time_to_ns(tokens, command)
