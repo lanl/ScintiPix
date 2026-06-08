@@ -343,18 +343,6 @@ class SourceTimingConfig(StrictModel):
         validation_alias=AliasChoices("pulse_shape", "pulseShape"),
         serialization_alias="pulse_shape",
     )
-    eff_flight_path_length_mm: float | None = Field(
-        default=None,
-        validation_alias=AliasChoices(
-            "eff_flight_path_length_mm",
-            "effFlightPathLengthMm",
-            "effective_flight_path_length_mm",
-            "effectiveFlightPathLengthMm",
-            "effectiveFlightPathLength",
-        ),
-        serialization_alias="eff_flight_path_length_mm",
-        ge=0.0,
-    )
 
     @model_validator(mode="after")
     def validate_mode_payload(self) -> "SourceTimingConfig":

@@ -86,7 +86,6 @@ class Messenger : public G4UImessenger {
   G4UIcmdWithAnInteger* fSourceTimingNeutronsPerPulseCmd = nullptr;
   G4UIcmdWithADoubleAndUnit* fSourceTimingPulseWidthCmd = nullptr;
   G4UIcmdWithAString* fSourceTimingPulseShapeCmd = nullptr;
-  G4UIcmdWithADoubleAndUnit* fSourceTimingEffectiveFlightPathLengthCmd = nullptr;
 };
 
 #endif

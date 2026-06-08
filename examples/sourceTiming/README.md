@@ -17,10 +17,7 @@ primary_interaction_time_ns - source_time_ns
 ```
 
 That difference is the simulation-side timing signal for neutron flight and
-interaction. If `source.timing.eff_flight_path_length_mm` is configured, the
-difference includes the relativistic time-of-flight for that effective path
-plus the simulated transport and interaction time. No pulse ID, pulse-relative
-time, or effective path length is persisted in `/primaries`.
+interaction. No pulse ID or pulse-relative time is persisted.
 
 For the pulsed example, source times cluster inside each pulse window:
 

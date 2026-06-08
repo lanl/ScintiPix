@@ -174,7 +174,6 @@ class SimConfigRunnerTests(unittest.TestCase):
             "neutronsPerPulse": 10,
             "pulseWidthNs": 270.0,
             "pulseShape": "uniform",
-            "effFlightPathLengthMm": 10000.0,
         }
 
         config = self.SimConfig.model_validate(payload)
@@ -187,7 +186,6 @@ class SimConfigRunnerTests(unittest.TestCase):
         self.assertEqual(timing.neutrons_per_pulse, 10)
         self.assertEqual(timing.pulse_width_ns, 270.0)
         self.assertEqual(timing.pulse_shape, "uniform")
-        self.assertEqual(timing.eff_flight_path_length_mm, 10000.0)
 
     def test_source_timing_pulsed_requires_width_period_and_count(self) -> None:
         payload = self._base_payload()

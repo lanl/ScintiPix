@@ -77,10 +77,7 @@ Notes:
 - `source_time_ns` is the primary source creation time in the Geant4 global
   time frame. When source timing is disabled this is normally `0.0`; when
   `/source/timing/*` is configured it contains the assigned continuous or
-  pulsed source time. If an effective flight path is configured, the persisted
-  source time remains the source creation time; the effective time-of-flight is
-  included in downstream Geant4 global times such as
-  `primary_interaction_time_ns`.
+  pulsed source time.
 - `primary_interaction_time_ns` is the first recorded scintillator interaction
   time for the primary and is written as `NaN` when no such interaction time
   was recorded.

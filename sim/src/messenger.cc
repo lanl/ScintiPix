@@ -361,21 +361,9 @@ Messenger::Messenger(Config* config) : fConfig(config) {
       "Set pulsed source-time distribution shape; currently uniform");
   fSourceTimingPulseShapeCmd->SetParameterName("pulseShape", false);
   fSourceTimingPulseShapeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-  fSourceTimingEffectiveFlightPathLengthCmd =
-      new G4UIcmdWithADoubleAndUnit("/source/timing/effectiveFlightPathLength", this);
-  fSourceTimingEffectiveFlightPathLengthCmd->SetGuidance(
-      "Set effective source-to-detector flight path length for time-of-flight");
-  fSourceTimingEffectiveFlightPathLengthCmd->SetParameterName(
-      "effectiveFlightPathLength", false);
-  fSourceTimingEffectiveFlightPathLengthCmd->SetUnitCategory("Length");
-  fSourceTimingEffectiveFlightPathLengthCmd->SetRange("effectiveFlightPathLength >= 0.");
-  fSourceTimingEffectiveFlightPathLengthCmd->AvailableForStates(G4State_PreInit,
-                                                                G4State_Idle);
 }
 
 Messenger::~Messenger() {
-  delete fSourceTimingEffectiveFlightPathLengthCmd;
   delete fSourceTimingPulseShapeCmd;
   delete fSourceTimingPulseWidthCmd;
   delete fSourceTimingNeutronsPerPulseCmd;
@@ -701,15 +689,6 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
   if (command == fSourceTimingPulseShapeCmd) {
     fConfig->SetSourceTimingPulseShape(newValue);
     G4cout << "Source timing pulse shape set to '" << newValue << "'." << G4endl;
-    return;
-  }
-
-  if (command == fSourceTimingEffectiveFlightPathLengthCmd) {
-    const auto value =
-        fSourceTimingEffectiveFlightPathLengthCmd->GetNewDoubleValue(newValue);
-    fConfig->SetSourceTimingEffectiveFlightPathLength(value);
-    G4cout << "Source timing effective flight path length set to "
-           << value / mm << " mm." << G4endl;
     return;
   }
 
