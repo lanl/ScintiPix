@@ -25,8 +25,6 @@ namespace SimStructures {
  * - `primarySpecies`: compact species label (`n`, `p`, `g`, etc.).
  * - `primaryXmm`, `primaryYmm`: primary origin position in mm.
  * - `primaryEnergyMeV`: primary origin kinetic energy in MeV.
- * - `creationTimeNs`: primary source creation time in the Geant4 global time
- *   frame, in ns.
  * - `primaryInteractionTimeNs`: first primary scintillator interaction time
  *   in ns. Written as `NaN` when no scintillator interaction time was
  *   recorded.
@@ -44,7 +42,6 @@ struct PrimaryInfo {
   double primaryXmm = 0.0;
   double primaryYmm = 0.0;
   double primaryEnergyMeV = 0.0;
-  double creationTimeNs = 0.0;
   double primaryInteractionTimeNs = std::numeric_limits<double>::quiet_NaN();
   std::int64_t primaryCreatedSecondaryCount = 0;
   std::int64_t primaryGeneratedOpticalPhotonCount = 0;
@@ -199,7 +196,6 @@ struct Hdf5PrimaryNativeRow {
   double primary_x_mm;
   double primary_y_mm;
   double primary_energy_MeV;
-  double creation_time_ns;
   double primary_interaction_time_ns;
   std::int64_t primary_created_secondary_count;
   std::int64_t primary_generated_optical_photon_count;

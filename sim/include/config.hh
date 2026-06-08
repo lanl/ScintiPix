@@ -19,7 +19,9 @@ enum class SourceTimingMode {
 struct SourceTimingInfo {
   G4bool enabled = false;
   G4double creationTime = 0.0;
-  G4double pulseStartTime = 0.0;
+  G4double startTime = 0.0;
+  G4double offsetTime = 0.0;
+  G4double pulseTimeWidth = 0.0;
   G4double timeInPulse = 0.0;
   G4int pulseId = -1;
 };
@@ -195,8 +197,10 @@ class Config {
   void SetSourceTimingPulsePeriod(G4double value);
   /// Set number of Geant4 events assigned to each pulse.
   void SetSourceTimingNeutronsPerPulse(G4int value);
+  /// Set offset between T-zero and pulse start for pulsed source timing.
+  void SetSourceTimingPulseTimeOffset(G4double value);
   /// Set finite pulse width for pulsed source timing.
-  void SetSourceTimingPulseWidth(G4double value);
+  void SetSourceTimingPulseTimeWidth(G4double value);
   /// Set pulsed source-time distribution shape.
   void SetSourceTimingPulseShape(const std::string& value);
   /// Compute per-event source timing values in Geant4 internal units.
@@ -254,7 +258,8 @@ class Config {
   G4double fSourceTimingEventSpacing = 0.0;
   G4double fSourceTimingPulsePeriod = 0.0;
   G4int fSourceTimingNeutronsPerPulse = 1;
-  G4double fSourceTimingPulseWidth = 0.0;
+  G4double fSourceTimingPulseTimeOffset = 0.0;
+  G4double fSourceTimingPulseTimeWidth = 0.0;
   std::string fSourceTimingPulseShape = "uniform";
 };
 
