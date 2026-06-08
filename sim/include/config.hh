@@ -199,6 +199,13 @@ class Config {
   void SetSourceTimingPulseWidth(G4double value);
   /// Set pulsed source-time distribution shape.
   void SetSourceTimingPulseShape(const std::string& value);
+  /// Get optional effective source-to-detector flight path length.
+  G4double GetSourceTimingEffectiveFlightPathLength() const;
+  /// Set optional effective source-to-detector flight path length.
+  void SetSourceTimingEffectiveFlightPathLength(G4double value);
+  /// Compute relativistic time of flight for the configured effective path.
+  G4double GetSourceTimingEffectiveTimeOfFlight(G4double kineticEnergy,
+                                                G4double restMass) const;
   /// Compute per-event source timing values in Geant4 internal units.
   SourceTimingInfo GetSourceTimingForEvent(G4int eventID) const;
 
@@ -256,6 +263,7 @@ class Config {
   G4int fSourceTimingNeutronsPerPulse = 1;
   G4double fSourceTimingPulseWidth = 0.0;
   std::string fSourceTimingPulseShape = "uniform";
+  G4double fSourceTimingEffectiveFlightPathLength = 0.0;
 };
 
 #endif
