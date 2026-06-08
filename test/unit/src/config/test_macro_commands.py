@@ -285,6 +285,7 @@ class MacroCommandGenerationTests(unittest.TestCase):
                   neutrons_per_pulse: 10
                   pulse_width_ns: 270.0
                   pulse_shape: uniform
+                  eff_flight_path_length_mm: 10000.0
                 """,
             )
 
@@ -293,10 +294,11 @@ class MacroCommandGenerationTests(unittest.TestCase):
 
             self.assertEqual(config.source.timing.mode, "pulsed")
             self.assertEqual(
-                commands[-6:],
+                commands[-7:],
                 [
                     "/source/timing/mode pulsed",
                     "/source/timing/startTime 0 ns",
+                    "/source/timing/effectiveFlightPathLength 10000 mm",
                     "/source/timing/pulsePeriod 1000000 ns",
                     "/source/timing/neutronsPerPulse 10",
                     "/source/timing/pulseWidth 270 ns",
@@ -410,6 +412,7 @@ class MacroCommandGenerationTests(unittest.TestCase):
                     [
                         "/source/timing/mode pulsed",
                         "/source/timing/startTime 5 ns",
+                        "/source/timing/effectiveFlightPathLength 10000 mm",
                         "/source/timing/pulsePeriod 1000000 ns",
                         "/source/timing/neutronsPerPulse 10",
                         "/source/timing/pulseWidth 270 ns",
@@ -431,6 +434,7 @@ class MacroCommandGenerationTests(unittest.TestCase):
             self.assertEqual(timing.neutrons_per_pulse, 10)
             self.assertEqual(timing.pulse_width_ns, 270.0)
             self.assertEqual(timing.pulse_shape, "uniform")
+            self.assertEqual(timing.eff_flight_path_length_mm, 10000.0)
 
     def test_from_macro_recovers_sub_run_number_from_macro_and_output_filename(self) -> None:
         """Macro import should recover run ID and sub-run number from suffixed artifacts."""
