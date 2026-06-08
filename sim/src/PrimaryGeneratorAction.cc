@@ -16,8 +16,12 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(const Config* config)
 PrimaryGeneratorAction::~PrimaryGeneratorAction() { delete fGPS; }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
+  if (!event) {
+    return;
+  }
+
   fGPS->GeneratePrimaryVertex(event);
-  if (!event || !fConfig) {
+  if (!fConfig) {
     return;
   }
 
