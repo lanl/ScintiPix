@@ -30,12 +30,14 @@ class Messenger : public G4UImessenger {
   /// Shared runtime configuration sink.
   Config* fConfig = nullptr;
 
-  /// Command directories for scintillator, optical-interface, and output controls.
+  /// Command directories for scintillator, optical-interface, source, and output controls.
   G4UIdirectory* fScintillatorDir = nullptr;
   G4UIdirectory* fScintillatorGeomDir = nullptr;
   G4UIdirectory* fScintillatorPropertiesDir = nullptr;
   G4UIdirectory* fOpticalInterfaceDir = nullptr;
   G4UIdirectory* fOpticalInterfaceGeomDir = nullptr;
+  G4UIdirectory* fSourceDir = nullptr;
+  G4UIdirectory* fSourceTimingDir = nullptr;
   G4UIdirectory* fOutputDir = nullptr;
 
   /// Scintillator geometry/material commands.
@@ -75,6 +77,16 @@ class Messenger : public G4UImessenger {
   G4UIcmdWithAString* fOutputPathCmd = nullptr;
   G4UIcmdWithAString* fOutputFilenameCmd = nullptr;
   G4UIcmdWithAString* fOutputRunNameCmd = nullptr;
+
+  /// Source timing commands.
+  G4UIcmdWithAString* fSourceTimingModeCmd = nullptr;
+  G4UIcmdWithADoubleAndUnit* fSourceTimingStartTimeCmd = nullptr;
+  G4UIcmdWithADoubleAndUnit* fSourceTimingEventSpacingCmd = nullptr;
+  G4UIcmdWithADoubleAndUnit* fSourceTimingPulsePeriodCmd = nullptr;
+  G4UIcmdWithAnInteger* fSourceTimingNeutronsPerPulseCmd = nullptr;
+  G4UIcmdWithADoubleAndUnit* fSourceTimingPulseTimeOffsetCmd = nullptr;
+  G4UIcmdWithADoubleAndUnit* fSourceTimingPulseTimeWidthCmd = nullptr;
+  G4UIcmdWithAString* fSourceTimingPulseShapeCmd = nullptr;
 };
 
 #endif

@@ -3,6 +3,7 @@
 #include "utils.hh"
 
 #include "G4SystemOfUnits.hh"
+#include "Randomize.hh"
 
 #include <filesystem>
 #include <limits>
@@ -16,6 +17,17 @@ bool IsValidScintillationComponentIndex(G4int componentIndex) {
 
 std::size_t ToZeroBasedComponentIndex(G4int componentIndex) {
   return static_cast<std::size_t>(componentIndex - 1);
+}
+
+SourceTimingMode ParseSourceTimingMode(const std::string& value) {
+  const auto token = Utils::ToLower(Utils::Trim(value));
+  if (token == "continuous") {
+    return SourceTimingMode::Continuous;
+  }
+  if (token == "pulsed") {
+    return SourceTimingMode::Pulsed;
+  }
+  return SourceTimingMode::None;
 }
 }  // namespace
 
@@ -426,4 +438,125 @@ std::string Config::GetHdf5FilePath() const {
   std::lock_guard<std::mutex> lock(fMutex);
   return SimIO::ComposeOutputPath(fOutputFilename, fOutputPath, fOutputRunName,
                                   ".h5");
+}
+
+SourceTimingMode Config::GetSourceTimingMode() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fSourceTimingMode;
+}
+
+void Config::SetSourceTimingMode(const std::string& value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingMode = ParseSourceTimingMode(value);
+}
+
+void Config::SetSourceTimingStartTime(G4double value) {
+  if (value < 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingStartTime = value;
+}
+
+void Config::SetSourceTimingEventSpacing(G4double value) {
+  if (value <= 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingEventSpacing = value;
+}
+
+void Config::SetSourceTimingPulsePeriod(G4double value) {
+  if (value <= 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingPulsePeriod = value;
+}
+
+void Config::SetSourceTimingNeutronsPerPulse(G4int value) {
+  if (value <= 0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingNeutronsPerPulse = value;
+}
+
+void Config::SetSourceTimingPulseTimeOffset(G4double value) {
+  if (value < 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingPulseTimeOffset = value;
+}
+
+void Config::SetSourceTimingPulseTimeWidth(G4double value) {
+  if (value < 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingPulseTimeWidth = value;
+}
+
+void Config::SetSourceTimingPulseShape(const std::string& value) {
+  const auto token = Utils::ToLower(Utils::Trim(value));
+  if (token != "uniform") {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingPulseShape = token;
+}
+
+SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {
+  SourceTimingMode mode = SourceTimingMode::None;
+  G4double startTime = 0.0;
+  G4double eventSpacing = 0.0;
+  G4double pulsePeriod = 0.0;
+  G4int neutronsPerPulse = 1;
+  G4double pulseTimeOffset = 0.0;
+  G4double pulseTimeWidth = 0.0;
+  std::string pulseShape = "uniform";
+
+  {
+    std::lock_guard<std::mutex> lock(fMutex);
+    mode = fSourceTimingMode;
+    startTime = fSourceTimingStartTime;
+    eventSpacing = fSourceTimingEventSpacing;
+    pulsePeriod = fSourceTimingPulsePeriod;
+    neutronsPerPulse = fSourceTimingNeutronsPerPulse;
+    pulseTimeOffset = fSourceTimingPulseTimeOffset;
+    pulseTimeWidth = fSourceTimingPulseTimeWidth;
+    pulseShape = fSourceTimingPulseShape;
+  }
+
+  SourceTimingInfo info;
+  if (mode == SourceTimingMode::None) {
+    return info;
+  }
+
+  const auto safeEventID = eventID < 0 ? 0 : eventID;
+  if (mode == SourceTimingMode::Continuous) {
+    if (eventSpacing <= 0.0) {
+      return info;
+    }
+    info.enabled = true;
+    info.creationTime = startTime + static_cast<G4double>(safeEventID) * eventSpacing;
+    return info;
+  }
+
+  if (pulsePeriod <= 0.0) {
+    return info;
+  }
+
+  const auto safeNeutronsPerPulse = neutronsPerPulse <= 0 ? 1 : neutronsPerPulse;
+  info.enabled = true;
+  info.pulseId = safeEventID / safeNeutronsPerPulse;
+  info.startTime = startTime + static_cast<G4double>(info.pulseId) * pulsePeriod;
+  info.offsetTime = pulseTimeOffset;
+  info.pulseTimeWidth = pulseTimeWidth;
+  if (pulseShape == "uniform" && pulseTimeWidth > 0.0) {
+    info.timeInPulse = G4UniformRand() * pulseTimeWidth;
+  }
+  info.creationTime = info.startTime + info.offsetTime + info.timeInPulse;
+  return info;
 }

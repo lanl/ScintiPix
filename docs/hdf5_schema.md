@@ -74,8 +74,10 @@ Notes:
 - `gun_call_id` is the Geant4 event ID.
 - `primary_track_id` is the event-local Geant4 track ID of the primary.
 - `primary_interaction_time_ns` is the first recorded scintillator interaction
-  time for the primary and is written as `NaN` when no such interaction time
-  was recorded.
+  time for the primary in the Geant4 global time frame and is written as `NaN`
+  when no such interaction time was recorded. Source creation and pulse timing
+  values are used internally to set the Geant4 primary vertex time; they are
+  not persisted in `/primaries`.
 - The three `*_count` fields summarize activity attributed to the primary
   ancestry inside the scintillator.
 

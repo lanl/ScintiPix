@@ -305,6 +305,52 @@ def source_commands(config: SimConfig) -> list[str]:
     return commands
 
 
+def source_timing_commands(config: SimConfig) -> list[str]:
+    """Build GEANT4 source-timing command lines from optional timing config."""
+
+    timing = config.source.timing
+    if timing is None:
+        return []
+
+    commands = [
+        f"/source/timing/mode {timing.mode}",
+        f"/source/timing/startTime {_format_macro_scalar(timing.start_time_ns)} ns",
+    ]
+    if timing.mode == "continuous":
+        if timing.event_spacing_ns is None:
+            raise ValueError(
+                "`source.timing.event_spacing_ns` is required when mode is 'continuous'."
+            )
+        commands.append(
+            "/source/timing/eventSpacing "
+            f"{_format_macro_scalar(timing.event_spacing_ns)} ns"
+        )
+    if timing.mode == "pulsed":
+        if (
+            timing.pulse_period_ns is None
+            or timing.neutrons_per_pulse is None
+            or timing.pulse_time_width_ns is None
+        ):
+            raise ValueError(
+                "`source.timing.pulse_period_ns`, "
+                "`source.timing.neutrons_per_pulse`, and "
+                "`source.timing.pulse_time_width_ns` are required when mode is 'pulsed'."
+            )
+        commands.extend(
+            [
+                "/source/timing/pulsePeriod "
+                f"{_format_macro_scalar(timing.pulse_period_ns)} ns",
+                f"/source/timing/neutronsPerPulse {timing.neutrons_per_pulse}",
+                "/source/timing/pulseTimeOffset "
+                f"{_format_macro_scalar(timing.pulse_time_offset_ns)} ns",
+                "/source/timing/pulseTimeWidth "
+                f"{_format_macro_scalar(timing.pulse_time_width_ns)} ns",
+                f"/source/timing/pulseShape {timing.pulse_shape}",
+            ]
+        )
+    return commands
+
+
 def _default_import_template(macro_path: Path) -> SimConfig:
     """Return sensible baseline config used for macro-import gaps.
 
@@ -427,7 +473,9 @@ def from_macro(macro_path: str | Path, *, template: SimConfig | None = None) -> 
     geometry = optical["geometry"]
     detector = optical["sensitive_detector_config"]
     simulation = payload.get("simulation")
+    source = payload["source"]
     source_gps = payload["source"]["gps"]
+    source_timing = source.get("timing")
     position = source_gps["position"]
     angular = source_gps["angular"]
     energy = source_gps["energy"]
@@ -552,6 +600,35 @@ def from_macro(macro_path: str | Path, *, template: SimConfig | None = None) -> 
                 payload["simulation"] = simulation
             simulation["number_of_particles"] = particle_count
             continue
+
+        if command.startswith("/source/timing/"):
+            if source_timing is None:
+                source_timing = {"mode": "none"}
+                source["timing"] = source_timing
+            if command == "/source/timing/mode" and len(tokens) >= 2:
+                source_timing["mode"] = tokens[1].strip().lower()
+                continue
+            if command == "/source/timing/startTime":
+                source_timing["start_time_ns"] = _parse_time_to_ns(tokens, command)
+                continue
+            if command == "/source/timing/eventSpacing":
+                source_timing["event_spacing_ns"] = _parse_time_to_ns(tokens, command)
+                continue
+            if command == "/source/timing/pulsePeriod":
+                source_timing["pulse_period_ns"] = _parse_time_to_ns(tokens, command)
+                continue
+            if command == "/source/timing/neutronsPerPulse" and len(tokens) >= 2:
+                source_timing["neutrons_per_pulse"] = int(tokens[1])
+                continue
+            if command == "/source/timing/pulseTimeOffset":
+                source_timing["pulse_time_offset_ns"] = _parse_time_to_ns(tokens, command)
+                continue
+            if command == "/source/timing/pulseTimeWidth":
+                source_timing["pulse_time_width_ns"] = _parse_time_to_ns(tokens, command)
+                continue
+            if command == "/source/timing/pulseShape" and len(tokens) >= 2:
+                source_timing["pulse_shape"] = tokens[1].strip().lower()
+                continue
 
         if command == "/gps/particle" and len(tokens) >= 2:
             source_gps["particle"] = tokens[1]
@@ -1213,6 +1290,13 @@ def _format_float_list(values: list[float]) -> str:
     return ",".join(f"{value:g}" for value in values)
 
 
+def _format_macro_scalar(value: float) -> str:
+    """Format scalar macro values without scientific notation."""
+
+    text = f"{value:.12f}".rstrip("0").rstrip(".")
+    return text if text else "0"
+
+
 def geometry_commands(config: SimConfig) -> list[str]:
     """Build Geant4 geometry command list from hierarchical config.
 
@@ -1389,6 +1473,7 @@ def macro_commands(
     if include_run_initialize:
         commands.append("/run/initialize")
     commands.extend(source_commands(config))
+    commands.extend(source_timing_commands(config))
     if (
         config.simulation is not None
         and config.simulation.number_of_particles is not None

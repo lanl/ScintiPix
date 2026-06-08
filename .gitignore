@@ -49,3 +49,6 @@ compile_commands.json
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Ignore all powerpoint files (for design notes)
+*.pptx

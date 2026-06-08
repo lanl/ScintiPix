@@ -283,10 +283,108 @@ class SourceGpsConfig(StrictModel):
     energy: GpsEnergyConfig
 
 
+class SourceTimingConfig(StrictModel):
+    """Optional neutron source timing model in global nanoseconds.
+
+    `none` preserves the current event-local Geant4 timing behavior.
+    `continuous` assigns one source time per event from fixed event spacing.
+    `pulsed` assigns events to pulse IDs and samples creation time within each
+    pulse window during Geant4 primary generation.
+    """
+
+    mode: Literal["none", "continuous", "pulsed"] = "none"
+    start_time_ns: float = Field(
+        default=0.0,
+        validation_alias=AliasChoices("start_time_ns", "startTimeNs", "startTime"),
+        serialization_alias="start_time_ns",
+        ge=0.0,
+    )
+    event_spacing_ns: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "event_spacing_ns",
+            "eventSpacingNs",
+            "eventSpacing",
+        ),
+        serialization_alias="event_spacing_ns",
+        gt=0.0,
+    )
+    pulse_period_ns: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "pulse_period_ns",
+            "pulsePeriodNs",
+            "pulsePeriod",
+        ),
+        serialization_alias="pulse_period_ns",
+        gt=0.0,
+    )
+    neutrons_per_pulse: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "neutrons_per_pulse",
+            "neutronsPerPulse",
+        ),
+        serialization_alias="neutrons_per_pulse",
+        gt=0,
+    )
+    pulse_time_offset_ns: float = Field(
+        default=0.0,
+        validation_alias=AliasChoices(
+            "pulse_time_offset_ns",
+            "pulseTimeOffsetNs",
+            "pulseTimeOffset",
+        ),
+        serialization_alias="pulse_time_offset_ns",
+        ge=0.0,
+    )
+    pulse_time_width_ns: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "pulse_time_width_ns",
+            "pulseTimeWidthNs",
+            "pulseTimeWidth",
+        ),
+        serialization_alias="pulse_time_width_ns",
+        ge=0.0,
+    )
+    pulse_shape: Literal["uniform"] = Field(
+        default="uniform",
+        validation_alias=AliasChoices("pulse_shape", "pulseShape"),
+        serialization_alias="pulse_shape",
+    )
+
+    @model_validator(mode="after")
+    def validate_mode_payload(self) -> "SourceTimingConfig":
+        """Require the timing fields needed by each configured mode."""
+
+        if self.mode == "continuous" and self.event_spacing_ns is None:
+            raise ValueError(
+                "`source.timing.event_spacing_ns` is required when mode is 'continuous'."
+            )
+        if self.mode == "pulsed":
+            missing = [
+                name
+                for name, value in (
+                    ("pulse_period_ns", self.pulse_period_ns),
+                    ("neutrons_per_pulse", self.neutrons_per_pulse),
+                    ("pulse_time_width_ns", self.pulse_time_width_ns),
+                )
+                if value is None
+            ]
+            if missing:
+                joined = ", ".join(f"`source.timing.{name}`" for name in missing)
+                raise ValueError(
+                    f"{joined} required when `source.timing.mode` is 'pulsed'."
+                )
+        return self
+
+
 class SourceConfig(StrictModel):
     """Primary source block represented directly as GPS configuration."""
 
     gps: SourceGpsConfig
+    timing: SourceTimingConfig | None = None
 
 
 class LensConfig(StrictModel):
