@@ -328,14 +328,24 @@ class SourceTimingConfig(StrictModel):
         serialization_alias="neutrons_per_pulse",
         gt=0,
     )
-    pulse_width_ns: float | None = Field(
+    pulse_time_offset_ns: float = Field(
+        default=0.0,
+        validation_alias=AliasChoices(
+            "pulse_time_offset_ns",
+            "pulseTimeOffsetNs",
+            "pulseTimeOffset",
+        ),
+        serialization_alias="pulse_time_offset_ns",
+        ge=0.0,
+    )
+    pulse_time_width_ns: float | None = Field(
         default=None,
         validation_alias=AliasChoices(
-            "pulse_width_ns",
-            "pulseWidthNs",
-            "pulseWidth",
+            "pulse_time_width_ns",
+            "pulseTimeWidthNs",
+            "pulseTimeWidth",
         ),
-        serialization_alias="pulse_width_ns",
+        serialization_alias="pulse_time_width_ns",
         ge=0.0,
     )
     pulse_shape: Literal["uniform"] = Field(
@@ -358,7 +368,7 @@ class SourceTimingConfig(StrictModel):
                 for name, value in (
                     ("pulse_period_ns", self.pulse_period_ns),
                     ("neutrons_per_pulse", self.neutrons_per_pulse),
-                    ("pulse_width_ns", self.pulse_width_ns),
+                    ("pulse_time_width_ns", self.pulse_time_width_ns),
                 )
                 if value is None
             ]

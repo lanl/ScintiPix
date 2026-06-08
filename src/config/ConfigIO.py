@@ -329,19 +329,22 @@ def source_timing_commands(config: SimConfig) -> list[str]:
         if (
             timing.pulse_period_ns is None
             or timing.neutrons_per_pulse is None
-            or timing.pulse_width_ns is None
+            or timing.pulse_time_width_ns is None
         ):
             raise ValueError(
                 "`source.timing.pulse_period_ns`, "
                 "`source.timing.neutrons_per_pulse`, and "
-                "`source.timing.pulse_width_ns` are required when mode is 'pulsed'."
+                "`source.timing.pulse_time_width_ns` are required when mode is 'pulsed'."
             )
         commands.extend(
             [
                 "/source/timing/pulsePeriod "
                 f"{_format_macro_scalar(timing.pulse_period_ns)} ns",
                 f"/source/timing/neutronsPerPulse {timing.neutrons_per_pulse}",
-                f"/source/timing/pulseWidth {_format_macro_scalar(timing.pulse_width_ns)} ns",
+                "/source/timing/pulseTimeOffset "
+                f"{_format_macro_scalar(timing.pulse_time_offset_ns)} ns",
+                "/source/timing/pulseTimeWidth "
+                f"{_format_macro_scalar(timing.pulse_time_width_ns)} ns",
                 f"/source/timing/pulseShape {timing.pulse_shape}",
             ]
         )
@@ -617,8 +620,11 @@ def from_macro(macro_path: str | Path, *, template: SimConfig | None = None) -> 
             if command == "/source/timing/neutronsPerPulse" and len(tokens) >= 2:
                 source_timing["neutrons_per_pulse"] = int(tokens[1])
                 continue
-            if command == "/source/timing/pulseWidth":
-                source_timing["pulse_width_ns"] = _parse_time_to_ns(tokens, command)
+            if command == "/source/timing/pulseTimeOffset":
+                source_timing["pulse_time_offset_ns"] = _parse_time_to_ns(tokens, command)
+                continue
+            if command == "/source/timing/pulseTimeWidth":
+                source_timing["pulse_time_width_ns"] = _parse_time_to_ns(tokens, command)
                 continue
             if command == "/source/timing/pulseShape" and len(tokens) >= 2:
                 source_timing["pulse_shape"] = tokens[1].strip().lower()

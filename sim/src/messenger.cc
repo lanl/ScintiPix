@@ -346,14 +346,23 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fSourceTimingNeutronsPerPulseCmd->AvailableForStates(G4State_PreInit,
                                                        G4State_Idle);
 
-  fSourceTimingPulseWidthCmd =
-      new G4UIcmdWithADoubleAndUnit("/source/timing/pulseWidth", this);
-  fSourceTimingPulseWidthCmd->SetGuidance(
-      "Set random source-time window width for pulsed mode");
-  fSourceTimingPulseWidthCmd->SetParameterName("pulseWidth", false);
-  fSourceTimingPulseWidthCmd->SetUnitCategory("Time");
-  fSourceTimingPulseWidthCmd->SetRange("pulseWidth >= 0.");
-  fSourceTimingPulseWidthCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fSourceTimingPulseTimeOffsetCmd =
+      new G4UIcmdWithADoubleAndUnit("/source/timing/pulseTimeOffset", this);
+  fSourceTimingPulseTimeOffsetCmd->SetGuidance(
+      "Set offset between T-zero and pulse start for pulsed mode");
+  fSourceTimingPulseTimeOffsetCmd->SetParameterName("pulseTimeOffset", false);
+  fSourceTimingPulseTimeOffsetCmd->SetUnitCategory("Time");
+  fSourceTimingPulseTimeOffsetCmd->SetRange("pulseTimeOffset >= 0.");
+  fSourceTimingPulseTimeOffsetCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSourceTimingPulseTimeWidthCmd =
+      new G4UIcmdWithADoubleAndUnit("/source/timing/pulseTimeWidth", this);
+  fSourceTimingPulseTimeWidthCmd->SetGuidance(
+      "Set random creation-time window width for pulsed mode");
+  fSourceTimingPulseTimeWidthCmd->SetParameterName("pulseTimeWidth", false);
+  fSourceTimingPulseTimeWidthCmd->SetUnitCategory("Time");
+  fSourceTimingPulseTimeWidthCmd->SetRange("pulseTimeWidth >= 0.");
+  fSourceTimingPulseTimeWidthCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fSourceTimingPulseShapeCmd =
       new G4UIcmdWithAString("/source/timing/pulseShape", this);
@@ -365,7 +374,8 @@ Messenger::Messenger(Config* config) : fConfig(config) {
 
 Messenger::~Messenger() {
   delete fSourceTimingPulseShapeCmd;
-  delete fSourceTimingPulseWidthCmd;
+  delete fSourceTimingPulseTimeWidthCmd;
+  delete fSourceTimingPulseTimeOffsetCmd;
   delete fSourceTimingNeutronsPerPulseCmd;
   delete fSourceTimingPulsePeriodCmd;
   delete fSourceTimingEventSpacingCmd;
@@ -678,10 +688,18 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     return;
   }
 
-  if (command == fSourceTimingPulseWidthCmd) {
-    const auto value = fSourceTimingPulseWidthCmd->GetNewDoubleValue(newValue);
-    fConfig->SetSourceTimingPulseWidth(value);
-    G4cout << "Source timing pulse width set to " << value / ns << " ns."
+  if (command == fSourceTimingPulseTimeOffsetCmd) {
+    const auto value = fSourceTimingPulseTimeOffsetCmd->GetNewDoubleValue(newValue);
+    fConfig->SetSourceTimingPulseTimeOffset(value);
+    G4cout << "Source timing pulse time offset set to " << value / ns << " ns."
+           << G4endl;
+    return;
+  }
+
+  if (command == fSourceTimingPulseTimeWidthCmd) {
+    const auto value = fSourceTimingPulseTimeWidthCmd->GetNewDoubleValue(newValue);
+    fConfig->SetSourceTimingPulseTimeWidth(value);
+    G4cout << "Source timing pulse time width set to " << value / ns << " ns."
            << G4endl;
     return;
   }

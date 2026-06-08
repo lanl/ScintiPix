@@ -482,12 +482,20 @@ void Config::SetSourceTimingNeutronsPerPulse(G4int value) {
   fSourceTimingNeutronsPerPulse = value;
 }
 
-void Config::SetSourceTimingPulseWidth(G4double value) {
+void Config::SetSourceTimingPulseTimeOffset(G4double value) {
   if (value < 0.0) {
     return;
   }
   std::lock_guard<std::mutex> lock(fMutex);
-  fSourceTimingPulseWidth = value;
+  fSourceTimingPulseTimeOffset = value;
+}
+
+void Config::SetSourceTimingPulseTimeWidth(G4double value) {
+  if (value < 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fSourceTimingPulseTimeWidth = value;
 }
 
 void Config::SetSourceTimingPulseShape(const std::string& value) {
@@ -505,7 +513,8 @@ SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {
   G4double eventSpacing = 0.0;
   G4double pulsePeriod = 0.0;
   G4int neutronsPerPulse = 1;
-  G4double pulseWidth = 0.0;
+  G4double pulseTimeOffset = 0.0;
+  G4double pulseTimeWidth = 0.0;
   std::string pulseShape = "uniform";
 
   {
@@ -515,7 +524,8 @@ SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {
     eventSpacing = fSourceTimingEventSpacing;
     pulsePeriod = fSourceTimingPulsePeriod;
     neutronsPerPulse = fSourceTimingNeutronsPerPulse;
-    pulseWidth = fSourceTimingPulseWidth;
+    pulseTimeOffset = fSourceTimingPulseTimeOffset;
+    pulseTimeWidth = fSourceTimingPulseTimeWidth;
     pulseShape = fSourceTimingPulseShape;
   }
 
@@ -533,11 +543,12 @@ SourceTimingInfo Config::GetSourceTimingForEvent(G4int eventID) const {
 
   const auto safeNeutronsPerPulse = neutronsPerPulse <= 0 ? 1 : neutronsPerPulse;
   info.pulseId = safeEventID / safeNeutronsPerPulse;
-  info.pulseStartTime =
-      startTime + static_cast<G4double>(info.pulseId) * pulsePeriod;
-  if (pulseShape == "uniform" && pulseWidth > 0.0) {
-    info.timeInPulse = G4UniformRand() * pulseWidth;
+  info.startTime = startTime + static_cast<G4double>(info.pulseId) * pulsePeriod;
+  info.offsetTime = pulseTimeOffset;
+  info.pulseTimeWidth = pulseTimeWidth;
+  if (pulseShape == "uniform" && pulseTimeWidth > 0.0) {
+    info.timeInPulse = G4UniformRand() * pulseTimeWidth;
   }
-  info.creationTime = info.pulseStartTime + info.timeInPulse;
+  info.creationTime = info.startTime + info.offsetTime + info.timeInPulse;
   return info;
 }
