@@ -13,7 +13,7 @@ Current files:
 - `EJ276D.yaml`: catalog-driven EJ-276D timing-component example
 - `pulsed_neutron_source_timing.yaml`: lightweight pulsed source timing example
   for Geant4 `/primaries` timing. Uses `neutrons_per_pulse`, `pulse_period_ns`,
-  and `pulse_width_ns`.
+  `pulse_time_offset_ns`, and `pulse_time_width_ns`.
 - `three_component_timing_example.yaml`: explicit scintillation timing example
 
 All example YAMLs include:
@@ -202,7 +202,8 @@ source:
     start_time_ns: 0.0
     pulse_period_ns: 1000000.0
     neutrons_per_pulse: 10
-    pulse_width_ns: 270.0
+    pulse_time_offset_ns: 0.0
+    pulse_time_width_ns: 270.0
     pulse_shape: uniform
 ```
 
@@ -212,9 +213,13 @@ Fields:
 - `neutrons_per_pulse`: required for `pulsed`; number of Geant4 events assigned
   to one pulse ID. Must be greater than zero. Accepted alias:
   `neutronsPerPulse`.
-- `pulse_width_ns`: required for `pulsed`; neutron creation times are randomly
-  distributed over this window during Geant4 primary generation. Must be
-  non-negative. Accepted aliases include `pulseWidthNs` and `pulseWidth`.
+- `pulse_time_offset_ns`: optional for `pulsed`; offset from T-zero to pulse
+  start. Defaults to `0.0`. Accepted aliases include `pulseTimeOffsetNs` and
+  `pulseTimeOffset`.
+- `pulse_time_width_ns`: required for `pulsed`; neutron creation times are
+  randomly distributed over this window during Geant4 primary generation. Must
+  be non-negative. Accepted aliases include `pulseTimeWidthNs` and
+  `pulseTimeWidth`.
 - `pulse_shape`: currently only `uniform` is accepted. Accepted alias:
   `pulseShape`.
 
@@ -222,16 +227,16 @@ Pulsed event grouping uses:
 
 ```text
 pulse_id = event_id // neutrons_per_pulse
-pulse_start_time_ns = start_time_ns + pulse_id * pulse_period_ns
-creation_time_ns = pulse_start_time_ns + random_uniform(0, pulse_width_ns)
+pulse_start_time = start_time + pulse_id * pulse_period
+creation_time = pulse_start_time + pulse_time_offset + random_uniform(0, pulse_time_width)
 ```
 
 Geant4 transport determines the relativistic neutron time of flight from the
 configured source position to the scintillator interaction.
 
-The simulation persists the assigned source creation time as
-`creation_time_ns` in `/primaries`. Pulse ID and pulse-relative time are not
-persisted; they are intermediate values used only to compute `creation_time_ns`.
+The simulation uses the assigned source creation time internally as the Geant4
+primary vertex time. `/primaries` records only `primary_interaction_time_ns` for
+primary timing; source creation and pulse metadata are not persisted there.
 
 ## `optical`
 
