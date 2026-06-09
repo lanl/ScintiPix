@@ -30,3 +30,7 @@ For continuous sources, the timing information of the primary particles are the 
 Notes:
 - For continuous sources, the particles are emitted continuously over time, so the timing information is used to determine the arrival times of the particles at at the scintillator and subsequent stages of the simulation.
 - All the timing fields for pulsed sources are present in the `SimConfig` model, but they are set to `None` or 'null' when the source type is set to continuous.
+
+## Stage2: Timing information within the GEANT4 Framework
+Once the timing information is initialized and passed to the GEANT4 stage, the GEANT4 framework will handle the processing of timing information for all primaries, secondaries, and scintillation photons. 
+
