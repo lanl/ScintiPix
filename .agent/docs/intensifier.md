@@ -184,9 +184,9 @@ Included now:
 
 - fast staged intensifier model
 - `SimConfig`-driven parameters
-- HDF5 input loading from optical transport output
+- input loading from optical transport output
 - in-memory intensifier output events
-- optional standalone intensifier output HDF5 writing
+- optional standalone intensifier output writing
 - downstream Timepix sensor/readout stage as a separate module
 
 Not included yet:
