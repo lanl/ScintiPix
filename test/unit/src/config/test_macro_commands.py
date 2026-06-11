@@ -253,7 +253,7 @@ class MacroCommandGenerationTests(unittest.TestCase):
                 timing:
                   mode: continuous
                   start_time_ns: 25.0
-                  event_spacing_ns: 100.0
+                  particle_flux: 3183098.861837907
                 """,
             )
 
@@ -281,8 +281,8 @@ class MacroCommandGenerationTests(unittest.TestCase):
                 timing:
                   mode: pulsed
                   start_time_ns: 0.0
+                  particle_flux: 3183.098861837907
                   pulse_period_ns: 1000000.0
-                  neutrons_per_pulse: 10
                   pulse_time_offset_ns: 50.0
                   pulse_time_width_ns: 270.0
                   pulse_shape: uniform
@@ -430,8 +430,8 @@ class MacroCommandGenerationTests(unittest.TestCase):
             assert timing is not None
             self.assertEqual(timing.mode, "pulsed")
             self.assertEqual(timing.start_time_ns, 5.0)
+            self.assertAlmostEqual(timing.particle_flux, 318309.88618379063)
             self.assertEqual(timing.pulse_period_ns, 1000000.0)
-            self.assertEqual(timing.neutrons_per_pulse, 10)
             self.assertEqual(timing.pulse_time_offset_ns, 50.0)
             self.assertEqual(timing.pulse_time_width_ns, 270.0)
             self.assertEqual(timing.pulse_shape, "uniform")

@@ -155,7 +155,7 @@ class SimConfigRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.SimConfig.model_validate(payload)
 
-    def test_source_timing_continuous_requires_event_spacing(self) -> None:
+    def test_source_timing_continuous_requires_particle_flux(self) -> None:
         payload = self._base_payload()
         payload["source"]["timing"] = {
             "mode": "continuous",
@@ -170,8 +170,8 @@ class SimConfigRunnerTests(unittest.TestCase):
         payload["source"]["timing"] = {
             "mode": "pulsed",
             "startTimeNs": 0.0,
+            "particleFlux": 3183.098861837907,
             "pulsePeriodNs": 1000000.0,
-            "neutronsPerPulse": 10,
             "pulseTimeOffsetNs": 50.0,
             "pulseTimeWidthNs": 270.0,
             "pulseShape": "uniform",
@@ -183,18 +183,17 @@ class SimConfigRunnerTests(unittest.TestCase):
         self.assertIsNotNone(timing)
         assert timing is not None
         self.assertEqual(timing.mode, "pulsed")
+        self.assertEqual(timing.particle_flux, 3183.098861837907)
         self.assertEqual(timing.pulse_period_ns, 1000000.0)
-        self.assertEqual(timing.neutrons_per_pulse, 10)
         self.assertEqual(timing.pulse_time_offset_ns, 50.0)
         self.assertEqual(timing.pulse_time_width_ns, 270.0)
         self.assertEqual(timing.pulse_shape, "uniform")
 
-    def test_source_timing_pulsed_requires_width_period_and_count(self) -> None:
+    def test_source_timing_pulsed_requires_flux_width_and_period(self) -> None:
         payload = self._base_payload()
         payload["source"]["timing"] = {
             "mode": "pulsed",
             "pulsePeriodNs": 1000000.0,
-            "neutronsPerPulse": 10,
         }
 
         with self.assertRaises(ValueError):
