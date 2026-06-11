@@ -8,11 +8,12 @@ same structure.
 Current files:
 - `CanonEF50mmf1p0L_example.yaml`: primary end-to-end example configuration
 - `continuous_neutron_source_timing.yaml`: lightweight continuous source timing
-  example for Geant4 `/primaries` timing. Uses fixed `event_spacing_ns`.
+  example for Geant4 `/primaries` timing. Uses `particle_flux` to derive fixed
+  event spacing.
 - `EJ200.yaml`: catalog-driven scintillator example with overrides
 - `EJ276D.yaml`: catalog-driven EJ-276D timing-component example
 - `pulsed_neutron_source_timing.yaml`: lightweight pulsed source timing example
-  for Geant4 `/primaries` timing. Uses `neutrons_per_pulse`, `pulse_period_ns`,
+  for Geant4 `/primaries` timing. Uses `particle_flux`, `pulse_period_ns`,
   `pulse_time_offset_ns`, and `pulse_time_width_ns`.
 - `three_component_timing_example.yaml`: explicit scintillation timing example
 
@@ -185,13 +186,14 @@ source:
   timing:
     mode: continuous
     start_time_ns: 0.0
-    event_spacing_ns: 100.0
+    particle_flux: 3183098.861837907
 ```
 
 Fields:
-- `event_spacing_ns`: required for `continuous`; source-time spacing between
-  consecutive Geant4 event IDs. Must be greater than zero. Accepted aliases
-  include `eventSpacingNs` and `eventSpacing`.
+- `particle_flux`: required for `continuous`; particle flux in particles per
+  second per square centimeter. The Python configuration layer combines this
+  with the circular GPS source radius to derive the Geant4 event spacing.
+  Accepted alias: `particleFlux`.
 
 Pulsed mode:
 
@@ -200,19 +202,20 @@ source:
   timing:
     mode: pulsed
     start_time_ns: 0.0
+    particle_flux: 3183.098861837907
     pulse_period_ns: 1000000.0
-    neutrons_per_pulse: 10
     pulse_time_offset_ns: 0.0
     pulse_time_width_ns: 270.0
     pulse_shape: uniform
 ```
 
 Fields:
+- `particle_flux`: required for `pulsed`; particle flux in particles per second
+  per square centimeter. The Python configuration layer combines this with the
+  circular GPS source radius and `pulse_period_ns` to derive Geant4 events per
+  pulse. Accepted alias: `particleFlux`.
 - `pulse_period_ns`: required for `pulsed`; time between pulse starts. Must be
   greater than zero. Accepted aliases include `pulsePeriodNs` and `pulsePeriod`.
-- `neutrons_per_pulse`: required for `pulsed`; number of Geant4 events assigned
-  to one pulse ID. Must be greater than zero. Accepted alias:
-  `neutronsPerPulse`.
 - `pulse_time_offset_ns`: optional for `pulsed`; offset from T-zero to pulse
   start. Defaults to `0.0`. Accepted aliases include `pulseTimeOffsetNs` and
   `pulseTimeOffset`.
@@ -226,7 +229,8 @@ Fields:
 Pulsed event grouping uses:
 
 ```text
-pulse_id = event_id // neutrons_per_pulse
+particles_per_pulse = ceil(particle_flux * source_area_cm2 * pulse_period_ns / 1e9)
+pulse_id = event_id // particles_per_pulse
 pulse_start_time = start_time + pulse_id * pulse_period
 creation_time = pulse_start_time + pulse_time_offset + random_uniform(0, pulse_time_width)
 ```

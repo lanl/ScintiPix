@@ -53,7 +53,7 @@ source:
   timing:
     mode: continuous
     start_time_ns: 0.0
-    event_spacing_ns: 100.0
+    particle_flux: 3183098.861837907
 
 optical:
   lenses:
