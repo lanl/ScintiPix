@@ -182,8 +182,8 @@ class Config {
   /// `data/<runName>/simulatedPhotons/`.
   void SetOutputRunName(const std::string& value);
 
-  /// Get HDF5 output file path derived from output settings.
-  std::string GetHdf5FilePath() const;
+  /// Get output base path used to derive Parquet table paths.
+  std::string GetParquetBasePath() const;
 
   /// Get configured source timing mode.
   SourceTimingMode GetSourceTimingMode() const;

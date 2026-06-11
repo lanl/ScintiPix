@@ -1,12 +1,11 @@
 #ifndef EventAction_h
 #define EventAction_h 1
 
-#include "structures.hh"
-
 #include "G4ThreeVector.hh"
 #include "G4Types.hh"
 #include "G4UserEventAction.hh"
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,13 +14,53 @@ class G4Event;
 class G4Track;
 class Config;
 
-/// Per-event aggregation and HDF5 row assembly.
+/// Per-event aggregation and output row assembly.
 class EventAction : public G4UserEventAction {
  public:
-  using TrackInfo = SimStructures::TrackInfo;
-  using PhotonCreationInfo = SimStructures::PhotonCreationInfo;
-  using PrimaryActivity = SimStructures::PrimaryActivity;
-  using PhotonHitRecord = SimStructures::PhotonHitRecord;
+  /// Event-local track metadata cached by Geant4 track ID.
+  struct TrackInfo {
+    std::string species = "unknown";
+    G4ThreeVector originPosition;
+    G4double originEnergy = -1.0;
+    G4int primaryTrackID = -1;
+  };
+
+  /// Optical-photon ancestry and creation context.
+  struct PhotonCreationInfo {
+    G4int primaryTrackID = -1;
+    G4int secondaryTrackID = -1;
+    G4ThreeVector scintOriginPosition;
+    std::string secondarySpecies = "unknown";
+    G4ThreeVector secondaryOriginPosition;
+    G4double secondaryOriginEnergy = -1.0;
+  };
+
+  /// One detected optical-interface photon hit.
+  struct PhotonHitRecord {
+    G4int primaryID = -1;
+    G4int secondaryID = -1;
+    G4int photonID = -1;
+
+    std::string primarySpecies = "unknown";
+    G4double primaryX = -1.0;
+    G4double primaryY = -1.0;
+
+    std::string secondarySpecies = "unknown";
+    G4ThreeVector secondaryOriginPosition;
+    G4double secondaryOriginEnergy = -1.0;
+
+    G4ThreeVector scintOriginPosition;
+    G4ThreeVector photonScintExitPosition;
+    G4bool hasPhotonScintExitPosition = false;
+
+    G4ThreeVector opticalInterfaceHitPosition;
+    G4double opticalInterfaceHitTime = -1.0;
+    G4ThreeVector opticalInterfaceHitDirection;
+    G4ThreeVector opticalInterfaceHitPolarization;
+    G4double photonCreationTime = -1.0;
+    G4double opticalInterfaceHitEnergy = -1.0;
+    G4double opticalInterfaceHitWavelength = -1.0;
+  };
 
   explicit EventAction(const Config* config);
   ~EventAction() override;
@@ -62,6 +101,13 @@ class EventAction : public G4UserEventAction {
                                       G4bool generatedOpticalPhoton);
 
  private:
+  /// Per-primary activity counters accumulated during stepping/hit capture.
+  struct PrimaryActivity {
+    std::int64_t createdSecondaryCount = 0;
+    std::int64_t generatedOpticalPhotonCount = 0;
+    std::int64_t detectedOpticalInterfacePhotonCount = 0;
+  };
+
   static G4ThreadLocal EventAction* fgInstance;
 
   const Config* fConfig = nullptr;

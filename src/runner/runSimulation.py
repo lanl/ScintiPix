@@ -13,7 +13,7 @@ try:
     from src.config.ConfigIO import prepare_simulation_run
     from src.config.ConfigIO import (
         resolve_run_environment_paths,
-        simulated_output_filename,
+        simulated_primaries_parquet_filename,
     )
     from src.config.SimConfig import SimConfig
 except ModuleNotFoundError:
@@ -22,7 +22,7 @@ except ModuleNotFoundError:
     from src.config.ConfigIO import prepare_simulation_run
     from src.config.ConfigIO import (
         resolve_run_environment_paths,
-        simulated_output_filename,
+        simulated_primaries_parquet_filename,
     )
     from src.config.SimConfig import SimConfig
 
@@ -98,7 +98,9 @@ def run(
 
     run_paths = resolve_run_environment_paths(config)
     macro_path = run_paths.macro_file.resolve()
-    output_hdf5 = (run_paths.simulated_photons / simulated_output_filename(config)).resolve()
+    output_primaries = (
+        run_paths.simulated_photons / simulated_primaries_parquet_filename(config)
+    ).resolve()
 
     if not macro_path.exists():
         raise FileNotFoundError(
@@ -127,7 +129,7 @@ def run(
     if log_filename is not None:
         log_path = Path(log_filename)
     logger.info(f"[simulation] Command: {shlex.join(command)}")
-    logger.info(f"[simulation] Output HDF5: {output_hdf5}")
+    logger.info(f"[simulation] Primaries Parquet: {output_primaries}")
     with log_stage("simulation"):
         with log_path.open("a", encoding="utf-8") as log_file:
             with subprocess.Popen(
@@ -162,10 +164,10 @@ def run(
         raise subprocess.CalledProcessError(return_code, command)
 
     completed = subprocess.CompletedProcess(command, return_code)
-    if config.runner.verify_output and not output_hdf5.exists():
+    if config.runner.verify_output and not output_primaries.exists():
         raise FileNotFoundError(
-            "Simulation finished but expected HDF5 was not found: "
-            f"{output_hdf5}"
+            "Simulation finished but expected primaries Parquet was not found: "
+            f"{output_primaries}"
         )
     return completed
 

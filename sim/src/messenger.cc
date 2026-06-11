@@ -296,7 +296,7 @@ Messenger::Messenger(Config* config) : fConfig(config) {
 
   fOutputFilenameCmd = new G4UIcmdWithAString("/output/filename", this);
   fOutputFilenameCmd->SetGuidance(
-      "Set output base filename/path; .h5 extension is added automatically");
+      "Set output base filename/path for Parquet outputs");
   fOutputFilenameCmd->SetParameterName("filename", false);
   fOutputFilenameCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
@@ -719,14 +719,15 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     } else {
       G4cout << "Output path set to '" << configuredPath << "'." << G4endl;
     }
-    G4cout << "HDF5 path: '" << fConfig->GetHdf5FilePath() << "'." << G4endl;
+    G4cout << "Parquet output base: '" << fConfig->GetParquetBasePath()
+           << "'." << G4endl;
     return;
   }
 
   if (command == fOutputFilenameCmd) {
     fConfig->SetOutputFilename(newValue);
-    G4cout << "Output filename set. HDF5 path: '" << fConfig->GetHdf5FilePath()
-           << "'." << G4endl;
+    G4cout << "Output filename set. Parquet output base: '"
+           << fConfig->GetParquetBasePath() << "'." << G4endl;
     return;
   }
 
@@ -738,7 +739,8 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     } else {
       G4cout << "Output run name set to '" << runName << "'." << G4endl;
     }
-    G4cout << "HDF5 path: '" << fConfig->GetHdf5FilePath() << "'." << G4endl;
+    G4cout << "Parquet output base: '" << fConfig->GetParquetBasePath()
+           << "'." << G4endl;
     return;
   }
 }

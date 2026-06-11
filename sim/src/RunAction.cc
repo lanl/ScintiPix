@@ -1,6 +1,7 @@
 #include "RunAction.hh"
 
 #include "config.hh"
+#include "SimIO.hh"
 
 #include "G4Exception.hh"
 #include "G4ExceptionSeverity.hh"
@@ -32,9 +33,15 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
 
   std::string missingPaths;
 
-  const std::string hdf5Path = fConfig->GetHdf5FilePath();
-  if (!ParentDirectoryExists(hdf5Path)) {
-    missingPaths += "  - HDF5 target: " + hdf5Path + "\n";
+  const auto paths = SimIO::ParquetPathsForBase(fConfig->GetParquetBasePath());
+  if (!ParentDirectoryExists(paths.primaries)) {
+    missingPaths += "  - Parquet primaries target: " + paths.primaries + "\n";
+  }
+  if (!ParentDirectoryExists(paths.secondaries)) {
+    missingPaths += "  - Parquet secondaries target: " + paths.secondaries + "\n";
+  }
+  if (!ParentDirectoryExists(paths.photons)) {
+    missingPaths += "  - Parquet photons target: " + paths.photons + "\n";
   }
 
   if (missingPaths.empty()) {

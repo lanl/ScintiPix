@@ -19,7 +19,7 @@
 #include <vector>
 
 namespace {
-/// Serialize appends to shared HDF5 output files across worker threads.
+/// Serialize writes to shared output files across worker threads.
 G4Mutex gOutputMutex = G4MUTEX_INITIALIZER;
 
 /// Convert Geant4 particle names into compact labels used in output tables.
@@ -96,8 +96,8 @@ void EventAction::EndOfEventAction(const G4Event* event) {
   }
 
   const auto eventID64 = static_cast<std::int64_t>(event->GetEventID());
-  const std::string hdf5Path =
-      fConfig ? fConfig->GetHdf5FilePath() : "photon_optical_interface_hits.h5";
+  const std::string parquetBasePath =
+      fConfig ? fConfig->GetParquetBasePath() : "photon_optical_interface_hits";
 
   std::vector<SimIO::PrimaryInfo> primaryRows;
   std::vector<SimIO::SecondaryInfo> secondaryRows;
@@ -208,9 +208,11 @@ void EventAction::EndOfEventAction(const G4Event* event) {
 
   G4AutoLock lock(&gOutputMutex);
   std::string error;
-  if (!SimIO::AppendHdf5(hdf5Path, primaryRows, secondaryRows, photonRows, &error)) {
+  if (!SimIO::WriteParquet(parquetBasePath, primaryRows, secondaryRows,
+                           photonRows, &error)) {
     if (error.empty()) {
-      G4cout << "Failed writing HDF5 output to " << hdf5Path << G4endl;
+      G4cout << "Failed writing Parquet output for " << parquetBasePath
+             << G4endl;
     } else {
       G4cout << error << G4endl;
     }

@@ -434,10 +434,10 @@ void Config::SetOutputRunName(const std::string& value) {
   fOutputRunName = SimIO::NormalizeRunName(value);
 }
 
-std::string Config::GetHdf5FilePath() const {
+std::string Config::GetParquetBasePath() const {
   std::lock_guard<std::mutex> lock(fMutex);
   return SimIO::ComposeOutputPath(fOutputFilename, fOutputPath, fOutputRunName,
-                                  ".h5");
+                                  "");
 }
 
 SourceTimingMode Config::GetSourceTimingMode() const {

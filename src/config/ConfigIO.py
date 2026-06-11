@@ -199,6 +199,18 @@ def simulated_output_filename(config: SimConfig) -> str:
     )
 
 
+def simulated_primaries_parquet_filename(config: SimConfig) -> str:
+    """Return canonical Geant4 primaries Parquet filename for one sub-run."""
+
+    return (
+        artifact_stem_for_sub_run(
+            DEFAULT_OUTPUT_FILENAME_BASE,
+            config.metadata.run_environment.sub_run_number,
+        )
+        + "_primaries.parquet"
+    )
+
+
 def transport_output_filename_for_sub_run(sub_run_number: int) -> str:
     """Return canonical transported-photons HDF5 filename for one sub-run."""
 
@@ -1628,7 +1640,9 @@ def prepare_simulation_run(config: SimConfig) -> bool:
     )
     paths = resolve_run_environment_paths(config)
     logger = get_logger()
-    output_hdf5 = (paths.simulated_photons / simulated_output_filename(config)).resolve()
+    primaries_parquet = (
+        paths.simulated_photons / simulated_primaries_parquet_filename(config)
+    ).resolve()
 
     logger.info(
         "[setup] Preparing simulation run "
@@ -1637,7 +1651,7 @@ def prepare_simulation_run(config: SimConfig) -> bool:
     )
     logger.info(f"[setup] Run log: {log_path}")
     logger.info(f"[setup] Macro: {paths.macro_file.resolve()}")
-    logger.info(f"[setup] Expected HDF5: {output_hdf5}")
+    logger.info(f"[setup] Expected primaries Parquet: {primaries_parquet}")
     logger.info(f"[setup] Binary: {config.runner.binary}")
     return True
 

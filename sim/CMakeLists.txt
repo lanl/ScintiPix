@@ -19,15 +19,12 @@ endif()
 find_package(Geant4 REQUIRED ui_all vis_all)
 include(${Geant4_USE_FILE})
 
-# When building inside Pixi/conda, prefer that prefix for HDF5 resolution
-# to avoid accidentally mixing Homebrew/system libraries.
 if(DEFINED ENV{CONDA_PREFIX})
   list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
-  set(HDF5_ROOT "$ENV{CONDA_PREFIX}")
-  set(HDF5_NO_FIND_PACKAGE_CONFIG_FILE TRUE)
 endif()
 
-find_package(HDF5 COMPONENTS C HL REQUIRED)
+find_package(Arrow CONFIG REQUIRED)
+find_package(Parquet CONFIG REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,18 +36,13 @@ add_executable(scintipix ${CMAKE_CURRENT_SOURCE_DIR}/apps/scintipix_main.cc ${AP
 
 target_include_directories(scintipix PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${HDF5_INCLUDE_DIRS}
 )
 
 target_link_libraries(scintipix PRIVATE
   ${Geant4_LIBRARIES}
+  Arrow::arrow_shared
+  Parquet::parquet_shared
 )
-
-if(TARGET HDF5::HDF5)
-  target_link_libraries(scintipix PRIVATE HDF5::HDF5)
-else()
-  target_link_libraries(scintipix PRIVATE ${HDF5_LIBRARIES})
-endif()
 
 get_filename_component(SCINTIPIX_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 target_compile_definitions(scintipix PRIVATE

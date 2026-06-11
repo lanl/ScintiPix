@@ -13,10 +13,16 @@ using PrimaryInfo = SimStructures::PrimaryInfo;
 using SecondaryInfo = SimStructures::SecondaryInfo;
 using PhotonInfo = SimStructures::PhotonInfo;
 
+struct ParquetOutputPaths {
+  std::string primaries;
+  std::string secondaries;
+  std::string photons;
+};
+
 /// Normalize run name for filesystem-safe directory usage.
 std::string NormalizeRunName(const std::string& value);
 
-/// Strip `.h5` or `.hdf5` suffixes (case-insensitive) when present.
+/// Strip known output suffixes when present.
 std::string StripKnownOutputExtension(const std::string& value);
 
 /// Compose absolute output file path with run/output-path routing rules.
@@ -25,12 +31,14 @@ std::string ComposeOutputPath(const std::string& base,
                               const std::string& runName,
                               const char* extension);
 
-/// Append primary/secondary/photon rows to HDF5 datasets.
-bool AppendHdf5(const std::string& hdf5Path,
-                const std::vector<PrimaryInfo>& primaryRows,
-                const std::vector<SecondaryInfo>& secondaryRows,
-                const std::vector<PhotonInfo>& photonRows,
-                std::string* errorMessage);
+ParquetOutputPaths ParquetPathsForBase(const std::string& basePath);
+
+/// Write primary/secondary/photon rows as separate Parquet tables.
+bool WriteParquet(const std::string& basePath,
+                  const std::vector<PrimaryInfo>& primaryRows,
+                  const std::vector<SecondaryInfo>& secondaryRows,
+                  const std::vector<PhotonInfo>& photonRows,
+                  std::string* errorMessage);
 
 }  // namespace SimIO
 

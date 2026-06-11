@@ -8,7 +8,12 @@ The output of a `ScintiPix` simulation run is organized into a directory structu
 run_id/
   manifest.json         # lightweight machine-readable file index
   config.yaml           # human-readable simulation configuration
-  run.nxs               # NeXus file with scientific metadata and provenance:
+  run.nxs               # NeXus file with scientific metadata and provenance
+  logs/
+    sim.log
+  macros/
+    macro1.mac
+    macro2.mac
   primaries/
     part-000.parquet
   sensorHits/
@@ -35,6 +40,13 @@ run_id/
   "run_id": "000123",
   "config_file": "config.yaml",
   "nexus_file": "run.nxs",
+  "log_files": [
+    "logs/sim.log"
+  ],
+  "macro_files": [
+    "macros/macro1.mac",
+    "macros/macro2.mac"
+  ],
   "stages": {
     "primaries": "primaries/",
     "sensor_hits": "sensor_hits/",
