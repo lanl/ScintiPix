@@ -287,8 +287,9 @@ class SourceTimingConfig(StrictModel):
     """Optional neutron source timing model in global nanoseconds.
 
     `none` preserves the current event-local Geant4 timing behavior.
-    `continuous` assigns one source time per event from fixed event spacing.
-    `pulsed` assigns events to pulse IDs and samples creation time within each
+    `continuous` derives one source time per event from particle flux and source
+    area. `pulsed` derives the event count assigned to each pulse from particle
+    flux, source area, and pulse period, then samples creation time within each
     pulse window during Geant4 primary generation.
     """
 
@@ -299,14 +300,13 @@ class SourceTimingConfig(StrictModel):
         serialization_alias="start_time_ns",
         ge=0.0,
     )
-    event_spacing_ns: float | None = Field(
+    particle_flux: float | None = Field(
         default=None,
         validation_alias=AliasChoices(
-            "event_spacing_ns",
-            "eventSpacingNs",
-            "eventSpacing",
+            "particle_flux",
+            "particleFlux",
         ),
-        serialization_alias="event_spacing_ns",
+        serialization_alias="particle_flux",
         gt=0.0,
     )
     pulse_period_ns: float | None = Field(
@@ -318,15 +318,6 @@ class SourceTimingConfig(StrictModel):
         ),
         serialization_alias="pulse_period_ns",
         gt=0.0,
-    )
-    neutrons_per_pulse: int | None = Field(
-        default=None,
-        validation_alias=AliasChoices(
-            "neutrons_per_pulse",
-            "neutronsPerPulse",
-        ),
-        serialization_alias="neutrons_per_pulse",
-        gt=0,
     )
     pulse_time_offset_ns: float = Field(
         default=0.0,
@@ -358,16 +349,16 @@ class SourceTimingConfig(StrictModel):
     def validate_mode_payload(self) -> "SourceTimingConfig":
         """Require the timing fields needed by each configured mode."""
 
-        if self.mode == "continuous" and self.event_spacing_ns is None:
+        if self.mode in {"continuous", "pulsed"} and self.particle_flux is None:
             raise ValueError(
-                "`source.timing.event_spacing_ns` is required when mode is 'continuous'."
+                "`source.timing.particle_flux` is required when timing mode is "
+                "'continuous' or 'pulsed'."
             )
         if self.mode == "pulsed":
             missing = [
                 name
                 for name, value in (
                     ("pulse_period_ns", self.pulse_period_ns),
-                    ("neutrons_per_pulse", self.neutrons_per_pulse),
                     ("pulse_time_width_ns", self.pulse_time_width_ns),
                 )
                 if value is None
