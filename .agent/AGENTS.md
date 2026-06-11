@@ -4,8 +4,19 @@ Instructions for building out the code base and documentation when working with 
 
 This directory is divided into several modules: Documentation, Instructions, and Skills. Each module contains relevant information and guidelines for working with the agent effectively.
 
+## General Instructions
+
+- All python `__init__.py` files should be empty. 
+- Please do not add extra helper functions, CLI commands, or other "bridge" code to make the simulation work.
+- `SimConfig` is the main spine of the code from which all modules are controlled. 
+
 ## Documentation
 The documentation module contains detailed information on the architecture, design, and implementation of key modules of the ScintiPix. It can be divided into the following sections:
+
+### Simulation Working Environment
+This section describes the working environment for running ScintiPix simulations, including default settings and how to specify a custom one.
+
+See [Simulation Working Environment Documentation](./docs/sim_environment.md)
 
 ### Intensifier
 The intensifier module simulated the response of a dual stage microchannel plate (MCP) intensifier. It takes as input the transported photons from the optical transport stage and produces output events that represent the intensified signals. 
