@@ -21,16 +21,21 @@ For pulsed sources, the timing information of the primary particles are the foll
 
 Notes:
 - For pulsed sources, the number of neutrons per pulse can be calculated from the neutron flux and the pulse period. 
+- The Python configuration layer calculates the number of Geant4 events per
+  pulse from `particle_flux`, the circular GPS source area, and
+  `pulse_period_ns`.
 
 For continuous sources, the timing information of the primary particles are the following:
 
 - start_time_ns: This is the start time of the first particle
-- particle_flux: This is the number of particles per second per square centimeter.l
+- particle_flux: This is the number of particles per second per square centimeter.
 
 Notes:
 - For continuous sources, the particles are emitted continuously over time, so the timing information is used to determine the arrival times of the particles at at the scintillator and subsequent stages of the simulation.
-- All the timing fields for pulsed sources are present in the `SimConfig` model, but they are set to `None` or 'null' when the source type is set to continuous.
+- The Python configuration layer calculates the Geant4 event spacing from
+  `particle_flux` and the circular GPS source area.
+- Pulsed-only fields are optional in `SimConfig` and are omitted or set to
+  `None`/`null` for continuous sources.
 
 ## Stage2: Timing information within the GEANT4 Framework
 Once the timing information is initialized and passed to the GEANT4 stage, the GEANT4 framework will handle the processing of timing information for all primaries, secondaries, and scintillation photons. 
-
