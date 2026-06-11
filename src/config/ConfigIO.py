@@ -99,6 +99,8 @@ DEFAULT_TRANSPORT_OUTPUT_FILENAME_BASE = "photons_intensifier_hits"
 DEFAULT_RUN_LOG_FILENAME_BASE = "runLog"
 DEFAULT_OPTICAL_INTERFACE_THICKNESS_MM = 0.1
 SUB_RUN_NUMBER_WIDTH = 4
+NS_PER_SECOND = 1_000_000_000.0
+MM_PER_CM = 10.0
 
 RunEnvironmentTarget = Literal[
     "data",
@@ -305,6 +307,49 @@ def source_commands(config: SimConfig) -> list[str]:
     return commands
 
 
+def _source_area_cm2(config: SimConfig) -> float:
+    """Return circular source emission area in cm^2 from GPS radius."""
+
+    radius_cm = config.source.gps.position.radius_mm / MM_PER_CM
+    return math.pi * radius_cm * radius_cm
+
+
+def _source_particle_rate_per_second(config: SimConfig) -> float:
+    """Return configured source particle rate from flux and source area."""
+
+    timing = config.source.timing
+    if timing is None or timing.particle_flux is None:
+        raise ValueError(
+            "`source.timing.particle_flux` is required to derive source timing."
+        )
+    return timing.particle_flux * _source_area_cm2(config)
+
+
+def _source_event_spacing_ns(config: SimConfig) -> float:
+    """Return fixed event spacing for continuous source timing."""
+
+    particle_rate_per_second = _source_particle_rate_per_second(config)
+    if particle_rate_per_second <= 0.0:
+        raise ValueError("Derived source particle rate must be greater than zero.")
+    return NS_PER_SECOND / particle_rate_per_second
+
+
+def _source_particles_per_pulse(config: SimConfig) -> int:
+    """Return integer Geant4 events assigned to one source pulse."""
+
+    timing = config.source.timing
+    if timing is None or timing.pulse_period_ns is None:
+        raise ValueError(
+            "`source.timing.pulse_period_ns` is required for pulsed source timing."
+        )
+    expected_particles = (
+        _source_particle_rate_per_second(config)
+        * timing.pulse_period_ns
+        / NS_PER_SECOND
+    )
+    return max(1, int(math.ceil(expected_particles - 1.0e-12)))
+
+
 def source_timing_commands(config: SimConfig) -> list[str]:
     """Build GEANT4 source-timing command lines from optional timing config."""
 
@@ -317,30 +362,28 @@ def source_timing_commands(config: SimConfig) -> list[str]:
         f"/source/timing/startTime {_format_macro_scalar(timing.start_time_ns)} ns",
     ]
     if timing.mode == "continuous":
-        if timing.event_spacing_ns is None:
-            raise ValueError(
-                "`source.timing.event_spacing_ns` is required when mode is 'continuous'."
-            )
+        event_spacing_ns = _source_event_spacing_ns(config)
         commands.append(
             "/source/timing/eventSpacing "
-            f"{_format_macro_scalar(timing.event_spacing_ns)} ns"
+            f"{_format_macro_scalar(event_spacing_ns)} ns"
         )
     if timing.mode == "pulsed":
         if (
             timing.pulse_period_ns is None
-            or timing.neutrons_per_pulse is None
             or timing.pulse_time_width_ns is None
         ):
             raise ValueError(
                 "`source.timing.pulse_period_ns`, "
-                "`source.timing.neutrons_per_pulse`, and "
-                "`source.timing.pulse_time_width_ns` are required when mode is 'pulsed'."
+                "`source.timing.particle_flux`, and "
+                "`source.timing.pulse_time_width_ns` are required when mode is "
+                "'pulsed'."
             )
+        particles_per_pulse = _source_particles_per_pulse(config)
         commands.extend(
             [
                 "/source/timing/pulsePeriod "
                 f"{_format_macro_scalar(timing.pulse_period_ns)} ns",
-                f"/source/timing/neutronsPerPulse {timing.neutrons_per_pulse}",
+                f"/source/timing/neutronsPerPulse {particles_per_pulse}",
                 "/source/timing/pulseTimeOffset "
                 f"{_format_macro_scalar(timing.pulse_time_offset_ns)} ns",
                 "/source/timing/pulseTimeWidth "
@@ -493,6 +536,8 @@ def from_macro(macro_path: str | Path, *, template: SimConfig | None = None) -> 
     parsed_output_path: str | None = None
     parsed_output_filename: str | None = None
     parsed_output_runname: str | None = None
+    parsed_source_timing_event_spacing_ns: float | None = None
+    parsed_source_timing_neutrons_per_pulse: int | None = None
 
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
@@ -612,13 +657,16 @@ def from_macro(macro_path: str | Path, *, template: SimConfig | None = None) -> 
                 source_timing["start_time_ns"] = _parse_time_to_ns(tokens, command)
                 continue
             if command == "/source/timing/eventSpacing":
-                source_timing["event_spacing_ns"] = _parse_time_to_ns(tokens, command)
+                parsed_source_timing_event_spacing_ns = _parse_time_to_ns(
+                    tokens,
+                    command,
+                )
                 continue
             if command == "/source/timing/pulsePeriod":
                 source_timing["pulse_period_ns"] = _parse_time_to_ns(tokens, command)
                 continue
             if command == "/source/timing/neutronsPerPulse" and len(tokens) >= 2:
-                source_timing["neutrons_per_pulse"] = int(tokens[1])
+                parsed_source_timing_neutrons_per_pulse = int(tokens[1])
                 continue
             if command == "/source/timing/pulseTimeOffset":
                 source_timing["pulse_time_offset_ns"] = _parse_time_to_ns(tokens, command)
@@ -876,6 +924,31 @@ def from_macro(macro_path: str | Path, *, template: SimConfig | None = None) -> 
             profile_key = "default"
         time_components[profile_key] = parsed_time_components
         scint_properties["time_components"] = time_components
+
+    if isinstance(source_timing, dict) and source_timing.get("particle_flux") is None:
+        radius_mm = float(position["radius_mm"])
+        source_area_cm2 = math.pi * (radius_mm / MM_PER_CM) ** 2
+        timing_mode = str(source_timing.get("mode", "none")).strip().lower()
+        if (
+            timing_mode == "continuous"
+            and parsed_source_timing_event_spacing_ns is not None
+        ):
+            particle_rate_per_second = (
+                NS_PER_SECOND / parsed_source_timing_event_spacing_ns
+            )
+            source_timing["particle_flux"] = particle_rate_per_second / source_area_cm2
+        if (
+            timing_mode == "pulsed"
+            and parsed_source_timing_neutrons_per_pulse is not None
+            and source_timing.get("pulse_period_ns") is not None
+        ):
+            pulse_period_ns = float(source_timing["pulse_period_ns"])
+            particle_rate_per_second = (
+                parsed_source_timing_neutrons_per_pulse
+                * NS_PER_SECOND
+                / pulse_period_ns
+            )
+            source_timing["particle_flux"] = particle_rate_per_second / source_area_cm2
 
     return SimConfig.model_validate(payload)
 
