@@ -11,6 +11,111 @@ from pathlib import Path
 import tempfile
 from typing import Any
 
+try:
+    from pydantic import Field
+    from src.models.base import StrictModel
+except ModuleNotFoundError:
+    import sys
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
+    from pydantic import Field
+    from src.models.base import StrictModel
+
+
+class ValueWithUnit(StrictModel):
+    """A numeric value with an associated unit string.
+
+    Used throughout models to make physical units explicit in both
+    catalog files and simulation configurations. Provides type safety
+    and enables automatic unit conversion.
+
+    Examples:
+        >>> density = ValueWithUnit(value=1.05, unit="g/cm3")
+        >>> energy = ValueWithUnit(value=6.0, unit="MeV")
+    """
+
+    value: float
+    unit: str = Field(min_length=1)
+
+    def to_g_cm3(self) -> float:
+        """Convert density to g/cm³."""
+        return convert_density_to_g_cm3(self.value, self.unit)
+
+    def to_ns(self) -> float:
+        """Convert time to nanoseconds."""
+        return convert_time_to_ns(self.value, self.unit)
+
+    def to_mev(self) -> float:
+        """Convert energy to MeV."""
+        return convert_energy_to_mev(self.value, self.unit)
+
+    def to_per_mev(self) -> float:
+        """Convert scintillation yield to photons/MeV."""
+        return convert_scint_yield_to_per_mev(self.value, self.unit)
+
+
+def convert_density_to_g_cm3(value: float, unit: str) -> float:
+    """Convert density value to g/cm³."""
+    normalized_unit = unit.lower().replace(" ", "").replace("^", "")
+    factor = _DENSITY_UNIT_TO_G_CM3.get(normalized_unit)
+    if factor is None:
+        raise ValueError(f"Unsupported density unit: {unit!r}")
+    return value * factor
+
+
+def convert_time_to_ns(value: float, unit: str) -> float:
+    """Convert time value to nanoseconds."""
+    normalized_unit = unit.lower().replace(" ", "")
+    factor = _TIME_UNIT_TO_NS.get(normalized_unit)
+    if factor is None:
+        raise ValueError(f"Unsupported time unit: {unit!r}")
+    return value * factor
+
+
+def convert_energy_to_mev(value: float, unit: str) -> float:
+    """Convert energy value to MeV."""
+    normalized_unit = unit.lower().replace(" ", "")
+    factor = _ENERGY_UNIT_TO_MEV.get(normalized_unit)
+    if factor is None:
+        raise ValueError(f"Unsupported energy unit: {unit!r}")
+    return value * factor
+
+
+def convert_scint_yield_to_per_mev(value: float, unit: str) -> float:
+    """Convert scintillation yield to photons/MeV."""
+    normalized_unit = unit.lower().replace(" ", "")
+    factor = _SCINT_YIELD_UNIT_TO_PER_MEV.get(normalized_unit)
+    if factor is None:
+        raise ValueError(f"Unsupported scintillation yield unit: {unit!r}")
+    return value * factor
+
+
+def extract_numeric_value(
+    value_or_unit: "ValueWithUnit | float",
+    *,
+    converter: callable | None = None,
+) -> float:
+    """Extract numeric value from ValueWithUnit or float.
+
+    Args:
+        value_or_unit: Either a ValueWithUnit or plain float
+        converter: Optional conversion function (value, unit) -> converted_value
+
+    Returns:
+        Numeric value, converted if converter is provided
+
+    Examples:
+        >>> extract_numeric_value(5.0)
+        5.0
+        >>> extract_numeric_value(ValueWithUnit(value=1.0, unit="g/cm3"),
+        ...                       converter=convert_density_to_g_cm3)
+        1.0
+    """
+    if isinstance(value_or_unit, ValueWithUnit):
+        if converter:
+            return converter(value_or_unit.value, value_or_unit.unit)
+        return value_or_unit.value
+    return value_or_unit
+
 _LENGTH_UNIT_TO_MM: dict[str, float] = {
     "nm": 1.0e-6,
     "nanometer": 1.0e-6,
