@@ -6,14 +6,61 @@ import math
 
 from pydantic import AliasChoices, Field, model_validator
 
+from src.common.utilities import ValueWithUnit, extract_numeric_value, convert_time_to_ns, convert_density_to_g_cm3, convert_scint_yield_to_per_mev
 from .base import Size3Mm, StrictModel, Vec3Mm
 
 
-class ScintillationTimeComponent(StrictModel):
-    """Single scintillation decay component in nanoseconds."""
+class CurveReference(StrictModel):
+    """Reference to an external curve file with unit metadata.
 
-    time_constant: float = Field(alias="timeConstant", ge=0)
+    Used in catalog files to reference optical property curves stored as
+    separate CSV/data files.
+    """
+
+    path: str = Field(min_length=1, description="Relative or absolute path to curve file")
+    x_unit: str = Field(alias="xUnit", min_length=1, description="Unit for x-axis (energy)")
+    y_unit: str = Field(alias="yUnit", min_length=1, description="Unit for y-axis (property value)")
+
+
+class OpticalCurves(StrictModel):
+    """Collection of optical curve references for catalog files."""
+
+    r_index: CurveReference = Field(alias="rIndex")
+    abs_length: CurveReference | None = Field(default=None, alias="absLength")
+    scint_spectrum: CurveReference | None = Field(default=None, alias="scintSpectrum")
+
+
+class OpticalConstants(StrictModel):
+    """Optical constants for scintillator material (catalog format)."""
+
+    scint_yield: ValueWithUnit = Field(alias="scintYield")
+    resolution_scale: float = Field(alias="resolutionScale")
+    time_components: "ScintillationTimeComponentsByExcitation" = Field(alias="timeComponents")
+
+    @model_validator(mode="after")
+    def validate_positive_values(self) -> "OpticalConstants":
+        """Validate that resolution_scale is positive."""
+        if self.resolution_scale <= 0:
+            raise ValueError("resolution_scale must be > 0")
+        if self.scint_yield.value <= 0:
+            raise ValueError("scint_yield value must be > 0")
+        return self
+
+
+class ScintillationTimeComponent(StrictModel):
+    """Single scintillation decay component.
+
+    Time constant can be specified as a float (assumed nanoseconds) or as
+    ValueWithUnit for explicit units.
+    """
+
+    time_constant: ValueWithUnit | float = Field(alias="timeConstant")
     yield_fraction: float = Field(alias="yieldFraction", ge=0)
+
+    @property
+    def time_constant_ns(self) -> float:
+        """Get time constant in nanoseconds."""
+        return extract_numeric_value(self.time_constant, converter=convert_time_to_ns)
 
 
 class ScintillationTimeComponentsByExcitation(StrictModel):
@@ -32,7 +79,7 @@ class ScintillationTimeComponentsByExcitation(StrictModel):
     @staticmethod
     def _validate_profile(
         profile_name: str,
-        components: list[ScintillationTimeComponent],
+        components: list["ScintillationTimeComponent"],
     ) -> None:
         if len(components) != 3:
             raise ValueError(
@@ -43,11 +90,18 @@ class ScintillationTimeComponentsByExcitation(StrictModel):
             raise ValueError(
                 f"`timeComponents.{profile_name}` yield fractions must sum to ~1.0."
             )
-        active_component_count = sum(
-            1
-            for component in components
-            if component.yield_fraction > 0.0 and component.time_constant > 0.0
-        )
+
+        # Check for at least one active component
+        active_component_count = 0
+        for component in components:
+            # Extract numeric time_constant value
+            time_value = extract_numeric_value(
+                component.time_constant,
+                converter=convert_time_to_ns
+            )
+            if component.yield_fraction > 0.0 and time_value > 0.0:
+                active_component_count += 1
+
         if active_component_count == 0:
             raise ValueError(
                 f"`timeComponents.{profile_name}` must define at least one active "
@@ -104,100 +158,127 @@ class ScintillationTimeComponentsByExcitation(StrictModel):
             "(`neutron`/`gamma`) or `default`."
         )
 
+class ScintillatorComposition(StrictModel):
+    """Composition information of scintillator material.
 
-class ScintillatorProperties(StrictModel):
-    """Optical material table for scintillator definition.
+    Density can be specified as a float (g/cm³) or as ValueWithUnit for explicit
+    units. Elements are specified as a dictionary mapping element symbols to atom counts.
 
-    Fields map directly to common GEANT4 material-property table concepts.
-    Optical curves may be provided inline (`photonEnergy`, `rIndex`,
-    `absLength`, `scintSpectrum`) or by file path (`rIndexFile`,
-    `absLengthFile`, `scintSpectrumFile`) for catalog-backed inputs.
+    Examples:
+        >>> # Catalog format with unit
+        >>> ScintillatorComposition(
+        ...     density={"value": 1.05, "unit": "g/cm3"},
+        ...     atoms={"C": 9, "H": 10}
+        ... )
+        >>> # Simulation format without unit
+        >>> ScintillatorComposition(density=1.05, atoms={"C": 9, "H": 10})
     """
 
-    name: str
-    photon_energy: list[float] | None = Field(
-        default=None,
-        alias="photonEnergy",
-        min_length=1,
-    )
-    r_index: list[float] | None = Field(default=None, alias="rIndex", min_length=1)
-    r_index_file: str | None = Field(default=None, alias="rIndexFile", min_length=1)
-    n_k_entries: int | None = Field(default=None, alias="nKEntries", gt=0)
-    time_components: ScintillationTimeComponentsByExcitation = Field(
-        alias="timeComponents"
-    )
+    density: ValueWithUnit | float
+    atoms: dict[str, int] = Field(min_length=1)
+
+
+class ScintillatorOpticalProperties(StrictModel):
+    """Optical properties of scintillator material.
+
+    Supports two formats:
+    1. Catalog format: curves/constants structure with CurveReferences and ValueWithUnit
+    2. Simulation format: flat structure with inline arrays and numeric values
+
+    The catalog loader transforms format 1 → format 2 during hydration.
+    """
+
+    # Catalog format: nested structure
+    curves: "OpticalCurves | None" = None
+    constants: "OpticalConstants | None" = None
+
+    # Simulation format: flat structure with inline data
+    photon_energy: list[float] | None = Field(default=None, alias="photonEnergy")
+    r_index: list[float] | None = Field(default=None, alias="rIndex")
+    r_index_file: str | None = Field(default=None, alias="rIndexFile")
     abs_length: list[float] | None = Field(default=None, alias="absLength")
-    abs_length_file: str | None = Field(
-        default=None,
-        alias="absLengthFile",
-        min_length=1,
-    )
+    abs_length_file: str | None = Field(default=None, alias="absLengthFile")
     scint_spectrum: list[float] | None = Field(default=None, alias="scintSpectrum")
-    scint_spectrum_file: str | None = Field(
-        default=None,
-        alias="scintSpectrumFile",
-        min_length=1,
+    scint_spectrum_file: str | None = Field(default=None, alias="scintSpectrumFile")
+    n_k_entries: int | None = Field(default=None, alias="nKEntries", gt=0)
+    time_components: "ScintillationTimeComponentsByExcitation | None" = Field(
+        default=None, alias="timeComponents"
     )
-    density: float | None = Field(default=None, gt=0)
-    carbon_atoms: int | None = Field(default=None, alias="carbonAtoms", gt=0)
-    hydrogen_atoms: int | None = Field(default=None, alias="hydrogenAtoms", gt=0)
-    scint_yield: float | None = Field(default=None, alias="scintYield", gt=0)
-    resolution_scale: float | None = Field(default=None, alias="resolutionScale", gt=0)
+    scint_yield: ValueWithUnit | float | None = Field(default=None, alias="scintYield")
+    resolution_scale: float | None = Field(default=None, alias="resolutionScale")
 
     @model_validator(mode="after")
-    def validate_table_lengths(self) -> "ScintillatorProperties":
-        """Require optical-table cardinality consistency.
+    def validate_format(self) -> "ScintillatorOpticalProperties":
+        """Validate that either catalog or simulation format is used consistently."""
+        has_simulation_format = (
+            self.photon_energy is not None
+            or self.r_index is not None
+            or self.r_index_file is not None
+        )
 
-        File-backed curve inputs are allowed before hydration. Inline arrays,
-        when present, must have a shared `photonEnergy` grid and `nKEntries`.
-        """
+        # Validate positive values
+        if self.resolution_scale is not None and self.resolution_scale <= 0:
+            raise ValueError("resolution_scale must be > 0")
 
-        for value_field, file_field, value_name, file_name in (
-            ("r_index", "r_index_file", "rIndex", "rIndexFile"),
-            ("abs_length", "abs_length_file", "absLength", "absLengthFile"),
-            (
-                "scint_spectrum",
-                "scint_spectrum_file",
-                "scintSpectrum",
-                "scintSpectrumFile",
-            ),
-        ):
-            if (
-                getattr(self, value_field) is not None
-                and getattr(self, file_field) is not None
-            ):
-                raise ValueError(
-                    f"`{value_name}` and `{file_name}` cannot both be provided."
-                )
+        if self.scint_yield is not None:
+            if isinstance(self.scint_yield, (int, float)) and self.scint_yield <= 0:
+                raise ValueError("scint_yield must be > 0")
+            elif isinstance(self.scint_yield, ValueWithUnit) and self.scint_yield.value <= 0:
+                raise ValueError("scint_yield value must be > 0")
 
-        if self.r_index is None and self.r_index_file is None:
-            raise ValueError("`rIndex` or `rIndexFile` must be provided.")
+        if self.n_k_entries is not None and self.n_k_entries <= 0:
+            raise ValueError("n_k_entries must be > 0")
 
-        inline_arrays = [
-            self.r_index,
-            self.abs_length,
-            self.scint_spectrum,
-        ]
-        if not any(array is not None for array in inline_arrays):
-            return self
+        # Both formats can coexist during transformation, so just validate internal consistency
+        if has_simulation_format:
+            # Validate simulation format consistency
+            for value_field, file_field in [
+                ("r_index", "r_index_file"),
+                ("abs_length", "abs_length_file"),
+                ("scint_spectrum", "scint_spectrum_file"),
+            ]:
+                if getattr(self, value_field) and getattr(self, file_field):
+                    raise ValueError(
+                        f"Cannot specify both {value_field} and {file_field}"
+                    )
 
-        if self.photon_energy is None:
-            raise ValueError("`photonEnergy` is required when inline curves are used.")
-        if self.n_k_entries is None:
-            raise ValueError("`nKEntries` is required when inline curves are used.")
+            if self.r_index is None and self.r_index_file is None:
+                raise ValueError("Must provide rIndex or rIndexFile")
 
-        if len(self.photon_energy) != self.n_k_entries:
-            raise ValueError("`photonEnergy` length must match `nKEntries`.")
-        if self.r_index is not None and len(self.r_index) != self.n_k_entries:
-            raise ValueError("`rIndex` length must match `nKEntries`.")
-        if self.abs_length is not None and len(self.abs_length) != self.n_k_entries:
-            raise ValueError("`absLength` length must match `nKEntries`.")
-        if (
-            self.scint_spectrum is not None
-            and len(self.scint_spectrum) != self.n_k_entries
-        ):
-            raise ValueError("`scintSpectrum` length must match `nKEntries`.")
+            # If inline arrays are used, validate grid consistency
+            inline_arrays = [self.r_index, self.abs_length, self.scint_spectrum]
+            if any(arr is not None for arr in inline_arrays):
+                if self.photon_energy is None:
+                    raise ValueError("photonEnergy required when inline curves are used")
+                if self.n_k_entries is None:
+                    raise ValueError("nKEntries required when inline curves are used")
+
+                if len(self.photon_energy) != self.n_k_entries:
+                    raise ValueError("photonEnergy length must match nKEntries")
+                for arr, name in zip(inline_arrays, ["rIndex", "absLength", "scintSpectrum"]):
+                    if arr is not None and len(arr) != self.n_k_entries:
+                        raise ValueError(f"{name} length must match nKEntries")
+
         return self
+    
+    
+
+class ScintillatorProperties(StrictModel):
+    """Complete scintillator material definition.
+
+    Combines material composition and optical properties in a nested structure
+    that aligns with catalog file format.
+
+    Supports both:
+    - Catalog format: id, name, description, composition, optical (with curves/constants)
+    - Simulation format: name, composition, optical (flat with inline data)
+    """
+
+    id: str | None = None  # Catalog format only
+    name: str
+    description: str | None = None  # Catalog format only
+    composition: ScintillatorComposition
+    optical: ScintillatorOpticalProperties
 
 
 class Scintillator(StrictModel):
