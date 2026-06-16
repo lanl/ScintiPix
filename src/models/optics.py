@@ -20,7 +20,8 @@ class Lens(StrictModel):
     """
 
     name: str | None = None
-    primary: bool
+    description: str = ""
+    primary: bool = False
     catalog_id: str | None = Field(default=None, alias="catalogId", min_length=1)
     zmx_file: str | None = Field(default=None, alias="zmxFile", min_length=1)
     smx_file: str | None = Field(default=None, alias="smxFile", min_length=1)
