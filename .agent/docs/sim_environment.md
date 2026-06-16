@@ -4,6 +4,8 @@ This document describes the working environment for running ScintiPix simulation
 
 The simulations working environment is defined in the pydantic model `Simulation`. Within`Simulation` there is a `metadata` submodule that contains all the needed information out the runtime environment, along with the various needed directories for logging and outputs.
 
+Becuase ScintiPix is multistaged and users can define at what stage to stop, the working environment from one simulation to another might look different depending on what stages of the simulation are enabled. 
+
 
 ## Default Working Environment
 
