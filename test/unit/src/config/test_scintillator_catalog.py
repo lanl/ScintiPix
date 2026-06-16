@@ -28,7 +28,7 @@ class ScintillatorCatalogTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         try:
-            from src.config.ScintillatorCatalogIO import (
+            from src.config.ScintillatorCatalog import (
                 available_scintillators,
                 load_scintillator,
                 load_scintillator_definition,
