@@ -109,20 +109,35 @@ class ScintillatorProperties(StrictModel):
     """Optical material table for scintillator definition.
 
     Fields map directly to common GEANT4 material-property table concepts.
-    Core fields (`photonEnergy`, `rIndex`, `nKEntries`, `timeComponents`)
-    define mandatory optical behavior, while extended fields enable full
-    material and optical-table configuration through macros.
+    Optical curves may be provided inline (`photonEnergy`, `rIndex`,
+    `absLength`, `scintSpectrum`) or by file path (`rIndexFile`,
+    `absLengthFile`, `scintSpectrumFile`) for catalog-backed inputs.
     """
 
     name: str
-    photon_energy: list[float] = Field(alias="photonEnergy", min_length=1)
-    r_index: list[float] = Field(alias="rIndex", min_length=1)
-    n_k_entries: int = Field(alias="nKEntries", gt=0)
+    photon_energy: list[float] | None = Field(
+        default=None,
+        alias="photonEnergy",
+        min_length=1,
+    )
+    r_index: list[float] | None = Field(default=None, alias="rIndex", min_length=1)
+    r_index_file: str | None = Field(default=None, alias="rIndexFile", min_length=1)
+    n_k_entries: int | None = Field(default=None, alias="nKEntries", gt=0)
     time_components: ScintillationTimeComponentsByExcitation = Field(
         alias="timeComponents"
     )
     abs_length: list[float] | None = Field(default=None, alias="absLength")
+    abs_length_file: str | None = Field(
+        default=None,
+        alias="absLengthFile",
+        min_length=1,
+    )
     scint_spectrum: list[float] | None = Field(default=None, alias="scintSpectrum")
+    scint_spectrum_file: str | None = Field(
+        default=None,
+        alias="scintSpectrumFile",
+        min_length=1,
+    )
     density: float | None = Field(default=None, gt=0)
     carbon_atoms: int | None = Field(default=None, alias="carbonAtoms", gt=0)
     hydrogen_atoms: int | None = Field(default=None, alias="hydrogenAtoms", gt=0)
@@ -133,13 +148,47 @@ class ScintillatorProperties(StrictModel):
     def validate_table_lengths(self) -> "ScintillatorProperties":
         """Require optical-table cardinality consistency.
 
-        This check ensures both lookup arrays match the declared `nKEntries`
-        value so later table construction cannot silently misalign.
+        File-backed curve inputs are allowed before hydration. Inline arrays,
+        when present, must have a shared `photonEnergy` grid and `nKEntries`.
         """
+
+        for value_field, file_field, value_name, file_name in (
+            ("r_index", "r_index_file", "rIndex", "rIndexFile"),
+            ("abs_length", "abs_length_file", "absLength", "absLengthFile"),
+            (
+                "scint_spectrum",
+                "scint_spectrum_file",
+                "scintSpectrum",
+                "scintSpectrumFile",
+            ),
+        ):
+            if (
+                getattr(self, value_field) is not None
+                and getattr(self, file_field) is not None
+            ):
+                raise ValueError(
+                    f"`{value_name}` and `{file_name}` cannot both be provided."
+                )
+
+        if self.r_index is None and self.r_index_file is None:
+            raise ValueError("`rIndex` or `rIndexFile` must be provided.")
+
+        inline_arrays = [
+            self.r_index,
+            self.abs_length,
+            self.scint_spectrum,
+        ]
+        if not any(array is not None for array in inline_arrays):
+            return self
+
+        if self.photon_energy is None:
+            raise ValueError("`photonEnergy` is required when inline curves are used.")
+        if self.n_k_entries is None:
+            raise ValueError("`nKEntries` is required when inline curves are used.")
 
         if len(self.photon_energy) != self.n_k_entries:
             raise ValueError("`photonEnergy` length must match `nKEntries`.")
-        if len(self.r_index) != self.n_k_entries:
+        if self.r_index is not None and len(self.r_index) != self.n_k_entries:
             raise ValueError("`rIndex` length must match `nKEntries`.")
         if self.abs_length is not None and len(self.abs_length) != self.n_k_entries:
             raise ValueError("`absLength` length must match `nKEntries`.")
