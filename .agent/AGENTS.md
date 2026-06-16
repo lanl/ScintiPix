@@ -1,6 +1,6 @@
 # AGENTS.md
-
-Instructions for building out the code base and documentation when working with an agent.
+ 
+Instructions for building out the code base and documentation when working with an agent. The number one rule above all else: **KEEP THE CODE SIMPLE**. Avoid adding unnecessary complexity, over-engineering solutions, or introducing convoluted logic. The goal is to maintain clarity, readability, and ease of understanding throughout the code base.
 
 This directory is divided into several modules: Documentation, Instructions, and Skills. Each module contains relevant information and guidelines for working with the agent effectively.
 
