@@ -1,15 +1,21 @@
-"""Load and save :class:`src.config.SimConfig.SimConfig` YAML files."""
+"""Load and save :class:`src.models.simulation.Simulation` YAML files."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 import yaml
-from models.Simulation import SimConfig
+
+try:
+    from src.models.simulation import Simulation
+except ModuleNotFoundError:
+    import sys
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
+    from src.models.simulation import Simulation
 
 
-def from_yaml(yaml_path: str | Path) -> SimConfig:
-    """Load a YAML file and validate it as ``SimConfig``."""
+def from_yaml(yaml_path: str | Path) -> Simulation:
+    """Load a YAML file and validate it as ``Simulation``."""
 
     path = Path(yaml_path)
     if not path.exists():
@@ -21,16 +27,16 @@ def from_yaml(yaml_path: str | Path) -> SimConfig:
             f"YAML config at {path} must be a mapping/object at top level."
         )
 
-    return SimConfig.model_validate(payload)
+    return Simulation.model_validate(payload)
 
 
 def write_yaml(
-    config: SimConfig,
+    config: Simulation,
     yaml_path: str | Path,
     *,
     overwrite: bool = True,
 ) -> None:
-    """Write a ``SimConfig`` to a YAML file."""
+    """Write a ``Simulation`` to a YAML file."""
 
     path = Path(yaml_path)
     if path.exists() and not overwrite:
