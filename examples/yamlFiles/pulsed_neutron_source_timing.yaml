@@ -16,24 +16,27 @@ scintillator:
   maskRadius: 0.0
   properties:
     name: EJ200
-    photonEnergy: [2.8, 3.0, 3.2]
-    rIndex: [1.58, 1.59, 1.60]
-    absLength: [380.0, 380.0, 300.0]
-    scintSpectrum: [0.2, 1.0, 0.2]
-    nKEntries: 3
-    density: 1.023
-    carbonAtoms: 9
-    hydrogenAtoms: 10
-    scintYield: 10000.0
-    resolutionScale: 1.0
-    timeComponents:
-      default:
-        - timeConstant: 2.1
-          yieldFraction: 1.0
-        - timeConstant: 0.0
-          yieldFraction: 0.0
-        - timeConstant: 0.0
-          yieldFraction: 0.0
+    composition:
+      density: 1.023
+      atoms:
+        C: 9
+        H: 10
+    optical:
+      photonEnergy: [2.8, 3.0, 3.2]
+      rIndex: [1.58, 1.59, 1.60]
+      absLength: [380.0, 380.0, 300.0]
+      scintSpectrum: [0.2, 1.0, 0.2]
+      nKEntries: 3
+      scintYield: 10000.0
+      resolutionScale: 1.0
+      timeComponents:
+        default:
+          - timeConstant: 2.1
+            yieldFraction: 1.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
 
 source:
   gps:

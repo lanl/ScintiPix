@@ -16,17 +16,25 @@ scintillator:
   maskRadius: 18.0
   properties:
     name: EJ200_three_component_timing
-    photonEnergy: [2.8, 3.0, 3.2]
-    rIndex: [1.58, 1.59, 1.60]
-    nKEntries: 3
-    timeComponents:
-      default:
-        - timeConstant: 2.0
-          yieldFraction: 0.55
-        - timeConstant: 12.0
-          yieldFraction: 0.30
-        - timeConstant: 60.0
-          yieldFraction: 0.15
+    composition:
+      density: 1.023
+      atoms:
+        C: 9
+        H: 10
+    optical:
+      photonEnergy: [2.8, 3.0, 3.2]
+      rIndex: [1.58, 1.59, 1.60]
+      nKEntries: 3
+      scintYield: 10000.0
+      resolutionScale: 1.0
+      timeComponents:
+        default:
+          - timeConstant: 2.0
+            yieldFraction: 0.55
+          - timeConstant: 12.0
+            yieldFraction: 0.30
+          - timeConstant: 60.0
+            yieldFraction: 0.15
 
 source:
   gps:
