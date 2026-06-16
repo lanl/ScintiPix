@@ -36,3 +36,4 @@ The `config` submodule provides all the configuration capabilties to convert the
 A given ScintiPix simulation can be controlled and executed with a single YAML configuration file. This file encapsulates all the settings for the various submodules, including the runner, source, scintillator, intensifier, optics, and sensor configurations. The `config` submodule facilitates the conversion between the Pydantic models and the YAML format, ensuring that the configuration file accurately represents the simulation setup and can be easily modified and reused.
 
 - `ConfigIO`: Provides functions for reading and writing configuration files, enabling the conversion between Pydantic models and various configuration formats such as YAML. This allows for easy loading, saving, and modification of simulation settings while maintaining the structure and validation defined by the Pydantic models.
+- 
