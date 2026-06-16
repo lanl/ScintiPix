@@ -105,9 +105,12 @@ class WorkingDirectoryLayout(StrictModel):
         """Fill directory defaults for run environment.
 
         WorkingDirectory defaults to `data`.
+        If working_directory is "data", it's resolved to repo_root/data.
+        Otherwise, it's used as-is (absolute or relative to cwd).
         Run-specific directories are resolved later as
         `<WorkingDirectory>/<SimulationRunID>/...`.
         """
+        from src.common.utilities import repo_root
 
         if self.working_directory is None or not self.working_directory.strip():
             self.working_directory = "data"
@@ -115,6 +118,11 @@ class WorkingDirectoryLayout(StrictModel):
             self.macro_directory = "macros"
         if self.log_directory is None or not self.log_directory.strip():
             self.log_directory = "logs"
+
+        # Special case: "data" always resolves to repo_root/data
+        if self.working_directory == "data":
+            self.working_directory = str(repo_root() / "data")
+
         return self
 
     def apply_stage_defaults(self, controls: RunControls) -> None:
