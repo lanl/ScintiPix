@@ -99,7 +99,12 @@ class Optics(StrictModel):
     lenses: list[Lens] = Field(min_length=1)
     geometry: OpticalGeometry
     sensitive_detector_config: SensitiveDetector = Field(
-        alias="sensitiveDetector"
+        validation_alias=AliasChoices(
+            "sensitiveDetectorConfig",
+            "sensitiveDetector",
+            "sensitive_detector_config",
+        ),
+        serialization_alias="sensitiveDetectorConfig",
     )
     show_transport_progress: bool = Field(
         default=True,

@@ -7,7 +7,11 @@ from datetime import datetime
 from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
-from src.config.utilities import ensure_directories
+
+try:
+    from src.common.utilities import ensure_directories
+except ModuleNotFoundError:  # pragma: no cover - supports PYTHONPATH=src usage
+    from common.utilities import ensure_directories
 
 from .base import StrictModel
 
