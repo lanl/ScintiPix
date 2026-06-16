@@ -10,7 +10,7 @@ import time
 from typing import TYPE_CHECKING, TextIO
 
 if TYPE_CHECKING:
-    from src.config.SimConfig import SimConfig
+    from models.simulation import Simulation
 
 
 DEFAULT_RUN_LOG_FILENAME = "runLog.txt"
@@ -67,10 +67,16 @@ def resolve_run_log_path(
     """Resolve the canonical run log path under the configured logs directory."""
 
     try:
-        from src.config.ConfigIO import resolve_run_environment_paths, run_log_filename
+        from src.config.RunEnvironmentIO import (
+            resolve_run_environment_paths,
+            run_log_filename,
+        )
     except ModuleNotFoundError:
         sys.path.append(str(Path(__file__).resolve().parents[2]))
-        from src.config.ConfigIO import resolve_run_environment_paths, run_log_filename
+        from src.config.RunEnvironmentIO import (
+            resolve_run_environment_paths,
+            run_log_filename,
+        )
 
     run_paths = resolve_run_environment_paths(config)
     run_paths.log.mkdir(parents=True, exist_ok=True)
