@@ -164,29 +164,104 @@ def _hydrate_curve_files(
     *,
     context: CatalogContext,
 ) -> ScintillatorProperties:
-    payload = material.model_dump(mode="python", by_alias=True, exclude_none=True)
-    reference_energy = material.photon_energy
+    """Transform catalog nested format to simulation nested format.
 
-    curve_files = (
-        ("rIndexFile", "rIndex"),
-        ("absLengthFile", "absLength"),
-        ("scintSpectrumFile", "scintSpectrum"),
+    Catalog format:
+        composition.density: ValueWithUnit
+        optical.curves: OpticalCurves (CurveReference objects)
+        optical.constants: OpticalConstants (scintYield as ValueWithUnit)
+
+    Simulation format:
+        composition.density: float
+        optical.photon_energy, optical.r_index, etc.: list[float]
+        optical.scint_yield: float
+    """
+    from src.common.utilities import (
+        convert_density_to_g_cm3,
+        convert_scint_yield_to_per_mev,
+        ValueWithUnit,
     )
-    for file_key, value_key in curve_files:
-        file_path = payload.pop(file_key, None)
-        if file_path is None:
-            continue
 
-        energy, values = _load_curve(_resolve_catalog_path(context, file_path))
-        if reference_energy is None:
-            reference_energy = energy
-        elif energy != reference_energy:
-            raise ValueError(f"`{file_key}` energy grid does not match `rIndexFile`.")
-        payload[value_key] = values
+    payload = material.model_dump(mode="python", by_alias=False, exclude_none=True)
 
-    if reference_energy is not None:
-        payload["photonEnergy"] = reference_energy
-        payload["nKEntries"] = len(reference_energy)
+    # Transform composition.density from ValueWithUnit to float
+    if "composition" in payload and "density" in payload["composition"]:
+        density_obj = material.composition.density
+        if isinstance(density_obj, ValueWithUnit):
+            payload["composition"]["density"] = convert_density_to_g_cm3(
+                density_obj.value, density_obj.unit
+            )
+
+    # Transform optical properties from catalog format to simulation format
+    if "optical" in payload:
+        optical = payload["optical"]
+        reference_energy = None
+
+        # Load curves from file references
+        if "curves" in optical:
+            curves = optical["curves"]
+
+            # Load rIndex curve (required)
+            if "r_index" in curves:
+                r_index_ref = curves["r_index"]
+                energy, r_index_values = _load_curve(
+                    _resolve_catalog_path(context, r_index_ref["path"])
+                )
+                reference_energy = energy
+                optical["r_index"] = r_index_values
+
+            # Load absLength curve (optional)
+            if "abs_length" in curves:
+                abs_length_ref = curves["abs_length"]
+                energy, abs_length_values = _load_curve(
+                    _resolve_catalog_path(context, abs_length_ref["path"])
+                )
+                if reference_energy is not None and energy != reference_energy:
+                    raise ValueError("absLength energy grid does not match rIndex.")
+                optical["abs_length"] = abs_length_values
+
+            # Load scintSpectrum curve (optional)
+            if "scint_spectrum" in curves:
+                scint_spectrum_ref = curves["scint_spectrum"]
+                energy, scint_spectrum_values = _load_curve(
+                    _resolve_catalog_path(context, scint_spectrum_ref["path"])
+                )
+                if reference_energy is not None and energy != reference_energy:
+                    raise ValueError("scintSpectrum energy grid does not match rIndex.")
+                optical["scint_spectrum"] = scint_spectrum_values
+
+            # Remove curves wrapper after extraction
+            del optical["curves"]
+
+        # Extract constants from nested structure
+        if "constants" in optical:
+            constants = optical["constants"]
+
+            # Extract scint_yield from ValueWithUnit
+            if "scint_yield" in constants:
+                scint_yield_obj = material.optical.constants.scint_yield
+                if isinstance(scint_yield_obj, ValueWithUnit):
+                    optical["scint_yield"] = convert_scint_yield_to_per_mev(
+                        scint_yield_obj.value, scint_yield_obj.unit
+                    )
+                else:
+                    optical["scint_yield"] = scint_yield_obj
+
+            # Copy resolution_scale directly
+            if "resolution_scale" in constants:
+                optical["resolution_scale"] = constants["resolution_scale"]
+
+            # Copy time_components directly (already compatible)
+            if "time_components" in constants:
+                optical["time_components"] = constants["time_components"]
+
+            # Remove constants wrapper after extraction
+            del optical["constants"]
+
+        # Set photon_energy and n_k_entries if we loaded curves
+        if reference_energy is not None:
+            optical["photon_energy"] = reference_energy
+            optical["n_k_entries"] = len(reference_energy)
 
     return ScintillatorProperties.model_validate(payload)
 
