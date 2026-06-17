@@ -26,6 +26,236 @@ def _repo_root() -> Path:
 sys.path.insert(0, str(_repo_root()))
 
 
+def _create_minimal_simulation(temp_dir: Path):
+    """Create a minimal valid Simulation model for testing."""
+    from src.models.simulation import Simulation
+    from src.models.scintillator import (
+        Scintillator,
+        ScintillatorProperties,
+        ScintillatorComposition,
+        ScintillatorOpticalProperties,
+        ScintillationTimeComponent,
+        ScintillationTimeComponentsByExcitation,
+    )
+    from src.models.base import Vec3Mm, Size3Mm, Vec3
+    from src.models.source import Source, SourceGps, GpsPosition, GpsAngular, GpsEnergy
+    from src.models.optics import Optics, Lens, OpticalGeometry, SensitiveDetector
+    from src.models.geant4runtime import Geant4RunTime, Geant4RuntimeControls
+    from src.models.metadata import Metadata, WorkingDirectoryLayout
+
+    # Create time components
+    time_components = ScintillationTimeComponentsByExcitation(
+        default=[
+            ScintillationTimeComponent(time_constant=2.1, yield_fraction=1.0),
+            ScintillationTimeComponent(time_constant=0.0, yield_fraction=0.0),
+            ScintillationTimeComponent(time_constant=0.0, yield_fraction=0.0),
+        ]
+    )
+
+    # Create scintillator
+    scintillator = Scintillator(
+        position_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=0.0),
+        dimension_mm=Size3Mm(x_mm=100.0, y_mm=100.0, z_mm=20.0),
+        mask_radius_mm=0.0,
+        properties=ScintillatorProperties(
+            name="EJ200",
+            composition=ScintillatorComposition(
+                density=1.023,
+                atoms={"C": 9, "H": 10}
+            ),
+            optical=ScintillatorOpticalProperties(
+                photon_energy=[2.8, 3.0, 3.2],
+                r_index=[1.58, 1.59, 1.60],
+                abs_length=[380.0, 380.0, 300.0],
+                scint_spectrum=[0.2, 1.0, 0.2],
+                n_k_entries=3,
+                scint_yield=10000.0,
+                resolution_scale=1.0,
+                time_components=time_components,
+            )
+        )
+    )
+
+    # Create source
+    source = Source(
+        gps=SourceGps(
+            particle="neutron",
+            position=GpsPosition(
+                type="Plane",
+                shape="Circle",
+                center_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=-100.0),
+                radius_mm=10.0
+            ),
+            angular=GpsAngular(
+                type="beam2d",
+                rot1=Vec3(x=1.0, y=0.0, z=0.0),
+                rot2=Vec3(x=0.0, y=1.0, z=0.0),
+                direction=Vec3(x=0.0, y=0.0, z=1.0)
+            ),
+            energy=GpsEnergy(type="Mono", mono_mev=6.0)
+        )
+    )
+
+    # Create optical config
+    optical = Optics(
+        lenses=[Lens(name="TestLens", primary=True, zmx_file="test.zmx")],
+        geometry=OpticalGeometry(
+            entrance_diameter=60.55,
+            sensor_max_width=36.0
+        ),
+        sensitive_detector_config=SensitiveDetector(
+            position_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=210.05),
+            shape="circle",
+            diameter_rule="min(entranceDiameter,sensorMaxWidth)"
+        )
+    )
+
+    # Create metadata with temp directory
+    metadata = Metadata(
+        author="Test",
+        date="2026-06-17",
+        version="test",
+        description="Test simulation",
+        run_environment=WorkingDirectoryLayout(
+            SimulationRunID="test_run",
+            WorkingDirectory=str(temp_dir),
+            MacroDirectory="macros",
+            LogDirectory="logs"
+        )
+    )
+
+    # Create geant4runner
+    geant4runner = Geant4RunTime(
+        numberOfParticles=100,
+        runtimeControls=Geant4RuntimeControls(
+            controlVerbose=0,
+            runVerbose=0,
+            eventVerbose=0,
+            trackingVerbose=0,
+            printProgress=10
+        )
+    )
+
+    return Simulation(
+        scintillator=scintillator,
+        source=source,
+        optical=optical,
+        metadata=metadata,
+        geant4runner=geant4runner
+    )
+
+
+class MacroWriteTests(unittest.TestCase):
+    """Tests for write_macro function."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Load macro module or skip when dependencies are missing."""
+
+        try:
+            from src.config.macro import write_macro
+        except ModuleNotFoundError as exc:
+            missing_name = (getattr(exc, "name", "") or "").lower()
+            message = str(exc).lower()
+            if "pydantic" in missing_name or "pydantic" in message:
+                raise unittest.SkipTest(
+                    f"Missing dependency: {exc}. "
+                    "Run in the project environment (for example: pixi run)."
+                ) from exc
+            raise
+
+        cls.write_macro = staticmethod(write_macro)
+
+    def test_write_macro_creates_file_with_commands(self) -> None:
+        """write_macro should create a macro file with Geant4 commands."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+
+            # Verify macro file was created
+            self.assertTrue(macro_path.exists())
+            self.assertTrue(macro_path.is_file())
+
+            # Read and verify commands
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+            self.assertGreater(len(commands), 0)
+
+            # Verify key command categories are present
+            self.assertTrue(any(cmd.startswith("/control/verbose") for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/output/") for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/scintillator/") for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/optical_interface/") for cmd in commands))
+            self.assertTrue(any(cmd == "/run/initialize" for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/gps/") for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/run/beamOn") for cmd in commands))
+
+    def test_write_macro_filename_format(self) -> None:
+        """write_macro should create files with correct naming format."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+
+            macro_path = self.write_macro(simulation, create_directories=True, overwrite=True)
+
+            # Verify filename format: {run_id}_{sub_run:04d}.mac
+            env = simulation.metadata.run_environment
+            expected_name = f"{env.simulation_run_id}_{env.sub_run_number:04d}.mac"
+            self.assertEqual(macro_path.name, expected_name)
+
+    def test_write_macro_without_output_commands(self) -> None:
+        """write_macro with include_output=False should omit output commands."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=False,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            # Verify no output commands
+            self.assertFalse(any(cmd.startswith("/output/") for cmd in commands))
+
+            # But other commands should still be present
+            self.assertTrue(any(cmd.startswith("/scintillator/") for cmd in commands))
+
+    def test_write_macro_without_run_initialize(self) -> None:
+        """write_macro with include_run_initialize=False should omit /run/initialize."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=False,
+                create_directories=True,
+                overwrite=True,
+            )
+
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            # Verify no /run/initialize command
+            self.assertFalse(any(cmd == "/run/initialize" for cmd in commands))
+
+
 class MacroAppendLineTests(unittest.TestCase):
     """Tests for append_macro_line function."""
 
