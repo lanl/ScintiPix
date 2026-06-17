@@ -1,8 +1,8 @@
 # Lightweight Geant4-only pulsed neutron timing example.
 #
 # The downstream optical/intensifier/sensor blocks are present only because the
-# shared SimConfig schema and Geant4 geometry expect them. This example inspects
-# only /primaries timing fields from the simulation HDF5 output.
+# shared Simulation schema and Geant4 geometry expect them. This example
+# generates only the primaries Parquet output.
 
 scintillator:
   position_mm:
@@ -104,7 +104,7 @@ sensor:
     max_tot_ns: 25550.0
     dead_time_ns: 475.0
 
-simulation:
+geant4runner:
   numberOfParticles: 200
   runtimeControls:
     controlVerbose: 0
@@ -112,13 +112,11 @@ simulation:
     eventVerbose: 0
     trackingVerbose: 0
     printProgress: 50
-
-runner:
   binary: scintipix
   showProgress: true
   verifyOutput: true
 
-Metadata:
+metadata:
   author: Alex Long
   date: 2026-06-05
   version: ScintPiX v0.1
@@ -133,6 +131,5 @@ Metadata:
     WorkingDirectory: data
     MacroDirectory: macros
     LogDirectory: logs
-    OutputInfo:
-      SimulatedPhotonsDirectory: simulatedPhotons
-      TransportedPhotonsDirectory: transportedPhotons
+    PrimariesDirectory: primaries
+    SimulatedPhotonsDirectory: simulatedPhotons
