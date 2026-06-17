@@ -16,6 +16,13 @@ namespace {
 /// Stage subdirectory for raw simulation output.
 constexpr const char* kSimulatedPhotonsDir = "simulatedPhotons";
 
+std::filesystem::path AppendSimulatedPhotonsDir(std::filesystem::path path) {
+  if (path.filename() == kSimulatedPhotonsDir) {
+    return path;
+  }
+  return path / kSimulatedPhotonsDir;
+}
+
 bool EnsureParentDirectory(const std::string& filePath) {
   const std::filesystem::path parent =
       std::filesystem::path(filePath).parent_path();
