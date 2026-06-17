@@ -132,4 +132,8 @@ metadata:
     MacroDirectory: macros
     LogDirectory: logs
     PrimariesDirectory: primaries
+    SecondariesDirectory: secondaries
     SimulatedPhotonsDirectory: simulatedPhotons
+    PrimariesFilename: primaries.parquet
+    SecondariesFilename: secondaries.parquet
+    PhotonsFilename: photons.parquet
