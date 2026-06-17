@@ -207,25 +207,28 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
         f"/scintillator/geom/posZ {scint.position_mm.z_mm:g} mm",
     ]
 
-    if scint.properties.density is not None:
-        commands.append(f"/scintillator/properties/density {scint.properties.density:g} g/cm3")
-    if scint.properties.carbon_atoms is not None:
-        commands.append(f"/scintillator/properties/carbonAtoms {scint.properties.carbon_atoms}")
-    if scint.properties.hydrogen_atoms is not None:
-        commands.append(f"/scintillator/properties/hydrogenAtoms {scint.properties.hydrogen_atoms}")
+    # Access composition properties from nested structure
+    if scint.properties.composition.density is not None:
+        commands.append(f"/scintillator/properties/density {scint.properties.composition.density:g} g/cm3")
+    if "C" in scint.properties.composition.atoms:
+        commands.append(f"/scintillator/properties/carbonAtoms {scint.properties.composition.atoms['C']}")
+    if "H" in scint.properties.composition.atoms:
+        commands.append(f"/scintillator/properties/hydrogenAtoms {scint.properties.composition.atoms['H']}")
 
-    commands.append("/scintillator/properties/photonEnergy " f"{_format_float_list(scint.properties.photon_energy)} eV")
-    commands.append("/scintillator/properties/rIndex " f"{_format_float_list(scint.properties.r_index)}")
-    if scint.properties.abs_length is not None:
-        commands.append("/scintillator/properties/absLength " f"{_format_float_list(scint.properties.abs_length)} cm")
-    if scint.properties.scint_spectrum is not None:
-        commands.append("/scintillator/properties/scintSpectrum " f"{_format_float_list(scint.properties.scint_spectrum)}")
-    if scint.properties.scint_yield is not None:
-        commands.append(f"/scintillator/properties/scintYield {scint.properties.scint_yield:g}")
-    if scint.properties.resolution_scale is not None:
-        commands.append("/scintillator/properties/resolutionScale " f"{scint.properties.resolution_scale:g}")
+    # Access optical properties from nested structure
+    scint_optical = scint.properties.optical
+    commands.append("/scintillator/properties/photonEnergy " f"{_format_float_list(scint_optical.photon_energy)} eV")
+    commands.append("/scintillator/properties/rIndex " f"{_format_float_list(scint_optical.r_index)}")
+    if scint_optical.abs_length is not None:
+        commands.append("/scintillator/properties/absLength " f"{_format_float_list(scint_optical.abs_length)} cm")
+    if scint_optical.scint_spectrum is not None:
+        commands.append("/scintillator/properties/scintSpectrum " f"{_format_float_list(scint_optical.scint_spectrum)}")
+    if scint_optical.scint_yield is not None:
+        commands.append(f"/scintillator/properties/scintYield {scint_optical.scint_yield:g}")
+    if scint_optical.resolution_scale is not None:
+        commands.append("/scintillator/properties/resolutionScale " f"{scint_optical.resolution_scale:g}")
 
-    _, selected_components = scint.properties.time_components.resolve_for_particle(simulation.source.gps.particle)
+    _, selected_components = scint_optical.time_components.resolve_for_particle(simulation.source.gps.particle)
     for index, component in enumerate(selected_components, start=1):
         commands.append("/scintillator/properties/timeConstant" f"{index} {component.time_constant:g} ns")
         commands.append("/scintillator/properties/yieldFraction" f"{index} {component.yield_fraction:g}")
