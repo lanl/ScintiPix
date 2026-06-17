@@ -273,6 +273,7 @@ class TestWorkingDirectoryLayout:
         layout.apply_stage_defaults(controls)
 
         assert layout.primaries_directory == "primaries"
+        assert layout.secondaries_directory == "secondaries"
         assert layout.simulated_photons_directory == "simulatedPhotons"
         assert layout.transported_photons_directory is None
         assert layout.intensified_photons_directory is None
@@ -285,6 +286,7 @@ class TestWorkingDirectoryLayout:
         layout.apply_stage_defaults(controls)
 
         assert layout.primaries_directory == "primaries"
+        assert layout.secondaries_directory == "secondaries"
         assert layout.simulated_photons_directory == "simulatedPhotons"
         assert layout.transported_photons_directory == "transportedPhotons"
         assert layout.intensified_photons_directory == "intensifiedPhotons"
@@ -334,39 +336,39 @@ class TestWorkingDirectoryLayout:
             primaries_directory="prim",
             secondaries_directory="sec",
         )
+        layout.resolve_directories()
         directories = layout.directories_to_create()
         assert "primaries directory" in directories
-        assert directories["primaries directory"] == Path("data/example_000/prim")
+        assert directories["primaries directory"] == (
+            _repo_root() / "data" / "example_000" / "prim"
+        )
         assert "secondaries directory" in directories
-        assert directories["secondaries directory"] == Path("data/example_000/sec")
+        assert directories["secondaries directory"] == (
+            _repo_root() / "data" / "example_000" / "sec"
+        )
 
-    def test_resolve_optional_run_child_relative_paths(self) -> None:
-        """_resolve_optional_run_child should resolve relative paths."""
+    def test_resolve_directories_relative_paths(self) -> None:
+        """resolve_directories should resolve relative directories under run root."""
         layout = WorkingDirectoryLayout(
             simulation_run_id="test",
             sub_run_number=0,
             working_directory="/tmp",
+            primaries_directory="subdir",
         )
-        result = layout._resolve_optional_run_child("subdir")
-        assert result == Path("/tmp/test_000/subdir")
+        layout.resolve_directories()
+        assert Path(layout.primaries_directory) == Path("/tmp/test_000/subdir").resolve()
 
-    def test_resolve_optional_run_child_absolute_paths(self) -> None:
-        """_resolve_optional_run_child should preserve absolute paths."""
-        layout = WorkingDirectoryLayout()
-        result = layout._resolve_optional_run_child("/absolute/path")
-        assert result == Path("/absolute/path")
+    def test_resolve_directories_absolute_paths(self) -> None:
+        """resolve_directories should preserve absolute directory paths."""
+        layout = WorkingDirectoryLayout(primaries_directory="/absolute/path")
+        layout.resolve_directories()
+        assert Path(layout.primaries_directory) == Path("/absolute/path")
 
-    def test_resolve_optional_run_child_none_returns_none(self) -> None:
-        """_resolve_optional_run_child should return None for None input."""
+    def test_resolve_directories_none_values_remain_none(self) -> None:
+        """resolve_directories should leave unset optional directories as None."""
         layout = WorkingDirectoryLayout()
-        result = layout._resolve_optional_run_child(None)
-        assert result is None
-
-    def test_resolve_optional_run_child_blank_returns_none(self) -> None:
-        """_resolve_optional_run_child should return None for blank strings."""
-        layout = WorkingDirectoryLayout()
-        result = layout._resolve_optional_run_child("  ")
-        assert result is None
+        layout.resolve_directories()
+        assert layout.primaries_directory is None
 
 
 # ============================================================================
@@ -493,6 +495,7 @@ class TestMetadata:
         assert metadata.run_environment.run_directory == run_root
         for directory in (
             "primaries",
+            "secondaries",
             "simulatedPhotons",
             "transportedPhotons",
             "intensifiedPhotons",
@@ -501,7 +504,6 @@ class TestMetadata:
             "logs",
         ):
             assert (run_root / directory).is_dir()
-        assert not (run_root / "secondaries").exists()
 
     def test_metadata_skips_directories_for_disabled_stages(
         self,

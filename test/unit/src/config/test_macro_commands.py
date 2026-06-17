@@ -191,7 +191,9 @@ class MacroWriteTests(unittest.TestCase):
 
             # Verify key command categories are present
             self.assertTrue(any(cmd.startswith("/control/verbose") for cmd in commands))
-            self.assertTrue(any(cmd.startswith("/output/") for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/output/primariesFile ") for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/output/secondariesFile ") for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/output/photonsFile ") for cmd in commands))
             self.assertTrue(any(cmd.startswith("/scintillator/") for cmd in commands))
             self.assertTrue(any(cmd.startswith("/optical_interface/") for cmd in commands))
             self.assertTrue(any(cmd == "/run/initialize" for cmd in commands))
@@ -207,9 +209,9 @@ class MacroWriteTests(unittest.TestCase):
 
             macro_path = self.write_macro(simulation, create_directories=True, overwrite=True)
 
-            # Verify filename format: {run_id}_{sub_run:04d}.mac
+            # Verify filename format: {run_id}_{sub_run:03d}.mac
             env = simulation.metadata.run_environment
-            expected_name = f"{env.simulation_run_id}_{env.sub_run_number:04d}.mac"
+            expected_name = f"{env.simulation_run_id}_{env.sub_run_number:03d}.mac"
             self.assertEqual(macro_path.name, expected_name)
 
     def test_write_macro_without_output_commands(self) -> None:

@@ -30,13 +30,8 @@ class RunSimulationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         try:
-            from src.config.ConfigIO import (
-                prepare_simulation_run,
-                resolve_run_environment_paths,
-                run_log_filename,
-                simulated_output_filename,
-            )
-            from src.config.SimConfig import default_sim_config
+            from src.config.macro import write_macro
+            from src.config.yaml import from_yaml
             from src.runner.runSimulation import run, run_simulation
             from src.runner.runSimulation import _parse_simulated_events
         except ModuleNotFoundError as exc:
@@ -47,11 +42,8 @@ class RunSimulationTests(unittest.TestCase):
                     "Run in the project environment (for example: pixi run test-python)."
                 ) from exc
             raise
-        cls.default_sim_config = staticmethod(default_sim_config)
-        cls.prepare_simulation_run = staticmethod(prepare_simulation_run)
-        cls.resolve_run_environment_paths = staticmethod(resolve_run_environment_paths)
-        cls.run_log_filename = staticmethod(run_log_filename)
-        cls.simulated_output_filename = staticmethod(simulated_output_filename)
+        cls.from_yaml = staticmethod(from_yaml)
+        cls.write_macro = staticmethod(write_macro)
         cls.parse_simulated_events = staticmethod(_parse_simulated_events)
         cls.runner_run = staticmethod(run)
         cls.run_simulation = staticmethod(run_simulation)
@@ -72,10 +64,34 @@ class RunSimulationTests(unittest.TestCase):
             return self.returncode
 
     def _config_for_tmp(self, tmp_path: Path):
-        config = self.default_sim_config()
-        config.metadata.run_environment.working_directory = tmp_path.as_posix()
-        config.metadata.run_environment.simulation_run_id = "runner_test"
+        config = self.from_yaml(
+            _repo_root() / "examples" / "yamlFiles" / "pulsed_neutron_source_timing.yaml"
+        )
+        run_environment = config.metadata.run_environment
+        run_environment.working_directory = tmp_path.as_posix()
+        run_environment.simulation_run_id = "runner_test"
+        run_environment.sub_run_number = 0
+        run_environment.macro_directory = "macros"
+        run_environment.log_directory = "logs"
+        run_environment.primaries_directory = "primaries"
+        run_environment.secondaries_directory = "secondaries"
+        run_environment.simulated_photons_directory = "simulatedPhotons"
+        run_environment.resolve_directories()
+        run_environment.create_directories()
         return config
+
+    def _macro_file(self, config) -> Path:
+        env = config.metadata.run_environment
+        return Path(env.macro_directory) / "runner_test_000.mac"
+
+    def _log_file(self, config) -> Path:
+        return Path(config.metadata.run_environment.log_directory) / "runLog.txt"
+
+    def _primaries_parquet_file(self, config) -> Path:
+        return (
+            Path(config.metadata.run_environment.primaries_directory)
+            / config.metadata.run_environment.primaries_filename
+        )
 
     def test_parse_simulated_events_extracts_aggregate_count(self) -> None:
         self.assertEqual(
@@ -92,29 +108,24 @@ class RunSimulationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            paths = self.resolve_run_environment_paths(config)
-            paths.macro.mkdir(parents=True, exist_ok=True)
-            paths.macro_file.write_text("/run/initialize\n", encoding="utf-8")
 
             with patch("src.runner.runSimulation.subprocess.Popen") as popen_mock:
                 result = self.run_simulation(config, dry_run=True)
 
             self.assertIsNone(result)
             popen_mock.assert_not_called()
+            self.assertTrue(self._macro_file(config).exists())
 
-    def test_run_uses_binary_from_config_runner(self) -> None:
+    def test_run_uses_binary_from_geant4runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            config.runner.binary = "pixi run scintipix"
-            paths = self.resolve_run_environment_paths(config)
-            paths.macro.mkdir(parents=True, exist_ok=True)
-            paths.simulated_photons.mkdir(parents=True, exist_ok=True)
-            paths.macro_file.write_text("/run/initialize\n", encoding="utf-8")
-            output_hdf5 = paths.simulated_photons / self.simulated_output_filename(config)
-            expected_log_path = paths.log / self.run_log_filename(config)
-            output_hdf5.parent.mkdir(parents=True, exist_ok=True)
-            output_hdf5.write_text("ok\n", encoding="utf-8")
+            config.geant4runner.binary = "pixi run scintipix"
+            self.write_macro(config)
+            output_parquet = self._primaries_parquet_file(config)
+            expected_log_path = self._log_file(config)
+            output_parquet.parent.mkdir(parents=True, exist_ok=True)
+            output_parquet.write_text("ok\n", encoding="utf-8")
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -130,7 +141,7 @@ class RunSimulationTests(unittest.TestCase):
 
             self.assertIsInstance(completed, subprocess.CompletedProcess)
             popen_mock.assert_called_once_with(
-                ["pixi", "run", "scintipix", str(paths.macro_file.resolve())],
+                ["pixi", "run", "scintipix", str(self._macro_file(config).resolve())],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -145,13 +156,11 @@ class RunSimulationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            config.runner.show_progress = False
-            paths = self.resolve_run_environment_paths(config)
-            paths.macro.mkdir(parents=True, exist_ok=True)
-            paths.simulated_photons.mkdir(parents=True, exist_ok=True)
-            paths.macro_file.write_text("/run/initialize\n", encoding="utf-8")
-            output_hdf5 = paths.simulated_photons / self.simulated_output_filename(config)
-            output_hdf5.write_text("ok\n", encoding="utf-8")
+            config.geant4runner.show_progress = False
+            self.write_macro(config)
+            output_parquet = self._primaries_parquet_file(config)
+            output_parquet.parent.mkdir(parents=True, exist_ok=True)
+            output_parquet.write_text("ok\n", encoding="utf-8")
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -182,9 +191,7 @@ class RunSimulationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            paths = self.resolve_run_environment_paths(config)
-            paths.macro.mkdir(parents=True, exist_ok=True)
-            paths.macro_file.write_text("/run/initialize\n", encoding="utf-8")
+            self.write_macro(config)
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -205,10 +212,8 @@ class RunSimulationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            config.runner.verify_output = False
-            paths = self.resolve_run_environment_paths(config)
-            paths.macro.mkdir(parents=True, exist_ok=True)
-            paths.macro_file.write_text("/run/initialize\n", encoding="utf-8")
+            config.geant4runner.verify_output = False
+            self.write_macro(config)
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -225,30 +230,25 @@ class RunSimulationTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0)
             popen_mock.assert_called_once()
 
-    def test_prepare_simulation_run_writes_macro_and_configures_log(self) -> None:
+    def test_run_simulation_dry_run_writes_macro(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
 
-            prepared = self.prepare_simulation_run(config)
-            paths = self.resolve_run_environment_paths(config)
+            result = self.run_simulation(config, dry_run=True)
 
-            self.assertTrue(prepared)
-            self.assertTrue(paths.macro_file.exists())
-            self.assertTrue((paths.log / self.run_log_filename(config)).exists())
+            self.assertIsNone(result)
+            self.assertTrue(self._macro_file(config).exists())
 
     def test_run_simulation_prepares_then_executes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            output_hdf5 = (
-                self.resolve_run_environment_paths(config).simulated_photons
-                / self.simulated_output_filename(config)
-            )
+            output_parquet = self._primaries_parquet_file(config)
 
             def _popen_side_effect(*args, **kwargs):
-                output_hdf5.parent.mkdir(parents=True, exist_ok=True)
-                output_hdf5.write_text("ok\n", encoding="utf-8")
+                output_parquet.parent.mkdir(parents=True, exist_ok=True)
+                output_parquet.write_text("ok\n", encoding="utf-8")
                 return self._FakeProcess(
                     ["G4WT10 > Simulated 10000 events\n"],
                     returncode=0,
@@ -264,7 +264,7 @@ class RunSimulationTests(unittest.TestCase):
                 completed = self.run_simulation(config)
 
             self.assertEqual(completed.returncode, 0)
-            self.assertTrue(self.resolve_run_environment_paths(config).macro_file.exists())
+            self.assertTrue(self._macro_file(config).exists())
             popen_mock.assert_called_once()
 
 
