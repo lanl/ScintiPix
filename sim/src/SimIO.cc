@@ -1,11 +1,9 @@
 #include "SimIO.hh"
-#include "utils.hh"
 
 #include <arrow/api.h>
 #include <arrow/io/api.h>
 #include <parquet/arrow/writer.h>
 
-#include <cctype>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -13,16 +11,6 @@
 
 namespace SimIO {
 namespace {
-/// Stage subdirectory for raw simulation output.
-constexpr const char* kSimulatedPhotonsDir = "simulatedPhotons";
-
-std::filesystem::path AppendSimulatedPhotonsDir(std::filesystem::path path) {
-  if (path.filename() == kSimulatedPhotonsDir) {
-    return path;
-  }
-  return path / kSimulatedPhotonsDir;
-}
-
 bool EnsureParentDirectory(const std::string& filePath) {
   const std::filesystem::path parent =
       std::filesystem::path(filePath).parent_path();
@@ -359,111 +347,11 @@ bool WritePhotons(const std::string& path,
 }
 }  // namespace
 
-// Normalize a run name into a directory-safe token.
-std::string NormalizeRunName(const std::string& value) {
-  std::string normalized = Utils::Unquote(Utils::Trim(value));
-
-  for (char& c : normalized) {
-    const unsigned char uc = static_cast<unsigned char>(c);
-    if (c == '/' || c == '\\' || std::isspace(uc)) {
-      c = '_';
-    }
-  }
-
-  return normalized;
-}
-
-// Strip known output suffixes when present.
-std::string StripKnownOutputExtension(const std::string& value) {
-  const std::filesystem::path path(value);
-  const std::string ext = Utils::ToLower(path.extension().string());
-
-  if (ext != ".h5" && ext != ".hdf5" && ext != ".parquet") {
-    return value;
-  }
-
-  const std::filesystem::path base = path.parent_path() / path.stem();
-  return base.string();
-}
-
-// Resolve a relative path against repository root (or cwd fallback).
-std::filesystem::path ResolveAgainstRepositoryRoot(std::filesystem::path path) {
-  if (!path.is_relative()) {
-    return path;
-  }
-#ifdef SCINTIPIX_REPO_ROOT
-  return std::filesystem::path(SCINTIPIX_REPO_ROOT) / path;
-#else
-  return std::filesystem::current_path() / path;
-#endif
-}
-
-
-// Compose absolute output path from base name, output path override, and run name.
-std::string ComposeOutputPath(const std::string& base,
-                              const std::string& outputPath,
-                              const std::string& runName,
-                              const char* extension) {
-  const std::string safeBase =
-      base.empty() ? "data/photon_optical_interface_hits" : base;
-
-  std::filesystem::path basePath = ResolveAgainstRepositoryRoot(safeBase);
-  const std::string baseLeaf = basePath.filename().string().empty()
-                                   ? "photon_optical_interface_hits"
-                                   : basePath.filename().string();
-
-  if (!outputPath.empty()) {
-    std::filesystem::path explicitDir = ResolveAgainstRepositoryRoot(outputPath);
-    if (!runName.empty()) {
-      explicitDir /= runName;
-    }
-    explicitDir = AppendSimulatedPhotonsDir(explicitDir);
-    return (explicitDir / baseLeaf).string() + extension;
-  }
-
-  if (runName.empty()) {
-    std::filesystem::path root = basePath.parent_path();
-    if (root.empty()) {
-#ifdef SCINTIPIX_REPO_ROOT
-      root = std::filesystem::path(SCINTIPIX_REPO_ROOT) / "data";
-#else
-      root = std::filesystem::current_path() / "data";
-#endif
-    }
-    root = AppendSimulatedPhotonsDir(root);
-    return (root / baseLeaf).string() + extension;
-  }
-
-#ifdef SCINTIPIX_REPO_ROOT
-  std::filesystem::path runDir =
-      std::filesystem::path(SCINTIPIX_REPO_ROOT) / "data" / runName;
-#else
-  std::filesystem::path runDir =
-      std::filesystem::current_path() / "data" / runName;
-#endif
-  runDir = AppendSimulatedPhotonsDir(runDir);
-
-  return (runDir / baseLeaf).string() + extension;
-}
-
-ParquetOutputPaths ParquetPathsForBase(const std::string& basePath) {
-  const std::filesystem::path path = StripKnownOutputExtension(basePath);
-  const std::filesystem::path parent = path.parent_path();
-  const std::string stem = path.filename().string();
-
-  return {
-      (parent / (stem + "_primaries.parquet")).string(),
-      (parent / (stem + "_secondaries.parquet")).string(),
-      (parent / (stem + "_photons.parquet")).string(),
-  };
-}
-
-bool WriteParquet(const std::string& basePath,
+bool WriteParquet(const ParquetOutputPaths& paths,
                   const std::vector<PrimaryInfo>& primaryRows,
                   const std::vector<SecondaryInfo>& secondaryRows,
                   const std::vector<PhotonInfo>& photonRows,
                   std::string* errorMessage) {
-  const auto paths = ParquetPathsForBase(basePath);
   return WritePrimaries(paths.primaries, primaryRows, errorMessage) &&
          WriteSecondaries(paths.secondaries, secondaryRows, errorMessage) &&
          WritePhotons(paths.photons, photonRows, errorMessage);

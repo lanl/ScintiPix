@@ -19,40 +19,8 @@ except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.models.simulation import Simulation
 
-DEFAULT_OUTPUT_FILENAME_BASE = "photon_optical_interface_hits"
-DEFAULT_OPTICAL_INTERFACE_THICKNESS_MM = 0.1
 NS_PER_SECOND = 1_000_000_000.0
 MM_PER_CM = 10.0
-
-
-def _get_macro_filepath(simulation: Simulation) -> Path:
-    """Get the macro file path from simulation metadata."""
-    env = simulation.metadata.run_environment
-    run_id = env.simulation_run_id
-    sub_run = env.sub_run_number
-
-    # Macro path: {macro_dir}/{run_id}_{sub_run:04d}.mac
-    macro_dir = env._resolve_optional_run_child(env.macro_directory)
-    if macro_dir is None:
-        raise ValueError("Macro directory not configured in run environment")
-
-    filename = f"{run_id}_{sub_run:04d}.mac"
-    return macro_dir / filename
-
-
-def _get_output_directory(simulation: Simulation) -> Path:
-    """Get the output directory path for /output/path command."""
-    env = simulation.metadata.run_environment
-    working_dir = env.working_directory
-    if working_dir is None:
-        raise ValueError("Working directory not configured in run environment")
-    return Path(working_dir) / f"{env.simulation_run_id}_{env.sub_run_number:03d}"
-
-
-def _get_output_filename_stem(simulation: Simulation) -> str:
-    """Get the output filename stem for /output/filename command."""
-    sub_run = simulation.metadata.run_environment.sub_run_number
-    return f"{DEFAULT_OUTPUT_FILENAME_BASE}_{sub_run:04d}"
 
 
 def _source_commands(simulation: Simulation) -> list[str]:
@@ -176,11 +144,28 @@ def _format_macro_scalar(value: float) -> str:
 
 
 def _output_commands(simulation: Simulation) -> list[str]:
-    """Generate output path and filename commands."""
+    """Generate explicit Geant4 output file commands."""
+    env = simulation.metadata.run_environment
+    if env.primaries_directory is None:
+        raise ValueError("Primaries directory not configured in run environment")
+    if env.secondaries_directory is None:
+        raise ValueError("Secondaries directory not configured in run environment")
+    if env.simulated_photons_directory is None:
+        raise ValueError("Simulated photons directory not configured in run environment")
+
     return [
-        f"/output/path {_get_output_directory(simulation)}",
-        f"/output/filename {_get_output_filename_stem(simulation)}",
-        f"/output/runname {simulation.metadata.run_environment.simulation_run_id}",
+        (
+            "/output/primariesFile "
+            f"{Path(env.primaries_directory) / env.primaries_filename}"
+        ),
+        (
+            "/output/secondariesFile "
+            f"{Path(env.secondaries_directory) / env.secondaries_filename}"
+        ),
+        (
+            "/output/photonsFile "
+            f"{Path(env.simulated_photons_directory) / env.photons_filename}"
+        ),
     ]
 
 
@@ -240,7 +225,7 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
         [
             f"/optical_interface/geom/sizeX {optical.geometry.entrance_diameter:g} mm",
             f"/optical_interface/geom/sizeY {optical.geometry.entrance_diameter:g} mm",
-            f"/optical_interface/geom/thickness {DEFAULT_OPTICAL_INTERFACE_THICKNESS_MM:g} mm",
+            "/optical_interface/geom/thickness 0.1 mm",
             f"/optical_interface/geom/posX {detector.position_mm.x_mm:g} mm",
             f"/optical_interface/geom/posY {detector.position_mm.y_mm:g} mm",
             f"/optical_interface/geom/posZ {detector.position_mm.z_mm:g} mm",
@@ -296,7 +281,7 @@ def write_macro(
 
     Args:
         simulation: The simulation configuration
-        include_output: Include /output/path and /output/filename commands
+        include_output: Include explicit output file commands.
         include_run_initialize: Include /run/initialize command
         create_directories: Create output directories if they don't exist
         overwrite: Overwrite existing macro file if it exists
@@ -307,7 +292,13 @@ def write_macro(
     if create_directories:
         simulation.metadata.run_environment.create_directories()
 
-    macro_path = _get_macro_filepath(simulation)
+    env = simulation.metadata.run_environment
+    if env.macro_directory is None:
+        raise ValueError("Macro directory not configured in run environment")
+    macro_path = (
+        Path(env.macro_directory)
+        / f"{env.simulation_run_id}_{env.sub_run_number:03d}.mac"
+    )
     if macro_path.exists() and not overwrite:
         raise FileExistsError(f"Refusing to overwrite existing file: {macro_path}")
 

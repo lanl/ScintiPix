@@ -1,9 +1,9 @@
 #include "EventAction.hh"
 
+#include "RunAction.hh"
 #include "SimIO.hh"
 #include "config.hh"
 
-#include "G4AutoLock.hh"
 #include "G4Event.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4PrimaryParticle.hh"
@@ -19,9 +19,6 @@
 #include <vector>
 
 namespace {
-/// Serialize writes to shared output files across worker threads.
-G4Mutex gOutputMutex = G4MUTEX_INITIALIZER;
-
 /// Convert Geant4 particle names into compact labels used in output tables.
 std::string ToSpeciesLabel(const G4String& particleName) {
   if (particleName == "neutron") return "n";
@@ -96,9 +93,6 @@ void EventAction::EndOfEventAction(const G4Event* event) {
   }
 
   const auto eventID64 = static_cast<std::int64_t>(event->GetEventID());
-  const std::string parquetBasePath =
-      fConfig ? fConfig->GetParquetBasePath() : "photon_optical_interface_hits";
-
   std::vector<SimIO::PrimaryInfo> primaryRows;
   std::vector<SimIO::SecondaryInfo> secondaryRows;
   std::vector<SimIO::PhotonInfo> photonRows;
@@ -206,17 +200,7 @@ void EventAction::EndOfEventAction(const G4Event* event) {
     photonRows.push_back(row);
   }
 
-  G4AutoLock lock(&gOutputMutex);
-  std::string error;
-  if (!SimIO::WriteParquet(parquetBasePath, primaryRows, secondaryRows,
-                           photonRows, &error)) {
-    if (error.empty()) {
-      G4cout << "Failed writing Parquet output for " << parquetBasePath
-             << G4endl;
-    } else {
-      G4cout << error << G4endl;
-    }
-  }
+  RunAction::AppendOutputRows(primaryRows, secondaryRows, photonRows);
 }
 
 void EventAction::RecordTrackInfo(G4int trackID, const TrackInfo& info) {

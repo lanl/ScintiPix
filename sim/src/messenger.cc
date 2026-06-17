@@ -288,23 +288,20 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fOpticalInterfacePosZCmd->SetUnitCategory("Length");
   fOpticalInterfacePosZCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-  fOutputPathCmd = new G4UIcmdWithAString("/output/path", this);
-  fOutputPathCmd->SetGuidance(
-      "Set output directory path. Use \"\" to clear and fall back to legacy base-path behavior.");
-  fOutputPathCmd->SetParameterName("path", false);
-  fOutputPathCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fPrimariesOutputFileCmd = new G4UIcmdWithAString("/output/primariesFile", this);
+  fPrimariesOutputFileCmd->SetGuidance("Set primaries Parquet output file.");
+  fPrimariesOutputFileCmd->SetParameterName("primariesFile", false);
+  fPrimariesOutputFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-  fOutputFilenameCmd = new G4UIcmdWithAString("/output/filename", this);
-  fOutputFilenameCmd->SetGuidance(
-      "Set output base filename/path for Parquet outputs");
-  fOutputFilenameCmd->SetParameterName("filename", false);
-  fOutputFilenameCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fSecondariesOutputFileCmd = new G4UIcmdWithAString("/output/secondariesFile", this);
+  fSecondariesOutputFileCmd->SetGuidance("Set secondaries Parquet output file.");
+  fSecondariesOutputFileCmd->SetParameterName("secondariesFile", false);
+  fSecondariesOutputFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-  fOutputRunNameCmd = new G4UIcmdWithAString("/output/runname", this);
-  fOutputRunNameCmd->SetGuidance(
-      "Set optional run name; outputs go under <output/path>/<runname>/ when path is set, otherwise data/<runname>/. Use \"\" to clear.");
-  fOutputRunNameCmd->SetParameterName("runname", false);
-  fOutputRunNameCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fPhotonsOutputFileCmd = new G4UIcmdWithAString("/output/photonsFile", this);
+  fPhotonsOutputFileCmd->SetGuidance("Set photons Parquet output file.");
+  fPhotonsOutputFileCmd->SetParameterName("photonsFile", false);
+  fPhotonsOutputFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fSourceTimingModeCmd = new G4UIcmdWithAString("/source/timing/mode", this);
   fSourceTimingModeCmd->SetGuidance(
@@ -382,9 +379,9 @@ Messenger::~Messenger() {
   delete fSourceTimingStartTimeCmd;
   delete fSourceTimingModeCmd;
 
-  delete fOutputRunNameCmd;
-  delete fOutputFilenameCmd;
-  delete fOutputPathCmd;
+  delete fPhotonsOutputFileCmd;
+  delete fSecondariesOutputFileCmd;
+  delete fPrimariesOutputFileCmd;
 
   delete fOpticalInterfacePosZCmd;
   delete fOpticalInterfacePosYCmd;
@@ -710,37 +707,24 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     return;
   }
 
-  if (command == fOutputPathCmd) {
-    fConfig->SetOutputPath(newValue);
-    const auto configuredPath = fConfig->GetOutputPath();
-    if (configuredPath.empty()) {
-      G4cout << "Output path cleared (using legacy filename-path behavior)."
-             << G4endl;
-    } else {
-      G4cout << "Output path set to '" << configuredPath << "'." << G4endl;
-    }
-    G4cout << "Parquet output base: '" << fConfig->GetParquetBasePath()
-           << "'." << G4endl;
+  if (command == fPrimariesOutputFileCmd) {
+    fConfig->SetPrimariesOutputFile(newValue);
+    G4cout << "Primaries Parquet output file set to '"
+           << fConfig->GetPrimariesOutputFile() << "'." << G4endl;
     return;
   }
 
-  if (command == fOutputFilenameCmd) {
-    fConfig->SetOutputFilename(newValue);
-    G4cout << "Output filename set. Parquet output base: '"
-           << fConfig->GetParquetBasePath() << "'." << G4endl;
+  if (command == fSecondariesOutputFileCmd) {
+    fConfig->SetSecondariesOutputFile(newValue);
+    G4cout << "Secondaries Parquet output file set to '"
+           << fConfig->GetSecondariesOutputFile() << "'." << G4endl;
     return;
   }
 
-  if (command == fOutputRunNameCmd) {
-    fConfig->SetOutputRunName(newValue);
-    const auto runName = fConfig->GetOutputRunName();
-    if (runName.empty()) {
-      G4cout << "Output run name cleared." << G4endl;
-    } else {
-      G4cout << "Output run name set to '" << runName << "'." << G4endl;
-    }
-    G4cout << "Parquet output base: '" << fConfig->GetParquetBasePath()
-           << "'." << G4endl;
+  if (command == fPhotonsOutputFileCmd) {
+    fConfig->SetPhotonsOutputFile(newValue);
+    G4cout << "Photons Parquet output file set to '"
+           << fConfig->GetPhotonsOutputFile() << "'." << G4endl;
     return;
   }
 }

@@ -1,16 +1,23 @@
 #include "RunAction.hh"
 
 #include "config.hh"
-#include "SimIO.hh"
 
 #include "G4Exception.hh"
 #include "G4ExceptionSeverity.hh"
 #include "G4Run.hh"
+#include "G4ios.hh"
 
 #include <filesystem>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace {
+std::mutex gOutputRowsMutex;
+std::vector<SimIO::PrimaryInfo> gPrimaryRows;
+std::vector<SimIO::SecondaryInfo> gSecondaryRows;
+std::vector<SimIO::PhotonInfo> gPhotonRows;
+
 // Return true when the output path has no parent or its parent exists.
 bool ParentDirectoryExists(const std::string& outputFilePath) {
   const std::filesystem::path parent =
@@ -31,9 +38,20 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
     return;
   }
 
+  {
+    std::lock_guard<std::mutex> lock(gOutputRowsMutex);
+    gPrimaryRows.clear();
+    gSecondaryRows.clear();
+    gPhotonRows.clear();
+  }
+
   std::string missingPaths;
 
-  const auto paths = SimIO::ParquetPathsForBase(fConfig->GetParquetBasePath());
+  const SimIO::ParquetOutputPaths paths = {
+      fConfig->GetPrimariesOutputFile(),
+      fConfig->GetSecondariesOutputFile(),
+      fConfig->GetPhotonsOutputFile(),
+  };
   if (!ParentDirectoryExists(paths.primaries)) {
     missingPaths += "  - Parquet primaries target: " + paths.primaries + "\n";
   }
@@ -58,4 +76,46 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
 
   G4Exception("RunAction::BeginOfRunAction", "scintipix/output/missing-directory",
               FatalException, message);
+}
+
+void RunAction::EndOfRunAction(const G4Run* /*run*/) {
+  if (!IsMaster() || fConfig == nullptr) {
+    return;
+  }
+
+  std::vector<SimIO::PrimaryInfo> primaryRows;
+  std::vector<SimIO::SecondaryInfo> secondaryRows;
+  std::vector<SimIO::PhotonInfo> photonRows;
+  {
+    std::lock_guard<std::mutex> lock(gOutputRowsMutex);
+    primaryRows = gPrimaryRows;
+    secondaryRows = gSecondaryRows;
+    photonRows = gPhotonRows;
+  }
+
+  const SimIO::ParquetOutputPaths paths = {
+      fConfig->GetPrimariesOutputFile(),
+      fConfig->GetSecondariesOutputFile(),
+      fConfig->GetPhotonsOutputFile(),
+  };
+
+  std::string error;
+  if (!SimIO::WriteParquet(paths, primaryRows, secondaryRows, photonRows, &error)) {
+    if (error.empty()) {
+      G4cout << "Failed writing Parquet output." << G4endl;
+    } else {
+      G4cout << error << G4endl;
+    }
+  }
+}
+
+void RunAction::AppendOutputRows(
+    const std::vector<SimIO::PrimaryInfo>& primaryRows,
+    const std::vector<SimIO::SecondaryInfo>& secondaryRows,
+    const std::vector<SimIO::PhotonInfo>& photonRows) {
+  std::lock_guard<std::mutex> lock(gOutputRowsMutex);
+  gPrimaryRows.insert(gPrimaryRows.end(), primaryRows.begin(), primaryRows.end());
+  gSecondaryRows.insert(gSecondaryRows.end(), secondaryRows.begin(),
+                        secondaryRows.end());
+  gPhotonRows.insert(gPhotonRows.end(), photonRows.begin(), photonRows.end());
 }

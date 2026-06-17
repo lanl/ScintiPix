@@ -10,8 +10,10 @@ from pydantic import Field, field_validator, model_validator
 
 try:
     from src.common.utilities import ensure_directories
+    from src.common.utilities import resolve_path
 except ModuleNotFoundError:  # pragma: no cover - supports PYTHONPATH=src usage
     from common.utilities import ensure_directories
+    from common.utilities import resolve_path
 
 from .base import StrictModel
 
@@ -99,6 +101,21 @@ class WorkingDirectoryLayout(StrictModel):
         alias="IntensifiedPhotonsDirectory",
     )
     sensor_hits_directory: str | None = Field(default=None, alias="SensorHitsDirectory")
+    primaries_filename: str = Field(
+        default="primaries.parquet",
+        alias="PrimariesFilename",
+        min_length=1,
+    )
+    secondaries_filename: str = Field(
+        default="secondaries.parquet",
+        alias="SecondariesFilename",
+        min_length=1,
+    )
+    photons_filename: str = Field(
+        default="photons.parquet",
+        alias="PhotonsFilename",
+        min_length=1,
+    )
 
     @model_validator(mode="after")
     def fill_in_layout_defaults(self) -> "WorkingDirectoryLayout":
@@ -110,19 +127,12 @@ class WorkingDirectoryLayout(StrictModel):
         Run-specific directories are resolved later as
         `<WorkingDirectory>/<SimulationRunID>/...`.
         """
-        from src.common.utilities import repo_root
-
         if self.working_directory is None or not self.working_directory.strip():
             self.working_directory = "data"
         if self.macro_directory is None or not self.macro_directory.strip():
             self.macro_directory = "macros"
         if self.log_directory is None or not self.log_directory.strip():
             self.log_directory = "logs"
-
-        # Special case: "data" always resolves to repo_root/data
-        if self.working_directory == "data":
-            self.working_directory = str(repo_root() / "data")
-
         return self
 
     def apply_stage_defaults(self, controls: RunControls) -> None:
@@ -132,6 +142,10 @@ class WorkingDirectoryLayout(StrictModel):
             self.primaries_directory = _default_if_blank(
                 self.primaries_directory,
                 "primaries",
+            )
+            self.secondaries_directory = _default_if_blank(
+                self.secondaries_directory,
+                "secondaries",
             )
             self.simulated_photons_directory = _default_if_blank(
                 self.simulated_photons_directory,
@@ -158,25 +172,37 @@ class WorkingDirectoryLayout(StrictModel):
 
         directories: dict[str, Path | None] = {
             "run root": self.run_directory,
-            "macro directory": self._resolve_optional_run_child(self.macro_directory),
-            "log directory": self._resolve_optional_run_child(self.log_directory),
-            "primaries directory": self._resolve_optional_run_child(
-                self.primaries_directory,
+            "macro directory": (
+                Path(self.macro_directory) if self.macro_directory else None
             ),
-            "secondaries directory": self._resolve_optional_run_child(
-                self.secondaries_directory,
+            "log directory": Path(self.log_directory) if self.log_directory else None,
+            "primaries directory": (
+                Path(self.primaries_directory)
+                if self.primaries_directory
+                else None
             ),
-            "simulated photons directory": self._resolve_optional_run_child(
-                self.simulated_photons_directory,
+            "secondaries directory": (
+                Path(self.secondaries_directory)
+                if self.secondaries_directory
+                else None
             ),
-            "transported photons directory": self._resolve_optional_run_child(
-                self.transported_photons_directory,
+            "simulated photons directory": (
+                Path(self.simulated_photons_directory)
+                if self.simulated_photons_directory
+                else None
             ),
-            "intensified photons directory": self._resolve_optional_run_child(
-                self.intensified_photons_directory,
+            "transported photons directory": (
+                Path(self.transported_photons_directory)
+                if self.transported_photons_directory
+                else None
             ),
-            "sensor hits directory": self._resolve_optional_run_child(
-                self.sensor_hits_directory,
+            "intensified photons directory": (
+                Path(self.intensified_photons_directory)
+                if self.intensified_photons_directory
+                else None
+            ),
+            "sensor hits directory": (
+                Path(self.sensor_hits_directory) if self.sensor_hits_directory else None
             ),
         }
         return {
@@ -190,6 +216,32 @@ class WorkingDirectoryLayout(StrictModel):
 
         return ensure_directories(self.directories_to_create(), create=True)
 
+    def resolve_directories(self) -> None:
+        """Resolve configured directories to absolute paths."""
+
+        if self.working_directory is None:
+            raise ValueError("Run environment directory defaults were not applied.")
+        self.working_directory = str(resolve_path(self.working_directory))
+        run_directory = self.run_directory
+        for field_name in (
+            "macro_directory",
+            "log_directory",
+            "primaries_directory",
+            "secondaries_directory",
+            "simulated_photons_directory",
+            "transported_photons_directory",
+            "intensified_photons_directory",
+            "sensor_hits_directory",
+        ):
+            value = getattr(self, field_name)
+            if value is None or not value.strip():
+                continue
+            setattr(
+                self,
+                field_name,
+                str(resolve_path(value, base_directory=run_directory)),
+            )
+
     @property
     def run_directory(self) -> Path:
         """Return the run root directory for this sub-run."""
@@ -198,16 +250,6 @@ class WorkingDirectoryLayout(StrictModel):
             raise ValueError("Run environment directory defaults were not applied.")
         run_name = f"{self.simulation_run_id}_{self.sub_run_number:03d}"
         return Path(self.working_directory) / run_name
-
-    def _resolve_optional_run_child(self, directory: str | None) -> Path | None:
-        """Resolve a configured child directory relative to the run root."""
-
-        if directory is None or not directory.strip():
-            return None
-        path = Path(directory)
-        if path.is_absolute():
-            return path
-        return self.run_directory / path
 
 
 class Metadata(StrictModel):
@@ -225,6 +267,7 @@ class Metadata(StrictModel):
         """Apply stage-aware defaults and create configured run directories."""
 
         self.run_environment.apply_stage_defaults(self.run_controls)
+        self.run_environment.resolve_directories()
         try:
             self.run_environment.create_directories()
         except OSError as exc:
