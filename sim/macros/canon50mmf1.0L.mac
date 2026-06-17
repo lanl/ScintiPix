@@ -4,9 +4,9 @@
 /tracking/verbose 0
 /run/printProgress 1000
 
-/output/path data
-/output/filename data/photon_optical_interface_hits
-/output/runname canon50_working_distance
+/output/primariesFile data/canon50_working_distance_000/primaries/primaries.parquet
+/output/secondariesFile data/canon50_working_distance_000/secondaries/secondaries.parquet
+/output/photonsFile data/canon50_working_distance_000/simulatedPhotons/photons.parquet
 
 # Canon EF 50 mm f/1.0L setup:
 # - Scintillator: 10 cm x 10 cm x 2 cm
