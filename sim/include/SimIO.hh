@@ -19,22 +19,8 @@ struct ParquetOutputPaths {
   std::string photons;
 };
 
-/// Normalize run name for filesystem-safe directory usage.
-std::string NormalizeRunName(const std::string& value);
-
-/// Strip known output suffixes when present.
-std::string StripKnownOutputExtension(const std::string& value);
-
-/// Compose absolute output file path with run/output-path routing rules.
-std::string ComposeOutputPath(const std::string& base,
-                              const std::string& outputPath,
-                              const std::string& runName,
-                              const char* extension);
-
-ParquetOutputPaths ParquetPathsForBase(const std::string& basePath);
-
 /// Write primary/secondary/photon rows as separate Parquet tables.
-bool WriteParquet(const std::string& basePath,
+bool WriteParquet(const ParquetOutputPaths& paths,
                   const std::vector<PrimaryInfo>& primaryRows,
                   const std::vector<SecondaryInfo>& secondaryRows,
                   const std::vector<PhotonInfo>& photonRows,
