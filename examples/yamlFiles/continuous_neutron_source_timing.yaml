@@ -119,6 +119,11 @@ Metadata:
   date: 2026-06-05
   version: ScintPiX v0.1
   description: Continuous neutron source timing example.
+  RunControls:
+    geant4_simulation: true
+    transportation: false
+    intensification: false
+    sensor_detection: false
   RunEnvironment:
     SimulationRunID: continuous_neutron_source_timing
     WorkingDirectory: data

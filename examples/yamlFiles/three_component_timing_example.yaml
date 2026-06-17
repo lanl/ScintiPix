@@ -120,6 +120,11 @@ Metadata:
   date: 2026-03-09
   version: ScintPiX v0.1
   description: Canon/lens end-to-end example with 3 active scintillation timing components, intensifier, and Timepix3 sensor.
+  RunControls:
+    geant4_simulation: true
+    transportation: false
+    intensification: false
+    sensor_detection: false
   RunEnvironment:
     SimulationRunID: three_component_timing_run
     WorkingDirectory: data

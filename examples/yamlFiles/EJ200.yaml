@@ -76,6 +76,11 @@ metadata:
   date: 2026-02-24
   version: ScintPiX v0.1
   description: Simple example matching Simulation model structure
+  RunControls:
+    geant4_simulation: true
+    transportation: false
+    intensification: false
+    sensor_detection: false
   RunEnvironment:
     SimulationRunID: simple_example
     SubRunNumber: 0

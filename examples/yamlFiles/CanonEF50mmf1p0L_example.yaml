@@ -118,6 +118,11 @@ Metadata:
   date: 2026-02-19
   version: ScintPiX v0.1
   description: Canon EF 50 mm f/1.0L simulation configuration with intensifier and Timepix3 sensor.
+  RunControls:
+    geant4_simulation: true
+    transportation: false
+    intensification: false
+    sensor_detection: false
   RunEnvironment:
     SimulationRunID: CanonEF50mmf1p0L_run
     WorkingDirectory: data

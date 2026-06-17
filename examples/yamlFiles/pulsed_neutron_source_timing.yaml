@@ -123,6 +123,11 @@ Metadata:
   date: 2026-06-05
   version: ScintPiX v0.1
   description: Pulsed neutron source timing example.
+  RunControls:
+    geant4_simulation: true
+    transportation: false
+    intensification: false
+    sensor_detection: false
   RunEnvironment:
     SimulationRunID: pulsed_neutron_source_timing
     WorkingDirectory: data
