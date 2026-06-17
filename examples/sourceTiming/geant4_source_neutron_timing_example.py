@@ -1,4 +1,4 @@
-"""Run one Geant4 source-timing simulation from a SimConfig YAML file."""
+"""Run one Geant4 source-timing simulation from a Simulation YAML file."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(REPO_ROOT))
 
-from src.config.ConfigIO import from_yaml  # noqa: E402
+from src.config.yaml import from_yaml  # noqa: E402
 from src.runner.runSimulation import run_simulation  # noqa: E402
 
 
