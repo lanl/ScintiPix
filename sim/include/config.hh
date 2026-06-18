@@ -163,21 +163,21 @@ class Config {
   /// Get monotonic material revision; increments when scintillator properties change.
   G4int GetScintMaterialVersion() const;
 
-  /// Get configured primaries Parquet file.
+  /// Get configured primaries HDF5 file.
   std::string GetPrimariesOutputFile() const;
-  /// Set configured primaries Parquet file.
+  /// Set configured primaries HDF5 file.
   void SetPrimariesOutputFile(const std::string& value);
-  /// Get configured secondaries Parquet file.
+  /// Get configured secondaries HDF5 file.
   std::string GetSecondariesOutputFile() const;
-  /// Set configured secondaries Parquet file.
+  /// Set configured secondaries HDF5 file.
   void SetSecondariesOutputFile(const std::string& value);
-  /// Get configured photons Parquet file.
+  /// Get configured photons HDF5 file.
   std::string GetPhotonsOutputFile() const;
-  /// Set configured photons Parquet file.
+  /// Set configured photons HDF5 file.
   void SetPhotonsOutputFile(const std::string& value);
-  /// Get number of Geant4 events accumulated before writing one Parquet part.
+  /// Get number of Geant4 events accumulated before flushing to HDF5.
   G4int GetEventsPerOutput() const;
-  /// Set number of Geant4 events accumulated before writing one Parquet part.
+  /// Set number of Geant4 events accumulated before flushing to HDF5.
   void SetEventsPerOutput(G4int value);
   /// Return true when primary rows should be assembled and written.
   G4bool GetWritePrimariesOutput() const;
