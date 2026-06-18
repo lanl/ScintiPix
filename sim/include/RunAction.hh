@@ -16,7 +16,7 @@ class RunAction : public G4UserRunAction {
 
   /// Validate output paths on run start.
   void BeginOfRunAction(const G4Run* run) override;
-  /// Flush any remaining worker-local output rows after the run and close HDF5 files.
+  /// Flush any remaining worker-local output rows after the run and close output files.
   void EndOfRunAction(const G4Run* run) override;
 
  private:

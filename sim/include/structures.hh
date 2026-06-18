@@ -70,12 +70,14 @@ struct PhotonInfo {
 
 namespace detail {
 
-constexpr std::size_t kHdf5SpeciesLabelSize = 24;
+constexpr std::size_t kSpeciesLabelSize = 24;
 
-struct Hdf5PrimaryNativeRow {
+// Native binary row structures (fixed-size, no padding)
+// Used for both HDF5 and raw binary output formats
+struct BinaryPrimaryRow {
   std::int64_t gun_call_id;
   std::int32_t primary_track_id;
-  char primary_species[kHdf5SpeciesLabelSize];
+  char primary_species[kSpeciesLabelSize];
   double primary_x_mm;
   double primary_y_mm;
   double primary_energy_MeV;
@@ -85,11 +87,11 @@ struct Hdf5PrimaryNativeRow {
   std::int64_t primary_detected_optical_interface_photon_count;
 };
 
-struct Hdf5SecondaryNativeRow {
+struct BinarySecondaryRow {
   std::int64_t gun_call_id;
   std::int32_t primary_track_id;
   std::int32_t secondary_track_id;
-  char secondary_species[kHdf5SpeciesLabelSize];
+  char secondary_species[kSpeciesLabelSize];
   double secondary_origin_x_mm;
   double secondary_origin_y_mm;
   double secondary_origin_z_mm;
@@ -99,7 +101,7 @@ struct Hdf5SecondaryNativeRow {
   double secondary_end_z_mm;
 };
 
-struct Hdf5PhotonNativeRow {
+struct BinaryPhotonRow {
   std::int64_t gun_call_id;
   std::int32_t primary_track_id;
   std::int32_t secondary_track_id;
@@ -122,14 +124,6 @@ struct Hdf5PhotonNativeRow {
   double optical_interface_hit_pol_z;
   double optical_interface_hit_energy_eV;
   double optical_interface_hit_wavelength_nm;
-};
-
-struct Hdf5State {
-  int file = -1;
-  int datasetType = -1;
-  int dataset = -1;
-  std::string openPath;
-  bool registeredAtExit = false;
 };
 
 }  // namespace detail

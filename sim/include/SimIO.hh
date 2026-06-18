@@ -14,33 +14,33 @@ using PrimaryInfo = SimStructures::PrimaryInfo;
 using SecondaryInfo = SimStructures::SecondaryInfo;
 using PhotonInfo = SimStructures::PhotonInfo;
 
-struct HDF5OutputPaths {
+struct OutputPaths {
   std::string primaries;
   std::string secondaries;
   std::string photons;
 };
 
-struct HDF5OutputSelection {
+struct OutputSelection {
   bool primaries = true;
   bool secondaries = true;
   bool photons = true;
 };
 
-/// Initialize HDF5 output files (call once at run start, before workers begin)
-bool InitHDF5(const HDF5OutputPaths& paths,
-              const HDF5OutputSelection& selection,
-              std::string* errorMessage);
-
-/// Append rows to HDF5 datasets (three separate files)
-bool AppendHDF5(const HDF5OutputPaths& paths,
-                const HDF5OutputSelection& selection,
-                const std::vector<PrimaryInfo>& primaryRows,
-                const std::vector<SecondaryInfo>& secondaryRows,
-                const std::vector<PhotonInfo>& photonRows,
+/// Initialize binary output files (validates parent directories exist)
+bool InitOutput(const OutputPaths& paths,
+                const OutputSelection& selection,
                 std::string* errorMessage);
 
-/// Close HDF5 file handles for given output path
-void CloseHDF5(const std::string& hdf5Path);
+/// Append rows to binary output files (three separate files with fixed-size records)
+bool AppendOutput(const OutputPaths& paths,
+                  const OutputSelection& selection,
+                  const std::vector<PrimaryInfo>& primaryRows,
+                  const std::vector<SecondaryInfo>& secondaryRows,
+                  const std::vector<PhotonInfo>& photonRows,
+                  std::string* errorMessage);
+
+/// Close binary output file handles (no-op for binary files)
+void CloseOutput(const std::string& outputPath);
 
 }  // namespace SimIO
 
