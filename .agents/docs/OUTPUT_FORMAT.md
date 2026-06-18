@@ -103,7 +103,7 @@ The `primaries/` dataset contains information about the primary particles genera
 - They are not recorded in `primaries.bin`; the only primary timing field persisted is `primary_interaction_time_ns`
 - Only primaries that created at least one secondary in the scintillator are recorded
 
-### secondaries (88 bytes per record)
+### secondaries (96 bytes per record)
 
 The `secondaries/` dataset contains information about secondary particles produced from interactions of primaries.
 
