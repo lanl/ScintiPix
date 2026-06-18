@@ -191,7 +191,10 @@ class MacroWriteTests(unittest.TestCase):
 
             # Verify key command categories are present
             self.assertTrue(any(cmd.startswith("/control/verbose") for cmd in commands))
-            self.assertTrue(any(cmd == "/output/eventsPerOutput 100" for cmd in commands))
+            self.assertTrue(any(cmd == "/output/eventsPerOutput 1000" for cmd in commands))
+            self.assertTrue(any(cmd == "/output/writePrimaries 1" for cmd in commands))
+            self.assertTrue(any(cmd == "/output/writeSecondaries 1" for cmd in commands))
+            self.assertTrue(any(cmd == "/output/writePhotons 1" for cmd in commands))
             self.assertTrue(any(cmd.startswith("/output/primariesFile ") for cmd in commands))
             self.assertTrue(any(cmd.startswith("/output/secondariesFile ") for cmd in commands))
             self.assertTrue(any(cmd.startswith("/output/photonsFile ") for cmd in commands))
@@ -237,6 +240,37 @@ class MacroWriteTests(unittest.TestCase):
 
             # But other commands should still be present
             self.assertTrue(any(cmd.startswith("/scintillator/") for cmd in commands))
+
+    def test_write_macro_honors_disabled_output_tables(self) -> None:
+        """write_macro should omit file commands for disabled output tables."""
+
+        from src.models.geant4runtime import Geant4OutputConfig
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+            simulation.geant4runner.output = Geant4OutputConfig(
+                primaries=True,
+                secondaries=False,
+                photons=False,
+            )
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            self.assertTrue(any(cmd == "/output/writePrimaries 1" for cmd in commands))
+            self.assertTrue(any(cmd == "/output/writeSecondaries 0" for cmd in commands))
+            self.assertTrue(any(cmd == "/output/writePhotons 0" for cmd in commands))
+            self.assertTrue(any(cmd.startswith("/output/primariesFile ") for cmd in commands))
+            self.assertFalse(any(cmd.startswith("/output/secondariesFile ") for cmd in commands))
+            self.assertFalse(any(cmd.startswith("/output/photonsFile ") for cmd in commands))
 
     def test_write_macro_without_run_initialize(self) -> None:
         """write_macro with include_run_initialize=False should omit /run/initialize."""

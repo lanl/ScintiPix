@@ -97,6 +97,53 @@ class RunSimulationTests(unittest.TestCase):
         base = self._primaries_parquet_file(config)
         return base.parent / f"{base.stem}_part-{index:06d}{base.suffix}"
 
+    def _parquet_file(self, directory: str | Path, filename: str) -> Path:
+        return Path(directory) / filename
+
+    def _parquet_part(self, base: Path, index: int = 0) -> Path:
+        return base.parent / f"{base.stem}_part-{index:06d}{base.suffix}"
+
+    def _enabled_parquet_parts(self, config, index: int = 0) -> list[Path]:
+        env = config.metadata.run_environment
+        output = config.geant4runner.output
+        parts: list[Path] = []
+        if output.primaries:
+            parts.append(
+                self._parquet_part(
+                    self._parquet_file(
+                        env.primaries_directory,
+                        env.primaries_filename,
+                    ),
+                    index,
+                )
+            )
+        if output.secondaries:
+            parts.append(
+                self._parquet_part(
+                    self._parquet_file(
+                        env.secondaries_directory,
+                        env.secondaries_filename,
+                    ),
+                    index,
+                )
+            )
+        if output.photons:
+            parts.append(
+                self._parquet_part(
+                    self._parquet_file(
+                        env.simulated_photons_directory,
+                        env.photons_filename,
+                    ),
+                    index,
+                )
+            )
+        return parts
+
+    def _write_enabled_parquet_parts(self, config) -> None:
+        for output_parquet in self._enabled_parquet_parts(config):
+            output_parquet.parent.mkdir(parents=True, exist_ok=True)
+            output_parquet.write_text("ok\n", encoding="utf-8")
+
     def test_parse_simulated_events_extracts_aggregate_count(self) -> None:
         self.assertEqual(
             self.parse_simulated_events("G4WT10 > Simulated 3000 events\n"),
@@ -126,10 +173,8 @@ class RunSimulationTests(unittest.TestCase):
             config = self._config_for_tmp(tmp_path)
             config.geant4runner.binary = "pixi run scintipix"
             self.write_macro(config)
-            output_parquet = self._primaries_parquet_part(config)
             expected_log_path = self._log_file(config)
-            output_parquet.parent.mkdir(parents=True, exist_ok=True)
-            output_parquet.write_text("ok\n", encoding="utf-8")
+            self._write_enabled_parquet_parts(config)
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -162,9 +207,7 @@ class RunSimulationTests(unittest.TestCase):
             config = self._config_for_tmp(tmp_path)
             config.geant4runner.show_progress = False
             self.write_macro(config)
-            output_parquet = self._primaries_parquet_part(config)
-            output_parquet.parent.mkdir(parents=True, exist_ok=True)
-            output_parquet.write_text("ok\n", encoding="utf-8")
+            self._write_enabled_parquet_parts(config)
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -248,11 +291,9 @@ class RunSimulationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            output_parquet = self._primaries_parquet_part(config)
 
             def _popen_side_effect(*args, **kwargs):
-                output_parquet.parent.mkdir(parents=True, exist_ok=True)
-                output_parquet.write_text("ok\n", encoding="utf-8")
+                self._write_enabled_parquet_parts(config)
                 return self._FakeProcess(
                     ["G4WT10 > Simulated 10000 events\n"],
                     returncode=0,
@@ -270,6 +311,38 @@ class RunSimulationTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0)
             self.assertTrue(self._macro_file(config).exists())
             popen_mock.assert_called_once()
+
+    def test_run_verifies_only_enabled_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            config = self._config_for_tmp(tmp_path)
+            config.geant4runner.output.secondaries = False
+            config.geant4runner.output.photons = False
+
+            def _popen_side_effect(*args, **kwargs):
+                self._primaries_parquet_part(config).parent.mkdir(
+                    parents=True,
+                    exist_ok=True,
+                )
+                self._primaries_parquet_part(config).write_text(
+                    "ok\n",
+                    encoding="utf-8",
+                )
+                return self._FakeProcess(
+                    ["G4WT10 > Simulated 10000 events\n"],
+                    returncode=0,
+                )
+
+            with patch(
+                "src.runner.runSimulation.subprocess.Popen",
+                side_effect=_popen_side_effect,
+            ), patch(
+                "src.runner.runSimulation.sys.stderr",
+                new=io.StringIO(),
+            ):
+                completed = self.run_simulation(config)
+
+            self.assertEqual(completed.returncode, 0)
 
 
 if __name__ == "__main__":

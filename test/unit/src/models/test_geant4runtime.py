@@ -19,7 +19,11 @@ def _repo_root() -> Path:
 
 sys.path.insert(0, str(_repo_root()))
 
-from src.models.geant4runtime import Geant4RunTime, Geant4RuntimeControls
+from src.models.geant4runtime import (
+    Geant4OutputConfig,
+    Geant4RunTime,
+    Geant4RuntimeControls,
+)
 
 
 # ============================================================================
@@ -258,9 +262,9 @@ class TestGeant4RunTime:
         assert runtime.events_per_output == 25
 
     def test_events_per_output_default(self) -> None:
-        """events_per_output should default to 100."""
+        """events_per_output should default to 1000."""
         runtime = Geant4RunTime(number_of_particles=1000)
-        assert runtime.events_per_output == 100
+        assert runtime.events_per_output == 1000
 
     def test_events_per_output_positive(self) -> None:
         """events_per_output must be positive."""
@@ -272,6 +276,52 @@ class TestGeant4RunTime:
 
         with pytest.raises(ValidationError, match="events_per_output"):
             Geant4RunTime(number_of_particles=1000, events_per_output=-1)
+
+    def test_output_defaults_enable_all_tables(self) -> None:
+        """All Geant4 output tables should be enabled by default."""
+        runtime = Geant4RunTime(number_of_particles=1000)
+        assert runtime.output.primaries is True
+        assert runtime.output.secondaries is True
+        assert runtime.output.photons is True
+
+    def test_output_block_accepts_selected_tables(self) -> None:
+        """The output block should control individual output tables."""
+        runtime = Geant4RunTime.model_validate(
+            {
+                "numberOfParticles": 1000,
+                "output": {
+                    "primaries": True,
+                    "secondaries": False,
+                    "photons": False,
+                },
+            }
+        )
+        assert runtime.output.primaries is True
+        assert runtime.output.secondaries is False
+        assert runtime.output.photons is False
+
+    def test_output_block_rejects_all_disabled_tables(self) -> None:
+        """At least one output table must remain enabled."""
+        with pytest.raises(
+            ValidationError,
+            match="must enable at least one table",
+        ):
+            Geant4OutputConfig(primaries=False, secondaries=False, photons=False)
+
+        with pytest.raises(
+            ValidationError,
+            match="must enable at least one table",
+        ):
+            Geant4RunTime.model_validate(
+                {
+                    "numberOfParticles": 1000,
+                    "output": {
+                        "primaries": False,
+                        "secondaries": False,
+                        "photons": False,
+                    },
+                }
+            )
 
     def test_binary_custom_value(self) -> None:
         """Custom binary name should be accepted."""
@@ -439,6 +489,7 @@ class TestGeant4RunTime:
         assert "numberOfParticles" in dumped
         assert "runtimeControls" in dumped
         assert "eventsPerOutput" in dumped
+        assert "output" in dumped
         assert "showProgress" in dumped
         assert "verifyOutput" in dumped
 
