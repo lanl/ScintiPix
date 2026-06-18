@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <limits>
 #include <string>
 #include <unordered_set>
@@ -43,7 +44,10 @@ EventAction::EventAction(const Config* config) : fConfig(config) {
   fgInstance = this;
 }
 
-EventAction::~EventAction() { fgInstance = nullptr; }
+EventAction::~EventAction() {
+  FlushOutputRows();
+  fgInstance = nullptr;
+}
 
 EventAction* EventAction::Instance() { return fgInstance; }
 
@@ -200,7 +204,54 @@ void EventAction::EndOfEventAction(const G4Event* event) {
     photonRows.push_back(row);
   }
 
-  RunAction::AppendOutputRows(primaryRows, secondaryRows, photonRows);
+  fBufferedPrimaryRows.insert(
+      fBufferedPrimaryRows.end(),
+      std::make_move_iterator(primaryRows.begin()),
+      std::make_move_iterator(primaryRows.end()));
+  fBufferedSecondaryRows.insert(
+      fBufferedSecondaryRows.end(),
+      std::make_move_iterator(secondaryRows.begin()),
+      std::make_move_iterator(secondaryRows.end()));
+  fBufferedPhotonRows.insert(
+      fBufferedPhotonRows.end(),
+      std::make_move_iterator(photonRows.begin()),
+      std::make_move_iterator(photonRows.end()));
+  ++fBufferedOutputEvents;
+
+  const auto eventsPerOutput = fConfig ? fConfig->GetEventsPerOutput() : 100;
+  if (fBufferedOutputEvents >= eventsPerOutput) {
+    FlushOutputRows();
+  }
+}
+
+void EventAction::FlushOutputRows() {
+  if (fBufferedOutputEvents <= 0 || fConfig == nullptr) {
+    return;
+  }
+
+  const SimIO::ParquetOutputPaths paths = {
+      fConfig->GetPrimariesOutputFile(),
+      fConfig->GetSecondariesOutputFile(),
+      fConfig->GetPhotonsOutputFile(),
+  };
+
+  const auto partIndex = RunAction::NextOutputPartIndex();
+  std::string error;
+  if (!SimIO::WriteParquetPart(paths, partIndex, fBufferedPrimaryRows,
+                               fBufferedSecondaryRows, fBufferedPhotonRows,
+                               &error)) {
+    if (error.empty()) {
+      G4cout << "Failed writing Parquet output part " << partIndex << "."
+             << G4endl;
+    } else {
+      G4cout << error << G4endl;
+    }
+  }
+
+  fBufferedPrimaryRows.clear();
+  fBufferedSecondaryRows.clear();
+  fBufferedPhotonRows.clear();
+  fBufferedOutputEvents = 0;
 }
 
 void EventAction::RecordTrackInfo(G4int trackID, const TrackInfo& info) {
