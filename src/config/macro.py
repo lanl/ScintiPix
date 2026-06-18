@@ -154,6 +154,7 @@ def _output_commands(simulation: Simulation) -> list[str]:
         raise ValueError("Simulated photons directory not configured in run environment")
 
     return [
+        f"/output/eventsPerOutput {simulation.geant4runner.events_per_output}",
         (
             "/output/primariesFile "
             f"{Path(env.primaries_directory) / env.primaries_filename}"
