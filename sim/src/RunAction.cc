@@ -36,26 +36,26 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
 
   std::string missingPaths;
 
-  const SimIO::HDF5OutputPaths paths = {
+  const SimIO::OutputPaths paths = {
       fConfig->GetPrimariesOutputFile(),
       fConfig->GetSecondariesOutputFile(),
       fConfig->GetPhotonsOutputFile(),
   };
-  const SimIO::HDF5OutputSelection selection = {
+  const SimIO::OutputSelection selection = {
       fConfig->GetWritePrimariesOutput(),
       fConfig->GetWriteSecondariesOutput(),
       fConfig->GetWritePhotonsOutput(),
   };
 
   if (fConfig->GetWritePrimariesOutput() && !ParentDirectoryExists(paths.primaries)) {
-    missingPaths += "  - HDF5 primaries target: " + paths.primaries + "\n";
+    missingPaths += "  - Primaries output: " + paths.primaries + "\n";
   }
   if (fConfig->GetWriteSecondariesOutput() &&
       !ParentDirectoryExists(paths.secondaries)) {
-    missingPaths += "  - HDF5 secondaries target: " + paths.secondaries + "\n";
+    missingPaths += "  - Secondaries output: " + paths.secondaries + "\n";
   }
   if (fConfig->GetWritePhotonsOutput() && !ParentDirectoryExists(paths.photons)) {
-    missingPaths += "  - HDF5 photons target: " + paths.photons + "\n";
+    missingPaths += "  - Photons output: " + paths.photons + "\n";
   }
 
   if (!missingPaths.empty()) {
@@ -71,14 +71,8 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
                 FatalException, message);
   }
 
-  // Initialize HDF5 files before workers start
-  std::string error;
-  if (!SimIO::InitHDF5(paths, selection, &error)) {
-    G4ExceptionDescription message;
-    message << "Failed to initialize HDF5 output files: " << error;
-    G4Exception("RunAction::BeginOfRunAction", "scintipix/output/hdf5-init-failed",
-                FatalException, message);
-  }
+  // NOTE: Binary files are created lazily on first append
+  // No explicit initialization needed
 }
 
 void RunAction::EndOfRunAction(const G4Run* /*run*/) {
@@ -86,10 +80,10 @@ void RunAction::EndOfRunAction(const G4Run* /*run*/) {
     eventAction->FlushOutputRows();
   }
 
-  // Close HDF5 file handles
+  // Close output file handles (no-op for binary files)
   if (fConfig) {
-    SimIO::CloseHDF5(fConfig->GetPrimariesOutputFile());
-    SimIO::CloseHDF5(fConfig->GetSecondariesOutputFile());
-    SimIO::CloseHDF5(fConfig->GetPhotonsOutputFile());
+    SimIO::CloseOutput(fConfig->GetPrimariesOutputFile());
+    SimIO::CloseOutput(fConfig->GetSecondariesOutputFile());
+    SimIO::CloseOutput(fConfig->GetPhotonsOutputFile());
   }
 }
