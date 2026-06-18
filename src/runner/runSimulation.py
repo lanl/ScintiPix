@@ -167,9 +167,7 @@ def run(
     last_progress = 0
     displayed_progress = False
     logger.info(f"[simulation] Command: {shlex.join(command)}")
-    output_files = [
-        base.parent / _binary_output_filename(base) for base in output_bases
-    ]
+    output_files = output_bases
     logger.info(
         "[simulation] Binary output files: "
         f"{', '.join(str(f) for f in output_files)}"
