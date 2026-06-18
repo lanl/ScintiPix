@@ -14,8 +14,6 @@
 #include <string>
 
 namespace {
-std::atomic<std::uint64_t> gNextOutputPartIndex{0};
-
 // Return true when the output path has no parent or its parent exists.
 bool ParentDirectoryExists(const std::string& outputFilePath) {
   const std::filesystem::path parent =
@@ -36,48 +34,62 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
     return;
   }
 
-  gNextOutputPartIndex.store(0);
-
   std::string missingPaths;
 
-  const SimIO::ParquetOutputPaths paths = {
+  const SimIO::HDF5OutputPaths paths = {
       fConfig->GetPrimariesOutputFile(),
       fConfig->GetSecondariesOutputFile(),
       fConfig->GetPhotonsOutputFile(),
   };
+  const SimIO::HDF5OutputSelection selection = {
+      fConfig->GetWritePrimariesOutput(),
+      fConfig->GetWriteSecondariesOutput(),
+      fConfig->GetWritePhotonsOutput(),
+  };
+
   if (fConfig->GetWritePrimariesOutput() && !ParentDirectoryExists(paths.primaries)) {
-    missingPaths += "  - Parquet primaries target: " + paths.primaries + "\n";
+    missingPaths += "  - HDF5 primaries target: " + paths.primaries + "\n";
   }
   if (fConfig->GetWriteSecondariesOutput() &&
       !ParentDirectoryExists(paths.secondaries)) {
-    missingPaths += "  - Parquet secondaries target: " + paths.secondaries + "\n";
+    missingPaths += "  - HDF5 secondaries target: " + paths.secondaries + "\n";
   }
   if (fConfig->GetWritePhotonsOutput() && !ParentDirectoryExists(paths.photons)) {
-    missingPaths += "  - Parquet photons target: " + paths.photons + "\n";
+    missingPaths += "  - HDF5 photons target: " + paths.photons + "\n";
   }
 
-  if (missingPaths.empty()) {
-    return;
+  if (!missingPaths.empty()) {
+    G4ExceptionDescription message;
+    message
+        << "Output directory validation failed before run start.\n"
+        << "Expected output parent directories do not exist:\n"
+        << missingPaths
+        << "Create directories in Python before launching Geant4 "
+        << "(for example via ConfigIO.ensure_output_directories / write_macro).";
+
+    G4Exception("RunAction::BeginOfRunAction", "scintipix/output/missing-directory",
+                FatalException, message);
   }
 
-  G4ExceptionDescription message;
-  message
-      << "Output directory validation failed before run start.\n"
-      << "Expected output parent directories do not exist:\n"
-      << missingPaths
-      << "Create directories in Python before launching Geant4 "
-      << "(for example via ConfigIO.ensure_output_directories / write_macro).";
-
-  G4Exception("RunAction::BeginOfRunAction", "scintipix/output/missing-directory",
-              FatalException, message);
+  // Initialize HDF5 files before workers start
+  std::string error;
+  if (!SimIO::InitHDF5(paths, selection, &error)) {
+    G4ExceptionDescription message;
+    message << "Failed to initialize HDF5 output files: " << error;
+    G4Exception("RunAction::BeginOfRunAction", "scintipix/output/hdf5-init-failed",
+                FatalException, message);
+  }
 }
 
 void RunAction::EndOfRunAction(const G4Run* /*run*/) {
   if (auto* eventAction = EventAction::Instance()) {
     eventAction->FlushOutputRows();
   }
-}
 
-std::uint64_t RunAction::NextOutputPartIndex() {
-  return gNextOutputPartIndex.fetch_add(1);
+  // Close HDF5 file handles
+  if (fConfig) {
+    SimIO::CloseHDF5(fConfig->GetPrimariesOutputFile());
+    SimIO::CloseHDF5(fConfig->GetSecondariesOutputFile());
+    SimIO::CloseHDF5(fConfig->GetPhotonsOutputFile());
+  }
 }
