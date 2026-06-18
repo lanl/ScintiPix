@@ -53,6 +53,20 @@ def _parse_simulated_events(line: str) -> int | None:
     return int(match.group(1))
 
 
+def _parquet_part_pattern(base_path: Path) -> str:
+    """Return the part-file glob used by the Geant4 Parquet writer."""
+
+    suffix = base_path.suffix or ".parquet"
+    stem = base_path.stem or "part"
+    return f"{stem}_part-*{suffix}"
+
+
+def _has_parquet_parts(base_path: Path) -> bool:
+    """Return true when at least one Parquet part exists beside `base_path`."""
+
+    return any(base_path.parent.glob(_parquet_part_pattern(base_path)))
+
+
 def _write_progress(current: int, total: int) -> None:
     """Render a simple in-terminal simulation progress bar."""
 
@@ -101,7 +115,7 @@ def run(
         f"{run_environment.sub_run_number:03d}.mac"
     )
     macro_path = (Path(run_environment.macro_directory) / macro_filename).resolve()
-    output_primaries = (
+    output_primaries_base = (
         Path(run_environment.primaries_directory)
         / run_environment.primaries_filename
     ).resolve()
@@ -139,7 +153,13 @@ def run(
     last_progress = 0
     displayed_progress = False
     logger.info(f"[simulation] Command: {shlex.join(command)}")
-    logger.info(f"[simulation] Primaries Parquet: {output_primaries}")
+    output_primaries_pattern = (
+        output_primaries_base.parent / _parquet_part_pattern(output_primaries_base)
+    )
+    logger.info(
+        "[simulation] Primaries Parquet parts: "
+        f"{output_primaries_pattern}"
+    )
     with log_stage("simulation"):
         with log_path.open("a", encoding="utf-8") as log_file:
             with subprocess.Popen(
@@ -174,10 +194,10 @@ def run(
         raise subprocess.CalledProcessError(return_code, command)
 
     completed = subprocess.CompletedProcess(command, return_code)
-    if config.geant4runner.verify_output and not output_primaries.exists():
+    if config.geant4runner.verify_output and not _has_parquet_parts(output_primaries_base):
         raise FileNotFoundError(
-            "Simulation finished but expected primaries Parquet was not found: "
-            f"{output_primaries}"
+            "Simulation finished but expected primaries Parquet parts were not found: "
+            f"{output_primaries_pattern}"
         )
     return completed
 
