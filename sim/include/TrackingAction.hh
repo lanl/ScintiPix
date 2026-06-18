@@ -2,7 +2,9 @@
 #define TrackingAction_h 1
 
 #include "G4UserTrackingAction.hh"
+#include "G4ThreeVector.hh"
 
+class Config;
 class EventAction;
 class G4Track;
 
@@ -10,7 +12,7 @@ class G4Track;
 class TrackingAction : public G4UserTrackingAction {
  public:
   /// `eventAction` receives track and photon creation context.
-  explicit TrackingAction(EventAction* eventAction);
+  TrackingAction(EventAction* eventAction, const Config* config);
   ~TrackingAction() override = default;
 
   /// Called by Geant4 before each track is processed.
@@ -19,6 +21,13 @@ class TrackingAction : public G4UserTrackingAction {
  private:
   /// Event-local sink for per-track metadata.
   EventAction* fEventAction = nullptr;
+  /// Runtime configuration for photon culling parameters.
+  const Config* fConfig = nullptr;
+
+  /// Photon culling: check if photon is emitted toward detector
+  bool ShouldCullPhoton(const G4ThreeVector& photonDirection,
+                       const G4ThreeVector& photonOrigin,
+                       const G4ThreeVector& detectorCenter) const;
 };
 
 #endif
