@@ -20,6 +20,12 @@ struct ParquetOutputPaths {
   std::string photons;
 };
 
+struct ParquetOutputSelection {
+  bool primaries = true;
+  bool secondaries = true;
+  bool photons = true;
+};
+
 /// Write primary/secondary/photon rows as separate Parquet tables.
 bool WriteParquet(const ParquetOutputPaths& paths,
                   const std::vector<PrimaryInfo>& primaryRows,
@@ -29,6 +35,7 @@ bool WriteParquet(const ParquetOutputPaths& paths,
 
 /// Write one primary/secondary/photon Parquet part beside each configured base file.
 bool WriteParquetPart(const ParquetOutputPaths& basePaths,
+                      const ParquetOutputSelection& selection,
                       std::uint64_t partIndex,
                       const std::vector<PrimaryInfo>& primaryRows,
                       const std::vector<SecondaryInfo>& secondaryRows,

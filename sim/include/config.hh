@@ -179,6 +179,18 @@ class Config {
   G4int GetEventsPerOutput() const;
   /// Set number of Geant4 events accumulated before writing one Parquet part.
   void SetEventsPerOutput(G4int value);
+  /// Return true when primary rows should be assembled and written.
+  G4bool GetWritePrimariesOutput() const;
+  /// Enable or disable primary output rows.
+  void SetWritePrimariesOutput(G4bool value);
+  /// Return true when secondary rows should be assembled and written.
+  G4bool GetWriteSecondariesOutput() const;
+  /// Enable or disable secondary output rows.
+  void SetWriteSecondariesOutput(G4bool value);
+  /// Return true when photon rows should be assembled and written.
+  G4bool GetWritePhotonsOutput() const;
+  /// Enable or disable photon output rows.
+  void SetWritePhotonsOutput(G4bool value);
 
   /// Get configured source timing mode.
   SourceTimingMode GetSourceTimingMode() const;
@@ -246,7 +258,10 @@ class Config {
   std::string fPrimariesOutputFile;
   std::string fSecondariesOutputFile;
   std::string fPhotonsOutputFile;
-  G4int fEventsPerOutput = 100;
+  G4int fEventsPerOutput = 1000;
+  G4bool fWritePrimariesOutput = true;
+  G4bool fWriteSecondariesOutput = true;
+  G4bool fWritePhotonsOutput = true;
 
   /// Source timing settings in Geant4 internal units.
   SourceTimingMode fSourceTimingMode = SourceTimingMode::None;
