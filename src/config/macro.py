@@ -146,28 +146,36 @@ def _format_macro_scalar(value: float) -> str:
 def _output_commands(simulation: Simulation) -> list[str]:
     """Generate explicit Geant4 output file commands."""
     env = simulation.metadata.run_environment
-    if env.primaries_directory is None:
+    output = simulation.geant4runner.output
+    if output.primaries and env.primaries_directory is None:
         raise ValueError("Primaries directory not configured in run environment")
-    if env.secondaries_directory is None:
+    if output.secondaries and env.secondaries_directory is None:
         raise ValueError("Secondaries directory not configured in run environment")
-    if env.simulated_photons_directory is None:
+    if output.photons and env.simulated_photons_directory is None:
         raise ValueError("Simulated photons directory not configured in run environment")
 
-    return [
+    commands = [
         f"/output/eventsPerOutput {simulation.geant4runner.events_per_output}",
-        (
+        f"/output/writePrimaries {1 if output.primaries else 0}",
+        f"/output/writeSecondaries {1 if output.secondaries else 0}",
+        f"/output/writePhotons {1 if output.photons else 0}",
+    ]
+    if output.primaries:
+        commands.append(
             "/output/primariesFile "
             f"{Path(env.primaries_directory) / env.primaries_filename}"
-        ),
-        (
+        )
+    if output.secondaries:
+        commands.append(
             "/output/secondariesFile "
             f"{Path(env.secondaries_directory) / env.secondaries_filename}"
-        ),
-        (
+        )
+    if output.photons:
+        commands.append(
             "/output/photonsFile "
             f"{Path(env.simulated_photons_directory) / env.photons_filename}"
-        ),
-    ]
+        )
+    return commands
 
 
 def _geometry_commands(simulation: Simulation) -> list[str]:
