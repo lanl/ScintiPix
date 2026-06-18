@@ -104,6 +104,9 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fOutputDir = new G4UIdirectory("/output/");
   fOutputDir->SetGuidance("Output controls");
 
+  fPhotonCullingDir = new G4UIdirectory("/photonCulling/");
+  fPhotonCullingDir->SetGuidance("Photon culling optimization controls");
+
   fGeomMaterialCmd = new G4UIcmdWithAString("/scintillator/geom/material", this);
   fGeomMaterialCmd->SetGuidance("Set scintillator material name (EJ200 or NIST name)");
   fGeomMaterialCmd->SetParameterName("material", false);
@@ -395,9 +398,28 @@ Messenger::Messenger(Config* config) : fConfig(config) {
       "Set pulsed source-time distribution shape; currently uniform");
   fSourceTimingPulseShapeCmd->SetParameterName("pulseShape", false);
   fSourceTimingPulseShapeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fPhotonCullingEnabledCmd =
+      new G4UIcmdWithAnInteger("/photonCulling/enabled", this);
+  fPhotonCullingEnabledCmd->SetGuidance(
+      "Enable or disable photon culling optimization (0=disabled, 1=enabled)");
+  fPhotonCullingEnabledCmd->SetParameterName("enabled", false);
+  fPhotonCullingEnabledCmd->SetRange("enabled >= 0 && enabled <= 1");
+  fPhotonCullingEnabledCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fPhotonCullingAcceptanceAngleDegCmd =
+      new G4UIcmdWithADouble("/photonCulling/acceptanceAngleDeg", this);
+  fPhotonCullingAcceptanceAngleDegCmd->SetGuidance(
+      "Set acceptance cone angle in degrees for photon culling");
+  fPhotonCullingAcceptanceAngleDegCmd->SetParameterName("acceptanceAngleDeg", false);
+  fPhotonCullingAcceptanceAngleDegCmd->SetRange("acceptanceAngleDeg > 0. && acceptanceAngleDeg <= 180.");
+  fPhotonCullingAcceptanceAngleDegCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 Messenger::~Messenger() {
+  delete fPhotonCullingAcceptanceAngleDegCmd;
+  delete fPhotonCullingEnabledCmd;
+
   delete fSourceTimingPulseShapeCmd;
   delete fSourceTimingPulseTimeWidthCmd;
   delete fSourceTimingPulseTimeOffsetCmd;
@@ -447,6 +469,7 @@ Messenger::~Messenger() {
   delete fGeomScintXCmd;
   delete fGeomMaterialCmd;
 
+  delete fPhotonCullingDir;
   delete fOutputDir;
   delete fSourceTimingDir;
   delete fSourceDir;
@@ -791,6 +814,23 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     fConfig->SetPhotonsOutputFile(newValue);
     G4cout << "Photons Parquet output file set to '"
            << fConfig->GetPhotonsOutputFile() << "'." << G4endl;
+    return;
+  }
+
+  if (command == fPhotonCullingEnabledCmd) {
+    fConfig->SetPhotonCullingEnabled(
+        fPhotonCullingEnabledCmd->GetNewIntValue(newValue) != 0);
+    G4cout << "Photon culling "
+           << (fConfig->GetPhotonCullingEnabled() ? "enabled" : "disabled")
+           << "." << G4endl;
+    return;
+  }
+
+  if (command == fPhotonCullingAcceptanceAngleDegCmd) {
+    const auto value = fPhotonCullingAcceptanceAngleDegCmd->GetNewDoubleValue(newValue);
+    fConfig->SetPhotonCullingAcceptanceAngleDeg(value);
+    G4cout << "Photon culling acceptance angle set to " << value << " degrees."
+           << G4endl;
     return;
   }
 }
