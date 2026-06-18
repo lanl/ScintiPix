@@ -1,6 +1,7 @@
 #include "RunAction.hh"
 
 #include "EventAction.hh"
+#include "SimIO.hh"
 #include "config.hh"
 
 #include "G4Exception.hh"
@@ -8,23 +9,7 @@
 #include "G4Run.hh"
 #include "G4ios.hh"
 
-#include <atomic>
-#include <cstdint>
-#include <filesystem>
 #include <string>
-
-namespace {
-// Return true when the output path has no parent or its parent exists.
-bool ParentDirectoryExists(const std::string& outputFilePath) {
-  const std::filesystem::path parent =
-      std::filesystem::path(outputFilePath).parent_path();
-  if (parent.empty()) {
-    return true;
-  }
-  std::error_code ec;
-  return std::filesystem::exists(parent, ec) && !ec;
-}
-}  // namespace
 
 RunAction::RunAction(const Config* config) : fConfig(config) {}
 
@@ -47,32 +32,18 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
       fConfig->GetWritePhotonsOutput(),
   };
 
-  if (fConfig->GetWritePrimariesOutput() && !ParentDirectoryExists(paths.primaries)) {
-    missingPaths += "  - Primaries output: " + paths.primaries + "\n";
-  }
-  if (fConfig->GetWriteSecondariesOutput() &&
-      !ParentDirectoryExists(paths.secondaries)) {
-    missingPaths += "  - Secondaries output: " + paths.secondaries + "\n";
-  }
-  if (fConfig->GetWritePhotonsOutput() && !ParentDirectoryExists(paths.photons)) {
-    missingPaths += "  - Photons output: " + paths.photons + "\n";
-  }
-
-  if (!missingPaths.empty()) {
+  if (!SimIO::InitOutput(paths, selection, &missingPaths)) {
     G4ExceptionDescription message;
     message
-        << "Output directory validation failed before run start.\n"
-        << "Expected output parent directories do not exist:\n"
+        << "Output initialization failed before run start.\n"
+        << "Could not initialize binary output files:\n"
         << missingPaths
         << "Create directories in Python before launching Geant4 "
         << "(for example via ConfigIO.ensure_output_directories / write_macro).";
 
-    G4Exception("RunAction::BeginOfRunAction", "scintipix/output/missing-directory",
+    G4Exception("RunAction::BeginOfRunAction", "scintipix/output/init-failed",
                 FatalException, message);
   }
-
-  // NOTE: Binary files are created lazily on first append
-  // No explicit initialization needed
 }
 
 void RunAction::EndOfRunAction(const G4Run* /*run*/) {
