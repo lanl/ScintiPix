@@ -2,7 +2,7 @@
 #
 # The downstream optical/intensifier/sensor blocks are present only because the
 # shared Simulation schema and Geant4 geometry expect them. This example
-# generates only the primaries Parquet output.
+# writes the enabled Geant4 Parquet outputs.
 
 scintillator:
   position_mm:
@@ -105,8 +105,12 @@ sensor:
     dead_time_ns: 475.0
 
 geant4runner:
-  numberOfParticles: 100000
-  eventsPerOutput: 10000
+  numberOfParticles: 10000
+  eventsPerOutput: 100
+  output:
+    primaries: true
+    secondaries: true
+    photons: true
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
