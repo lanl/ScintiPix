@@ -39,7 +39,7 @@ bool AppendOutput(const OutputPaths& paths,
                   const std::vector<PhotonInfo>& photonRows,
                   std::string* errorMessage);
 
-/// Close binary output file handles (no-op for binary files)
+/// Close binary output file handles for the current thread.
 void CloseOutput(const std::string& outputPath);
 
 }  // namespace SimIO
