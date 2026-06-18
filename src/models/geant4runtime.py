@@ -57,7 +57,8 @@ class Geant4RunTime(StrictModel):
     runtime_controls: Geant4RuntimeControls | None = Field(
         default=None, alias="runtimeControls"
     )
-    
+    events_per_output: int = Field(default=1000, alias="eventsPerOutput", gt=0)
+
     binary: str = Field(min_length=1, default="scintipix")
     show_progress: bool = Field(default=False, alias="showProgress")
     verify_output: bool = Field(default=True, alias="verifyOutput")
