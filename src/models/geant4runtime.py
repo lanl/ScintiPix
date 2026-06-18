@@ -43,6 +43,22 @@ class Geant4RuntimeControls(StrictModel):
         return self
 
 
+class Geant4OutputConfig(StrictModel):
+    """Select which Geant4 simulation output tables are written."""
+
+    primaries: bool = True
+    secondaries: bool = True
+    photons: bool = True
+
+    @model_validator(mode="after")
+    def require_at_least_one_table(self) -> "Geant4OutputConfig":
+        """Reject output config that disables every table."""
+
+        if not (self.primaries or self.secondaries or self.photons):
+            raise ValueError("`geant4runner.output` must enable at least one table.")
+        return self
+
+
 class Geant4RunTime(StrictModel):
     """Geant4 run-command settings for one simulation run.
 
@@ -58,6 +74,7 @@ class Geant4RunTime(StrictModel):
         default=None, alias="runtimeControls"
     )
     events_per_output: int = Field(default=1000, alias="eventsPerOutput", gt=0)
+    output: Geant4OutputConfig = Field(default_factory=Geant4OutputConfig)
 
     binary: str = Field(min_length=1, default="scintipix")
     show_progress: bool = Field(default=False, alias="showProgress")
