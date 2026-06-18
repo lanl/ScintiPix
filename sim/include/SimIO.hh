@@ -14,33 +14,33 @@ using PrimaryInfo = SimStructures::PrimaryInfo;
 using SecondaryInfo = SimStructures::SecondaryInfo;
 using PhotonInfo = SimStructures::PhotonInfo;
 
-struct ParquetOutputPaths {
+struct OutputPaths {
   std::string primaries;
   std::string secondaries;
   std::string photons;
 };
 
-struct ParquetOutputSelection {
+struct OutputSelection {
   bool primaries = true;
   bool secondaries = true;
   bool photons = true;
 };
 
-/// Write primary/secondary/photon rows as separate Parquet tables.
-bool WriteParquet(const ParquetOutputPaths& paths,
+/// Initialize binary output files (validates parent directories exist)
+bool InitOutput(const OutputPaths& paths,
+                const OutputSelection& selection,
+                std::string* errorMessage);
+
+/// Append rows to binary output files (three separate files with fixed-size records)
+bool AppendOutput(const OutputPaths& paths,
+                  const OutputSelection& selection,
                   const std::vector<PrimaryInfo>& primaryRows,
                   const std::vector<SecondaryInfo>& secondaryRows,
                   const std::vector<PhotonInfo>& photonRows,
                   std::string* errorMessage);
 
-/// Write one primary/secondary/photon Parquet part beside each configured base file.
-bool WriteParquetPart(const ParquetOutputPaths& basePaths,
-                      const ParquetOutputSelection& selection,
-                      std::uint64_t partIndex,
-                      const std::vector<PrimaryInfo>& primaryRows,
-                      const std::vector<SecondaryInfo>& secondaryRows,
-                      const std::vector<PhotonInfo>& photonRows,
-                      std::string* errorMessage);
+/// Close binary output file handles for the current thread.
+void CloseOutput(const std::string& outputPath);
 
 }  // namespace SimIO
 

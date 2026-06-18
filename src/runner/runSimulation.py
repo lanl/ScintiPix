@@ -53,18 +53,15 @@ def _parse_simulated_events(line: str) -> int | None:
     return int(match.group(1))
 
 
-def _parquet_part_pattern(base_path: Path) -> str:
-    """Return the part-file glob used by the Geant4 Parquet writer."""
-
-    suffix = base_path.suffix or ".parquet"
-    stem = base_path.stem or "part"
-    return f"{stem}_part-*{suffix}"
+def _binary_output_filename(base_path: Path) -> str:
+    """Return the binary output filename (single .bin file)."""
+    stem = base_path.stem or "output"
+    return f"{stem}.bin"
 
 
-def _has_parquet_parts(base_path: Path) -> bool:
-    """Return true when at least one Parquet part exists beside `base_path`."""
-
-    return any(base_path.parent.glob(_parquet_part_pattern(base_path)))
+def _has_binary_output(base_path: Path) -> bool:
+    """Return true when the binary output file exists."""
+    return base_path.exists()
 
 
 def _expected_output_bases(config: Simulation) -> list[Path]:
@@ -170,12 +167,10 @@ def run(
     last_progress = 0
     displayed_progress = False
     logger.info(f"[simulation] Command: {shlex.join(command)}")
-    output_patterns = [
-        base.parent / _parquet_part_pattern(base) for base in output_bases
-    ]
+    output_files = output_bases
     logger.info(
-        "[simulation] Parquet output parts: "
-        f"{', '.join(str(pattern) for pattern in output_patterns)}"
+        "[simulation] Binary output files: "
+        f"{', '.join(str(f) for f in output_files)}"
     )
     with log_stage("simulation"):
         with log_path.open("a", encoding="utf-8") as log_file:
@@ -212,15 +207,15 @@ def run(
 
     completed = subprocess.CompletedProcess(command, return_code)
     if config.geant4runner.verify_output:
-        missing_patterns = [
-            str(pattern)
-            for base, pattern in zip(output_bases, output_patterns, strict=True)
-            if not _has_parquet_parts(base)
+        missing_files = [
+            str(output_file)
+            for base, output_file in zip(output_bases, output_files, strict=True)
+            if not _has_binary_output(base)
         ]
-        if missing_patterns:
+        if missing_files:
             raise FileNotFoundError(
-                "Simulation finished but expected Parquet parts were not found: "
-                + ", ".join(missing_patterns)
+                "Simulation finished but expected binary output files were not found: "
+                + ", ".join(missing_files)
             )
     return completed
 

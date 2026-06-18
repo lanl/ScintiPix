@@ -1,407 +1,390 @@
 #include "SimIO.hh"
 
-#include <arrow/api.h>
-#include <arrow/io/api.h>
-#include <parquet/arrow/writer.h>
-
 #include <cstdint>
-#include <filesystem>
-#include <iomanip>
-#include <memory>
-#include <sstream>
+#include <cstdio>
+#include <cstring>
+#include <mutex>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace SimIO {
 namespace {
+
+using BinaryPrimaryRow = SimStructures::detail::BinaryPrimaryRow;
+using BinarySecondaryRow = SimStructures::detail::BinarySecondaryRow;
+using BinaryPhotonRow = SimStructures::detail::BinaryPhotonRow;
+constexpr std::size_t kSpeciesLabelSize = SimStructures::detail::kSpeciesLabelSize;
+
+enum class BinaryOutputKind {
+  Primaries,
+  Secondaries,
+  Photons,
+};
+
+// Persistent file handles kept open per worker thread.
+struct BinaryFileState {
+  FILE* primariesFile = nullptr;
+  FILE* secondariesFile = nullptr;
+  FILE* photonsFile = nullptr;
+  std::string primariesPath;
+  std::string secondariesPath;
+  std::string photonsPath;
+};
+
+struct BinaryFileLocks {
+  std::mutex primaries;
+  std::mutex secondaries;
+  std::mutex photons;
+};
+
+// Thread-local state to avoid file handle conflicts
+thread_local BinaryFileState g_binaryState;
+BinaryFileLocks g_binaryLocks;
+
+// Binary file header (64 bytes, fixed size for easy parsing)
+struct BinaryHeader {
+  char magic[8];            // "SCINPIX\0"
+  std::uint32_t version;    // Format version (1)
+  std::uint32_t recordSize; // Size of each record in bytes
+  std::uint64_t recordCount; // Number of records written (informational)
+  char padding[40];         // Reserved for future use
+};
+
 bool EnsureParentDirectory(const std::string& filePath) {
-  const std::filesystem::path parent =
-      std::filesystem::path(filePath).parent_path();
-  if (parent.empty()) {
+  // Find last directory separator
+  std::size_t lastSlash = filePath.find_last_of("/\\");
+  if (lastSlash == std::string::npos) {
+    return true; // No directory component
+  }
+
+  std::string parentPath = filePath.substr(0, lastSlash);
+  if (parentPath.empty()) {
     return true;
   }
 
-  std::error_code ec;
-  return std::filesystem::exists(parent, ec) && !ec;
+  // Check if directory exists using POSIX stat
+  struct stat info;
+  if (stat(parentPath.c_str(), &info) != 0) {
+    return false; // Doesn't exist or can't access
+  }
+  return (info.st_mode & S_IFDIR) != 0; // Check if it's a directory
 }
 
-std::string ErrorText(const arrow::Status& status) {
-  return status.ToString();
+void CopyLabel(const std::string& in, char out[kSpeciesLabelSize]) {
+  std::memset(out, 0, kSpeciesLabelSize);
+  std::strncpy(out, in.c_str(), kSpeciesLabelSize - 1);
 }
 
-template <typename Builder, typename Value>
-bool AppendValue(Builder& builder, Value value, std::string* errorMessage) {
-  const auto status = builder.Append(value);
-  if (!status.ok()) {
-    if (errorMessage) {
-      *errorMessage = ErrorText(status);
-    }
+std::vector<BinaryPrimaryRow> ToNative(const std::vector<PrimaryInfo>& rows) {
+  std::vector<BinaryPrimaryRow> out;
+  out.reserve(rows.size());
+  for (const auto& row : rows) {
+    BinaryPrimaryRow native{};
+    native.gun_call_id = row.gunCallId;
+    native.primary_track_id = row.primaryTrackId;
+    CopyLabel(row.primarySpecies, native.primary_species);
+    native.primary_x_mm = row.primaryXmm;
+    native.primary_y_mm = row.primaryYmm;
+    native.primary_energy_MeV = row.primaryEnergyMeV;
+    native.primary_interaction_time_ns = row.primaryInteractionTimeNs;
+    native.primary_created_secondary_count = row.primaryCreatedSecondaryCount;
+    native.primary_generated_optical_photon_count =
+        row.primaryGeneratedOpticalPhotonCount;
+    native.primary_detected_optical_interface_photon_count =
+        row.primaryDetectedOpticalInterfacePhotonCount;
+    out.push_back(native);
+  }
+  return out;
+}
+
+std::vector<BinarySecondaryRow> ToNative(const std::vector<SecondaryInfo>& rows) {
+  std::vector<BinarySecondaryRow> out;
+  out.reserve(rows.size());
+  for (const auto& row : rows) {
+    BinarySecondaryRow native{};
+    native.gun_call_id = row.gunCallId;
+    native.primary_track_id = row.primaryTrackId;
+    native.secondary_track_id = row.secondaryTrackId;
+    CopyLabel(row.secondarySpecies, native.secondary_species);
+    native.secondary_origin_x_mm = row.secondaryOriginXmm;
+    native.secondary_origin_y_mm = row.secondaryOriginYmm;
+    native.secondary_origin_z_mm = row.secondaryOriginZmm;
+    native.secondary_origin_energy_MeV = row.secondaryOriginEnergyMeV;
+    native.secondary_end_x_mm = row.secondaryEndXmm;
+    native.secondary_end_y_mm = row.secondaryEndYmm;
+    native.secondary_end_z_mm = row.secondaryEndZmm;
+    out.push_back(native);
+  }
+  return out;
+}
+
+std::vector<BinaryPhotonRow> ToNative(const std::vector<PhotonInfo>& rows) {
+  std::vector<BinaryPhotonRow> out;
+  out.reserve(rows.size());
+  for (const auto& row : rows) {
+    BinaryPhotonRow native{};
+    native.gun_call_id = row.gunCallId;
+    native.primary_track_id = row.primaryTrackId;
+    native.secondary_track_id = row.secondaryTrackId;
+    native.photon_track_id = row.photonTrackId;
+    native.photon_creation_time_ns = row.photonCreationTimeNs;
+    native.photon_origin_x_mm = row.photonOriginXmm;
+    native.photon_origin_y_mm = row.photonOriginYmm;
+    native.photon_origin_z_mm = row.photonOriginZmm;
+    native.photon_scint_exit_x_mm = row.photonScintExitXmm;
+    native.photon_scint_exit_y_mm = row.photonScintExitYmm;
+    native.photon_scint_exit_z_mm = row.photonScintExitZmm;
+    native.optical_interface_hit_x_mm = row.opticalInterfaceHitXmm;
+    native.optical_interface_hit_y_mm = row.opticalInterfaceHitYmm;
+    native.optical_interface_hit_time_ns = row.opticalInterfaceHitTimeNs;
+    native.optical_interface_hit_dir_x = row.opticalInterfaceHitDirX;
+    native.optical_interface_hit_dir_y = row.opticalInterfaceHitDirY;
+    native.optical_interface_hit_dir_z = row.opticalInterfaceHitDirZ;
+    native.optical_interface_hit_pol_x = row.opticalInterfaceHitPolX;
+    native.optical_interface_hit_pol_y = row.opticalInterfaceHitPolY;
+    native.optical_interface_hit_pol_z = row.opticalInterfaceHitPolZ;
+    native.optical_interface_hit_energy_eV = row.opticalInterfaceHitEnergyEV;
+    native.optical_interface_hit_wavelength_nm = row.opticalInterfaceHitWavelengthNm;
+    out.push_back(native);
+  }
+  return out;
+}
+
+bool WriteBinaryHeader(FILE* f, std::uint32_t recordSize) {
+  BinaryHeader header{};
+  std::memcpy(header.magic, "SCINPIX", 8);
+  header.version = 1;
+  header.recordSize = recordSize;
+  header.recordCount = 0; // Will be updated by reader if needed
+
+  return (std::fwrite(&header, sizeof(header), 1, f) == 1);
+}
+
+FILE** FileSlot(BinaryFileState& state, BinaryOutputKind kind) {
+  switch (kind) {
+    case BinaryOutputKind::Primaries:
+      return &state.primariesFile;
+    case BinaryOutputKind::Secondaries:
+      return &state.secondariesFile;
+    case BinaryOutputKind::Photons:
+      return &state.photonsFile;
+  }
+  return nullptr;
+}
+
+std::string* PathSlot(BinaryFileState& state, BinaryOutputKind kind) {
+  switch (kind) {
+    case BinaryOutputKind::Primaries:
+      return &state.primariesPath;
+    case BinaryOutputKind::Secondaries:
+      return &state.secondariesPath;
+    case BinaryOutputKind::Photons:
+      return &state.photonsPath;
+  }
+  return nullptr;
+}
+
+std::mutex& FileMutex(BinaryOutputKind kind) {
+  switch (kind) {
+    case BinaryOutputKind::Primaries:
+      return g_binaryLocks.primaries;
+    case BinaryOutputKind::Secondaries:
+      return g_binaryLocks.secondaries;
+    case BinaryOutputKind::Photons:
+      return g_binaryLocks.photons;
+  }
+  return g_binaryLocks.photons;
+}
+
+bool FileExists(const std::string& path) {
+  FILE* f = std::fopen(path.c_str(), "rb");
+  if (!f) {
     return false;
   }
+  std::fclose(f);
   return true;
 }
 
-bool AppendString(arrow::StringBuilder& builder,
-                  const std::string& value,
-                  std::string* errorMessage) {
-  const auto status = builder.Append(value);
-  if (!status.ok()) {
-    if (errorMessage) {
-      *errorMessage = ErrorText(status);
-    }
+bool CreateBinaryFile(const std::string& path, std::uint32_t recordSize) {
+  FILE* f = std::fopen(path.c_str(), "wb");
+  if (!f) {
     return false;
   }
-  return true;
+
+  const bool success = WriteBinaryHeader(f, recordSize);
+  std::fclose(f);
+  return success;
 }
 
-template <typename Builder>
-std::shared_ptr<arrow::Array> FinishArray(Builder& builder,
-                                          std::string* errorMessage) {
-  std::shared_ptr<arrow::Array> array;
-  const auto status = builder.Finish(&array);
-  if (!status.ok()) {
-    if (errorMessage) {
-      *errorMessage = ErrorText(status);
-    }
+FILE* EnsureFileOpen(BinaryOutputKind kind,
+                     const std::string& path,
+                     std::uint32_t recordSize) {
+  auto& state = g_binaryState;
+  FILE** filePtr = FileSlot(state, kind);
+  std::string* pathPtr = PathSlot(state, kind);
+
+  // If file is already open for this path, return it
+  if (*filePtr && *pathPtr == path) {
+    return *filePtr;
+  }
+
+  // Close old file if path changed
+  if (*filePtr) {
+    std::fclose(*filePtr);
+    *filePtr = nullptr;
+  }
+
+  if (!FileExists(path) && !CreateBinaryFile(path, recordSize)) {
     return nullptr;
   }
-  return array;
+
+  *filePtr = std::fopen(path.c_str(), "ab");
+  if (!*filePtr) {
+    return nullptr;
+  }
+
+  *pathPtr = path;
+  return *filePtr;
 }
 
-bool WriteTable(const std::string& path,
-                const std::shared_ptr<arrow::Table>& table,
+template<typename T>
+bool AppendBinaryRecords(BinaryOutputKind kind,
+                         const std::string& path,
+                         const std::vector<T>& rows) {
+  if (rows.empty()) {
+    return true;
+  }
+
+  std::lock_guard<std::mutex> lock(FileMutex(kind));
+  FILE* f = EnsureFileOpen(kind, path, sizeof(T));
+  if (!f) {
+    return false;
+  }
+
+  bool success = (std::fwrite(rows.data(), sizeof(T), rows.size(), f) == rows.size());
+  success = success && (std::fflush(f) == 0);
+  return success;
+}
+
+}  // namespace
+
+bool InitOutput(const OutputPaths& paths,
+                const OutputSelection& selection,
                 std::string* errorMessage) {
-  if (!EnsureParentDirectory(path)) {
+  if (selection.primaries && !EnsureParentDirectory(paths.primaries)) {
     if (errorMessage) {
-      *errorMessage = "Output directory does not exist for " + path;
+      *errorMessage = "Output directory does not exist for " + paths.primaries;
     }
     return false;
   }
 
-  auto maybeOutput = arrow::io::FileOutputStream::Open(path);
-  if (!maybeOutput.ok()) {
+  if (selection.secondaries && !EnsureParentDirectory(paths.secondaries)) {
     if (errorMessage) {
-      *errorMessage = ErrorText(maybeOutput.status());
+      *errorMessage = "Output directory does not exist for " + paths.secondaries;
     }
     return false;
   }
 
-  const auto status =
-      parquet::arrow::WriteTable(*table, arrow::default_memory_pool(),
-                                 *maybeOutput, 4096);
-  if (!status.ok()) {
+  if (selection.photons && !EnsureParentDirectory(paths.photons)) {
     if (errorMessage) {
-      *errorMessage = ErrorText(status);
+      *errorMessage = "Output directory does not exist for " + paths.photons;
     }
     return false;
   }
+
+  if (selection.primaries &&
+      !CreateBinaryFile(paths.primaries, sizeof(BinaryPrimaryRow))) {
+    if (errorMessage) {
+      *errorMessage = "Failed to initialize primary output " + paths.primaries;
+    }
+    return false;
+  }
+
+  if (selection.secondaries &&
+      !CreateBinaryFile(paths.secondaries, sizeof(BinarySecondaryRow))) {
+    if (errorMessage) {
+      *errorMessage = "Failed to initialize secondary output " + paths.secondaries;
+    }
+    return false;
+  }
+
+  if (selection.photons &&
+      !CreateBinaryFile(paths.photons, sizeof(BinaryPhotonRow))) {
+    if (errorMessage) {
+      *errorMessage = "Failed to initialize photon output " + paths.photons;
+    }
+    return false;
+  }
+
   return true;
 }
 
-std::string PartFilePath(const std::string& basePath, std::uint64_t partIndex) {
-  const std::filesystem::path path(basePath);
-  const std::filesystem::path parent = path.parent_path();
-  const std::string stem =
-      path.stem().string().empty() ? "part" : path.stem().string();
-  const std::string extension =
-      path.extension().string().empty() ? ".parquet" : path.extension().string();
-
-  std::ostringstream filename;
-  filename << stem << "_part-" << std::setw(6) << std::setfill('0') << partIndex
-           << extension;
-  if (parent.empty()) {
-    return filename.str();
-  }
-  return (parent / filename.str()).string();
-}
-
-bool WritePrimaries(const std::string& path,
-                    const std::vector<PrimaryInfo>& rows,
-                    std::string* errorMessage) {
-  arrow::Int64Builder gunCallId;
-  arrow::Int32Builder primaryTrackId;
-  arrow::StringBuilder primarySpecies;
-  arrow::DoubleBuilder primaryXmm;
-  arrow::DoubleBuilder primaryYmm;
-  arrow::DoubleBuilder primaryEnergyMeV;
-  arrow::DoubleBuilder primaryInteractionTimeNs;
-  arrow::Int64Builder primaryCreatedSecondaryCount;
-  arrow::Int64Builder primaryGeneratedOpticalPhotonCount;
-  arrow::Int64Builder primaryDetectedOpticalInterfacePhotonCount;
-
-  for (const auto& row : rows) {
-    if (!AppendValue(gunCallId, row.gunCallId, errorMessage) ||
-        !AppendValue(primaryTrackId, row.primaryTrackId, errorMessage) ||
-        !AppendString(primarySpecies, row.primarySpecies, errorMessage) ||
-        !AppendValue(primaryXmm, row.primaryXmm, errorMessage) ||
-        !AppendValue(primaryYmm, row.primaryYmm, errorMessage) ||
-        !AppendValue(primaryEnergyMeV, row.primaryEnergyMeV, errorMessage) ||
-        !AppendValue(primaryInteractionTimeNs, row.primaryInteractionTimeNs,
-                     errorMessage) ||
-        !AppendValue(primaryCreatedSecondaryCount,
-                     row.primaryCreatedSecondaryCount, errorMessage) ||
-        !AppendValue(primaryGeneratedOpticalPhotonCount,
-                     row.primaryGeneratedOpticalPhotonCount, errorMessage) ||
-        !AppendValue(primaryDetectedOpticalInterfacePhotonCount,
-                     row.primaryDetectedOpticalInterfacePhotonCount,
-                     errorMessage)) {
-      return false;
-    }
-  }
-
-  auto schema = arrow::schema({
-      arrow::field("gun_call_id", arrow::int64()),
-      arrow::field("primary_track_id", arrow::int32()),
-      arrow::field("primary_species", arrow::utf8()),
-      arrow::field("primary_x_mm", arrow::float64()),
-      arrow::field("primary_y_mm", arrow::float64()),
-      arrow::field("primary_energy_MeV", arrow::float64()),
-      arrow::field("primary_interaction_time_ns", arrow::float64()),
-      arrow::field("primary_created_secondary_count", arrow::int64()),
-      arrow::field("primary_generated_optical_photon_count", arrow::int64()),
-      arrow::field("primary_detected_optical_interface_photon_count",
-                   arrow::int64()),
-  });
-
-  auto table = arrow::Table::Make(
-      schema,
-      {
-          FinishArray(gunCallId, errorMessage),
-          FinishArray(primaryTrackId, errorMessage),
-          FinishArray(primarySpecies, errorMessage),
-          FinishArray(primaryXmm, errorMessage),
-          FinishArray(primaryYmm, errorMessage),
-          FinishArray(primaryEnergyMeV, errorMessage),
-          FinishArray(primaryInteractionTimeNs, errorMessage),
-          FinishArray(primaryCreatedSecondaryCount, errorMessage),
-          FinishArray(primaryGeneratedOpticalPhotonCount, errorMessage),
-          FinishArray(primaryDetectedOpticalInterfacePhotonCount, errorMessage),
-      });
-  return !table->columns().empty() && WriteTable(path, table, errorMessage);
-}
-
-bool WriteSecondaries(const std::string& path,
-                      const std::vector<SecondaryInfo>& rows,
-                      std::string* errorMessage) {
-  arrow::Int64Builder gunCallId;
-  arrow::Int32Builder primaryTrackId;
-  arrow::Int32Builder secondaryTrackId;
-  arrow::StringBuilder secondarySpecies;
-  arrow::DoubleBuilder secondaryOriginXmm;
-  arrow::DoubleBuilder secondaryOriginYmm;
-  arrow::DoubleBuilder secondaryOriginZmm;
-  arrow::DoubleBuilder secondaryOriginEnergyMeV;
-  arrow::DoubleBuilder secondaryEndXmm;
-  arrow::DoubleBuilder secondaryEndYmm;
-  arrow::DoubleBuilder secondaryEndZmm;
-
-  for (const auto& row : rows) {
-    if (!AppendValue(gunCallId, row.gunCallId, errorMessage) ||
-        !AppendValue(primaryTrackId, row.primaryTrackId, errorMessage) ||
-        !AppendValue(secondaryTrackId, row.secondaryTrackId, errorMessage) ||
-        !AppendString(secondarySpecies, row.secondarySpecies, errorMessage) ||
-        !AppendValue(secondaryOriginXmm, row.secondaryOriginXmm, errorMessage) ||
-        !AppendValue(secondaryOriginYmm, row.secondaryOriginYmm, errorMessage) ||
-        !AppendValue(secondaryOriginZmm, row.secondaryOriginZmm, errorMessage) ||
-        !AppendValue(secondaryOriginEnergyMeV, row.secondaryOriginEnergyMeV,
-                     errorMessage) ||
-        !AppendValue(secondaryEndXmm, row.secondaryEndXmm, errorMessage) ||
-        !AppendValue(secondaryEndYmm, row.secondaryEndYmm, errorMessage) ||
-        !AppendValue(secondaryEndZmm, row.secondaryEndZmm, errorMessage)) {
-      return false;
-    }
-  }
-
-  auto schema = arrow::schema({
-      arrow::field("gun_call_id", arrow::int64()),
-      arrow::field("primary_track_id", arrow::int32()),
-      arrow::field("secondary_track_id", arrow::int32()),
-      arrow::field("secondary_species", arrow::utf8()),
-      arrow::field("secondary_origin_x_mm", arrow::float64()),
-      arrow::field("secondary_origin_y_mm", arrow::float64()),
-      arrow::field("secondary_origin_z_mm", arrow::float64()),
-      arrow::field("secondary_origin_energy_MeV", arrow::float64()),
-      arrow::field("secondary_end_x_mm", arrow::float64()),
-      arrow::field("secondary_end_y_mm", arrow::float64()),
-      arrow::field("secondary_end_z_mm", arrow::float64()),
-  });
-
-  auto table = arrow::Table::Make(
-      schema,
-      {
-          FinishArray(gunCallId, errorMessage),
-          FinishArray(primaryTrackId, errorMessage),
-          FinishArray(secondaryTrackId, errorMessage),
-          FinishArray(secondarySpecies, errorMessage),
-          FinishArray(secondaryOriginXmm, errorMessage),
-          FinishArray(secondaryOriginYmm, errorMessage),
-          FinishArray(secondaryOriginZmm, errorMessage),
-          FinishArray(secondaryOriginEnergyMeV, errorMessage),
-          FinishArray(secondaryEndXmm, errorMessage),
-          FinishArray(secondaryEndYmm, errorMessage),
-          FinishArray(secondaryEndZmm, errorMessage),
-      });
-  return !table->columns().empty() && WriteTable(path, table, errorMessage);
-}
-
-bool WritePhotons(const std::string& path,
-                  const std::vector<PhotonInfo>& rows,
-                  std::string* errorMessage) {
-  arrow::Int64Builder gunCallId;
-  arrow::Int32Builder primaryTrackId;
-  arrow::Int32Builder secondaryTrackId;
-  arrow::Int32Builder photonTrackId;
-  arrow::DoubleBuilder photonCreationTimeNs;
-  arrow::DoubleBuilder photonOriginXmm;
-  arrow::DoubleBuilder photonOriginYmm;
-  arrow::DoubleBuilder photonOriginZmm;
-  arrow::DoubleBuilder photonScintExitXmm;
-  arrow::DoubleBuilder photonScintExitYmm;
-  arrow::DoubleBuilder photonScintExitZmm;
-  arrow::DoubleBuilder opticalInterfaceHitXmm;
-  arrow::DoubleBuilder opticalInterfaceHitYmm;
-  arrow::DoubleBuilder opticalInterfaceHitTimeNs;
-  arrow::DoubleBuilder opticalInterfaceHitDirX;
-  arrow::DoubleBuilder opticalInterfaceHitDirY;
-  arrow::DoubleBuilder opticalInterfaceHitDirZ;
-  arrow::DoubleBuilder opticalInterfaceHitPolX;
-  arrow::DoubleBuilder opticalInterfaceHitPolY;
-  arrow::DoubleBuilder opticalInterfaceHitPolZ;
-  arrow::DoubleBuilder opticalInterfaceHitEnergyEV;
-  arrow::DoubleBuilder opticalInterfaceHitWavelengthNm;
-
-  for (const auto& row : rows) {
-    if (!AppendValue(gunCallId, row.gunCallId, errorMessage) ||
-        !AppendValue(primaryTrackId, row.primaryTrackId, errorMessage) ||
-        !AppendValue(secondaryTrackId, row.secondaryTrackId, errorMessage) ||
-        !AppendValue(photonTrackId, row.photonTrackId, errorMessage) ||
-        !AppendValue(photonCreationTimeNs, row.photonCreationTimeNs,
-                     errorMessage) ||
-        !AppendValue(photonOriginXmm, row.photonOriginXmm, errorMessage) ||
-        !AppendValue(photonOriginYmm, row.photonOriginYmm, errorMessage) ||
-        !AppendValue(photonOriginZmm, row.photonOriginZmm, errorMessage) ||
-        !AppendValue(photonScintExitXmm, row.photonScintExitXmm,
-                     errorMessage) ||
-        !AppendValue(photonScintExitYmm, row.photonScintExitYmm,
-                     errorMessage) ||
-        !AppendValue(photonScintExitZmm, row.photonScintExitZmm,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitXmm, row.opticalInterfaceHitXmm,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitYmm, row.opticalInterfaceHitYmm,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitTimeNs, row.opticalInterfaceHitTimeNs,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitDirX, row.opticalInterfaceHitDirX,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitDirY, row.opticalInterfaceHitDirY,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitDirZ, row.opticalInterfaceHitDirZ,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitPolX, row.opticalInterfaceHitPolX,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitPolY, row.opticalInterfaceHitPolY,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitPolZ, row.opticalInterfaceHitPolZ,
-                     errorMessage) ||
-        !AppendValue(opticalInterfaceHitEnergyEV,
-                     row.opticalInterfaceHitEnergyEV, errorMessage) ||
-        !AppendValue(opticalInterfaceHitWavelengthNm,
-                     row.opticalInterfaceHitWavelengthNm, errorMessage)) {
-      return false;
-    }
-  }
-
-  auto schema = arrow::schema({
-      arrow::field("gun_call_id", arrow::int64()),
-      arrow::field("primary_track_id", arrow::int32()),
-      arrow::field("secondary_track_id", arrow::int32()),
-      arrow::field("photon_track_id", arrow::int32()),
-      arrow::field("photon_creation_time_ns", arrow::float64()),
-      arrow::field("photon_origin_x_mm", arrow::float64()),
-      arrow::field("photon_origin_y_mm", arrow::float64()),
-      arrow::field("photon_origin_z_mm", arrow::float64()),
-      arrow::field("photon_scint_exit_x_mm", arrow::float64()),
-      arrow::field("photon_scint_exit_y_mm", arrow::float64()),
-      arrow::field("photon_scint_exit_z_mm", arrow::float64()),
-      arrow::field("optical_interface_hit_x_mm", arrow::float64()),
-      arrow::field("optical_interface_hit_y_mm", arrow::float64()),
-      arrow::field("optical_interface_hit_time_ns", arrow::float64()),
-      arrow::field("optical_interface_hit_dir_x", arrow::float64()),
-      arrow::field("optical_interface_hit_dir_y", arrow::float64()),
-      arrow::field("optical_interface_hit_dir_z", arrow::float64()),
-      arrow::field("optical_interface_hit_pol_x", arrow::float64()),
-      arrow::field("optical_interface_hit_pol_y", arrow::float64()),
-      arrow::field("optical_interface_hit_pol_z", arrow::float64()),
-      arrow::field("optical_interface_hit_energy_eV", arrow::float64()),
-      arrow::field("optical_interface_hit_wavelength_nm", arrow::float64()),
-  });
-
-  auto table = arrow::Table::Make(
-      schema,
-      {
-          FinishArray(gunCallId, errorMessage),
-          FinishArray(primaryTrackId, errorMessage),
-          FinishArray(secondaryTrackId, errorMessage),
-          FinishArray(photonTrackId, errorMessage),
-          FinishArray(photonCreationTimeNs, errorMessage),
-          FinishArray(photonOriginXmm, errorMessage),
-          FinishArray(photonOriginYmm, errorMessage),
-          FinishArray(photonOriginZmm, errorMessage),
-          FinishArray(photonScintExitXmm, errorMessage),
-          FinishArray(photonScintExitYmm, errorMessage),
-          FinishArray(photonScintExitZmm, errorMessage),
-          FinishArray(opticalInterfaceHitXmm, errorMessage),
-          FinishArray(opticalInterfaceHitYmm, errorMessage),
-          FinishArray(opticalInterfaceHitTimeNs, errorMessage),
-          FinishArray(opticalInterfaceHitDirX, errorMessage),
-          FinishArray(opticalInterfaceHitDirY, errorMessage),
-          FinishArray(opticalInterfaceHitDirZ, errorMessage),
-          FinishArray(opticalInterfaceHitPolX, errorMessage),
-          FinishArray(opticalInterfaceHitPolY, errorMessage),
-          FinishArray(opticalInterfaceHitPolZ, errorMessage),
-          FinishArray(opticalInterfaceHitEnergyEV, errorMessage),
-          FinishArray(opticalInterfaceHitWavelengthNm, errorMessage),
-      });
-  return !table->columns().empty() && WriteTable(path, table, errorMessage);
-}
-}  // namespace
-
-bool WriteParquet(const ParquetOutputPaths& paths,
+bool AppendOutput(const OutputPaths& paths,
+                  const OutputSelection& selection,
                   const std::vector<PrimaryInfo>& primaryRows,
                   const std::vector<SecondaryInfo>& secondaryRows,
                   const std::vector<PhotonInfo>& photonRows,
                   std::string* errorMessage) {
-  return WritePrimaries(paths.primaries, primaryRows, errorMessage) &&
-         WriteSecondaries(paths.secondaries, secondaryRows, errorMessage) &&
-         WritePhotons(paths.photons, photonRows, errorMessage);
+  if (selection.primaries && !primaryRows.empty()) {
+    auto primaryNative = ToNative(primaryRows);
+    if (!AppendBinaryRecords(BinaryOutputKind::Primaries,
+                             paths.primaries,
+                             primaryNative)) {
+      if (errorMessage) {
+        *errorMessage = "Failed to append primary records to " + paths.primaries;
+      }
+      return false;
+    }
+  }
+
+  if (selection.secondaries && !secondaryRows.empty()) {
+    auto secondaryNative = ToNative(secondaryRows);
+    if (!AppendBinaryRecords(BinaryOutputKind::Secondaries,
+                             paths.secondaries,
+                             secondaryNative)) {
+      if (errorMessage) {
+        *errorMessage = "Failed to append secondary records to " + paths.secondaries;
+      }
+      return false;
+    }
+  }
+
+  if (selection.photons && !photonRows.empty()) {
+    auto photonNative = ToNative(photonRows);
+    if (!AppendBinaryRecords(BinaryOutputKind::Photons,
+                             paths.photons,
+                             photonNative)) {
+      if (errorMessage) {
+        *errorMessage = "Failed to append photon records to " + paths.photons;
+      }
+      return false;
+    }
+  }
+
+  return true;
 }
 
-bool WriteParquetPart(const ParquetOutputPaths& basePaths,
-                      const ParquetOutputSelection& selection,
-                      std::uint64_t partIndex,
-                      const std::vector<PrimaryInfo>& primaryRows,
-                      const std::vector<SecondaryInfo>& secondaryRows,
-                      const std::vector<PhotonInfo>& photonRows,
-                      std::string* errorMessage) {
-  const ParquetOutputPaths partPaths = {
-      PartFilePath(basePaths.primaries, partIndex),
-      PartFilePath(basePaths.secondaries, partIndex),
-      PartFilePath(basePaths.photons, partIndex),
-  };
-  if (selection.primaries &&
-      !WritePrimaries(partPaths.primaries, primaryRows, errorMessage)) {
-    return false;
+void CloseOutput(const std::string& /*outputPath*/) {
+  auto& state = g_binaryState;
+
+  if (state.primariesFile) {
+    std::fclose(state.primariesFile);
+    state.primariesFile = nullptr;
   }
-  if (selection.secondaries &&
-      !WriteSecondaries(partPaths.secondaries, secondaryRows, errorMessage)) {
-    return false;
+  if (state.secondariesFile) {
+    std::fclose(state.secondariesFile);
+    state.secondariesFile = nullptr;
   }
-  if (selection.photons &&
-      !WritePhotons(partPaths.photons, photonRows, errorMessage)) {
-    return false;
+  if (state.photonsFile) {
+    std::fclose(state.photonsFile);
+    state.photonsFile = nullptr;
   }
-  return true;
+
+  state.primariesPath.clear();
+  state.secondariesPath.clear();
+  state.photonsPath.clear();
 }
 
 }  // namespace SimIO

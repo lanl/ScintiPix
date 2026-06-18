@@ -71,7 +71,7 @@ class EventAction : public G4UserEventAction {
 
   void BeginOfEventAction(const G4Event* event) override;
   void EndOfEventAction(const G4Event* event) override;
-  /// Flush this worker's buffered rows to a unique Parquet part file set.
+  /// Flush this worker's buffered rows to binary output files.
   void FlushOutputRows();
 
   void RecordTrackInfo(G4int trackID, const TrackInfo& info);

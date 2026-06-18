@@ -23,8 +23,11 @@ if(DEFINED ENV{CONDA_PREFIX})
   list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
 endif()
 
-find_package(Arrow CONFIG REQUIRED)
-find_package(Parquet CONFIG REQUIRED)
+if(DEFINED ENV{CONDA_PREFIX})
+  list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
+endif()
+
+# Binary output uses standard C file I/O - no external dependencies needed
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -40,9 +43,9 @@ target_include_directories(scintipix PRIVATE
 
 target_link_libraries(scintipix PRIVATE
   ${Geant4_LIBRARIES}
-  Arrow::arrow_shared
-  Parquet::parquet_shared
 )
+
+# No external libraries needed for binary output
 
 get_filename_component(SCINTIPIX_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 target_compile_definitions(scintipix PRIVATE

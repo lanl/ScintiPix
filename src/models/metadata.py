@@ -102,17 +102,17 @@ class WorkingDirectoryLayout(StrictModel):
     )
     sensor_hits_directory: str | None = Field(default=None, alias="SensorHitsDirectory")
     primaries_filename: str = Field(
-        default="primaries.parquet",
+        default="primaries.bin",
         alias="PrimariesFilename",
         min_length=1,
     )
     secondaries_filename: str = Field(
-        default="secondaries.parquet",
+        default="secondaries.bin",
         alias="SecondariesFilename",
         min_length=1,
     )
     photons_filename: str = Field(
-        default="photons.parquet",
+        default="photons.bin",
         alias="PhotonsFilename",
         min_length=1,
     )
