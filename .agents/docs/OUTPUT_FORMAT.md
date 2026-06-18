@@ -4,7 +4,7 @@
 
 ScintiPix uses a simple, thread-safe binary format for simulation output. This provides:
 - **Fast writes**: Direct `fwrite()` of fixed-size structs with persistent file handles
-- **Thread-safe**: OS-level file locking handles concurrent appends from multiple GEANT4 worker threads
+- **Thread-safe**: Run-start file initialization plus per-output locking around appends from GEANT4 worker threads
 - **Simple**: No external dependencies, standard C file I/O
 - **Compact**: Fixed-size records with minimal overhead
 
@@ -59,8 +59,8 @@ struct BinaryHeader {
 ### Record Sizes
 
 - **Primary particles**: 96 bytes per record
-- **Secondary particles**: 88 bytes per record  
-- **Photons**: 184 bytes per record
+- **Secondary particles**: 96 bytes per record
+- **Photons**: 168 bytes per record
 
 Each struct uses C-style alignment (natural padding after `int32` fields to maintain 8-byte alignment for `double`/`int64`).
 
@@ -68,13 +68,13 @@ Each struct uses C-style alignment (natural padding after `int32` fields to main
 
 The format is thread-safe because:
 
-1. **Persistent file handles**: Files opened once at run start, kept open until run end
-2. **Thread-local state**: Each GEANT4 worker thread maintains its own file handle
-3. **Append-only**: All writes append to end of file
-4. **OS locking**: File system serializes concurrent appends
-5. **Fixed-size records**: No variable-length data or offsets to corrupt
+1. **Run-start headers**: Selected output files are created/truncated and given headers before worker appends begin
+2. **Thread-local file handles**: Each GEANT4 worker thread maintains its own append handle
+3. **Append mode**: Worker handles use binary append mode, so writes go to the end of file
+4. **Per-output locking**: Appends are serialized per output file inside `SimIO`
+5. **Fixed-size records**: No variable-length data or offsets are shared between writers
 
-Multiple GEANT4 worker threads can append to the same file concurrently without explicit locking in the simulation code.
+Multiple GEANT4 worker threads can write the same selected output safely through `SimIO::AppendOutput`.
 
 ---
 
