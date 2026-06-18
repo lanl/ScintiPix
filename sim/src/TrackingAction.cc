@@ -1,10 +1,13 @@
 #include "TrackingAction.hh"
 
 #include "EventAction.hh"
+#include "config.hh"
 
 #include "G4ParticleDefinition.hh"
+#include "G4SystemOfUnits.hh"
 #include "G4Track.hh"
 
+#include <cmath>
 #include <string>
 
 namespace {
@@ -41,8 +44,39 @@ bool IsOpticalPhoton(const G4String& particleName) {
 }
 }  // namespace
 
-TrackingAction::TrackingAction(EventAction* eventAction)
-    : fEventAction(eventAction) {}
+TrackingAction::TrackingAction(EventAction* eventAction, const Config* config)
+    : fEventAction(eventAction), fConfig(config) {}
+
+bool TrackingAction::ShouldCullPhoton(const G4ThreeVector& photonDirection,
+                                      const G4ThreeVector& photonOrigin,
+                                      const G4ThreeVector& detectorCenter) const {
+  // If culling is disabled, don't cull any photons
+  if (!fConfig || !fConfig->GetPhotonCullingEnabled()) {
+    return false;
+  }
+
+  // Get acceptance angle from config (convert to radians for calculation)
+  G4double acceptanceAngleRad = fConfig->GetPhotonCullingAcceptanceAngleDeg() * CLHEP::pi / 180.0;
+  G4double cosAcceptanceAngle = std::cos(acceptanceAngleRad);
+
+  // Calculate vector from photon origin to detector center
+  G4ThreeVector toDetector = detectorCenter - photonOrigin;
+
+  // If the vector is zero (same position), don't cull
+  if (toDetector.mag2() == 0.0) {
+    return false;
+  }
+
+  // Normalize the direction to detector
+  toDetector = toDetector.unit();
+
+  // Calculate dot product (cosine of angle between photon direction and to-detector direction)
+  G4double cosAngle = photonDirection.dot(toDetector);
+
+  // Cull if the angle is greater than the acceptance angle
+  // (i.e., cosine is less than the cosine of the acceptance angle)
+  return cosAngle < cosAcceptanceAngle;
+}
 
 void TrackingAction::PreUserTrackingAction(const G4Track* track) {
   if (!fEventAction || !track) {
@@ -60,6 +94,21 @@ void TrackingAction::PreUserTrackingAction(const G4Track* track) {
   fEventAction->RecordTrackInfo(trackID, trackInfo);
 
   if (IsOpticalPhoton(particleName)) {
+    // Photon culling: check if photon should be killed based on direction
+    if (fConfig && fConfig->GetPhotonCullingEnabled()) {
+      const G4ThreeVector photonDirection = track->GetMomentumDirection();
+      const G4ThreeVector photonOrigin = track->GetVertexPosition();
+      const G4ThreeVector detectorCenter(fConfig->GetOpticalInterfacePosX(),
+                                        fConfig->GetOpticalInterfacePosY(),
+                                        fConfig->GetOpticalInterfacePosZ());
+
+      if (ShouldCullPhoton(photonDirection, photonOrigin, detectorCenter)) {
+        // Kill the track immediately - prevent Geant4 from tracking it
+        const_cast<G4Track*>(track)->SetTrackStatus(fStopAndKill);
+        return;
+      }
+    }
+
     EventAction::PhotonCreationInfo info;
     info.primaryTrackID = trackInfo.primaryTrackID;
     info.secondaryTrackID = parentID;
