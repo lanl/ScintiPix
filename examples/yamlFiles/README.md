@@ -417,6 +417,9 @@ Fields:
   be blank.
 - `eventsPerOutput`: Geant4 events buffered by each worker before writing one
   Parquet part file. Defaults to `1000`.
+- `output`: selects which Geant4 Parquet tables are assembled and written.
+  Defaults to all tables enabled. At least one of `primaries`, `secondaries`,
+  or `photons` must be `true`.
 - `showProgress`: Python runner progress display flag. Defaults to `false`.
 - `verifyOutput`: check for expected simulation Parquet part files after
   simulation. Defaults to `true`.
