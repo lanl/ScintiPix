@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <sys/stat.h>
@@ -16,7 +17,13 @@ using BinarySecondaryRow = SimStructures::detail::BinarySecondaryRow;
 using BinaryPhotonRow = SimStructures::detail::BinaryPhotonRow;
 constexpr std::size_t kSpeciesLabelSize = SimStructures::detail::kSpeciesLabelSize;
 
-// Persistent file handles (static, kept open for duration of simulation)
+enum class BinaryOutputKind {
+  Primaries,
+  Secondaries,
+  Photons,
+};
+
+// Persistent file handles kept open per worker thread.
 struct BinaryFileState {
   FILE* primariesFile = nullptr;
   FILE* secondariesFile = nullptr;
@@ -26,8 +33,15 @@ struct BinaryFileState {
   std::string photonsPath;
 };
 
+struct BinaryFileLocks {
+  std::mutex primaries;
+  std::mutex secondaries;
+  std::mutex photons;
+};
+
 // Thread-local state to avoid file handle conflicts
 thread_local BinaryFileState g_binaryState;
+BinaryFileLocks g_binaryLocks;
 
 // Binary file header (64 bytes, fixed size for easy parsing)
 struct BinaryHeader {
@@ -148,25 +162,68 @@ bool WriteBinaryHeader(FILE* f, std::uint32_t recordSize) {
   return (std::fwrite(&header, sizeof(header), 1, f) == 1);
 }
 
-FILE* EnsureFileOpen(const std::string& path, std::uint32_t recordSize) {
+FILE** FileSlot(BinaryFileState& state, BinaryOutputKind kind) {
+  switch (kind) {
+    case BinaryOutputKind::Primaries:
+      return &state.primariesFile;
+    case BinaryOutputKind::Secondaries:
+      return &state.secondariesFile;
+    case BinaryOutputKind::Photons:
+      return &state.photonsFile;
+  }
+  return nullptr;
+}
+
+std::string* PathSlot(BinaryFileState& state, BinaryOutputKind kind) {
+  switch (kind) {
+    case BinaryOutputKind::Primaries:
+      return &state.primariesPath;
+    case BinaryOutputKind::Secondaries:
+      return &state.secondariesPath;
+    case BinaryOutputKind::Photons:
+      return &state.photonsPath;
+  }
+  return nullptr;
+}
+
+std::mutex& FileMutex(BinaryOutputKind kind) {
+  switch (kind) {
+    case BinaryOutputKind::Primaries:
+      return g_binaryLocks.primaries;
+    case BinaryOutputKind::Secondaries:
+      return g_binaryLocks.secondaries;
+    case BinaryOutputKind::Photons:
+      return g_binaryLocks.photons;
+  }
+  return g_binaryLocks.photons;
+}
+
+bool FileExists(const std::string& path) {
+  FILE* f = std::fopen(path.c_str(), "rb");
+  if (!f) {
+    return false;
+  }
+  std::fclose(f);
+  return true;
+}
+
+bool CreateBinaryFile(const std::string& path, std::uint32_t recordSize) {
+  FILE* f = std::fopen(path.c_str(), "wb");
+  if (!f) {
+    return false;
+  }
+
+  const bool success = WriteBinaryHeader(f, recordSize);
+  std::fclose(f);
+  return success;
+}
+
+FILE* EnsureFileOpen(BinaryOutputKind kind,
+                     const std::string& path,
+                     std::uint32_t recordSize) {
   auto& state = g_binaryState;
-  FILE** filePtr = nullptr;
-  std::string* pathPtr = nullptr;
-
-  if (path.find("primaries") != std::string::npos) {
-    filePtr = &state.primariesFile;
-    pathPtr = &state.primariesPath;
-  } else if (path.find("secondaries") != std::string::npos) {
-    filePtr = &state.secondariesFile;
-    pathPtr = &state.secondariesPath;
-  } else if (path.find("photons") != std::string::npos) {
-    filePtr = &state.photonsFile;
-    pathPtr = &state.photonsPath;
-  }
-
-  if (!filePtr) {
-    return nullptr;
-  }
+  FILE** filePtr = FileSlot(state, kind);
+  std::string* pathPtr = PathSlot(state, kind);
 
   // If file is already open for this path, return it
   if (*filePtr && *pathPtr == path) {
@@ -179,50 +236,35 @@ FILE* EnsureFileOpen(const std::string& path, std::uint32_t recordSize) {
     *filePtr = nullptr;
   }
 
-  // Check if file exists
-  bool exists = false;
-  FILE* testFile = std::fopen(path.c_str(), "rb");
-  if (testFile) {
-    exists = true;
-    std::fclose(testFile);
+  if (!FileExists(path) && !CreateBinaryFile(path, recordSize)) {
+    return nullptr;
   }
 
-  // Open file for appending (or create new)
-  *filePtr = std::fopen(path.c_str(), exists ? "r+b" : "wb");
+  *filePtr = std::fopen(path.c_str(), "ab");
   if (!*filePtr) {
     return nullptr;
   }
 
   *pathPtr = path;
-
-  // Write header if new file
-  if (!exists) {
-    if (!WriteBinaryHeader(*filePtr, recordSize)) {
-      std::fclose(*filePtr);
-      *filePtr = nullptr;
-      return nullptr;
-    }
-  }
-
-  // Seek to end for appending
-  std::fseek(*filePtr, 0, SEEK_END);
-
   return *filePtr;
 }
 
 template<typename T>
-bool AppendBinaryRecords(const std::string& path, const std::vector<T>& rows) {
+bool AppendBinaryRecords(BinaryOutputKind kind,
+                         const std::string& path,
+                         const std::vector<T>& rows) {
   if (rows.empty()) {
     return true;
   }
 
-  FILE* f = EnsureFileOpen(path, sizeof(T));
+  std::lock_guard<std::mutex> lock(FileMutex(kind));
+  FILE* f = EnsureFileOpen(kind, path, sizeof(T));
   if (!f) {
     return false;
   }
 
   bool success = (std::fwrite(rows.data(), sizeof(T), rows.size(), f) == rows.size());
-  std::fflush(f);  // Ensure data reaches disk immediately
+  success = success && (std::fflush(f) == 0);
   return success;
 }
 
@@ -231,9 +273,6 @@ bool AppendBinaryRecords(const std::string& path, const std::vector<T>& rows) {
 bool InitOutput(const OutputPaths& paths,
                 const OutputSelection& selection,
                 std::string* errorMessage) {
-  // For binary format, we just validate parent directories exist
-  // Files are created lazily on first append
-
   if (selection.primaries && !EnsureParentDirectory(paths.primaries)) {
     if (errorMessage) {
       *errorMessage = "Output directory does not exist for " + paths.primaries;
@@ -255,6 +294,30 @@ bool InitOutput(const OutputPaths& paths,
     return false;
   }
 
+  if (selection.primaries &&
+      !CreateBinaryFile(paths.primaries, sizeof(BinaryPrimaryRow))) {
+    if (errorMessage) {
+      *errorMessage = "Failed to initialize primary output " + paths.primaries;
+    }
+    return false;
+  }
+
+  if (selection.secondaries &&
+      !CreateBinaryFile(paths.secondaries, sizeof(BinarySecondaryRow))) {
+    if (errorMessage) {
+      *errorMessage = "Failed to initialize secondary output " + paths.secondaries;
+    }
+    return false;
+  }
+
+  if (selection.photons &&
+      !CreateBinaryFile(paths.photons, sizeof(BinaryPhotonRow))) {
+    if (errorMessage) {
+      *errorMessage = "Failed to initialize photon output " + paths.photons;
+    }
+    return false;
+  }
+
   return true;
 }
 
@@ -266,7 +329,9 @@ bool AppendOutput(const OutputPaths& paths,
                   std::string* errorMessage) {
   if (selection.primaries && !primaryRows.empty()) {
     auto primaryNative = ToNative(primaryRows);
-    if (!AppendBinaryRecords(paths.primaries, primaryNative)) {
+    if (!AppendBinaryRecords(BinaryOutputKind::Primaries,
+                             paths.primaries,
+                             primaryNative)) {
       if (errorMessage) {
         *errorMessage = "Failed to append primary records to " + paths.primaries;
       }
@@ -276,7 +341,9 @@ bool AppendOutput(const OutputPaths& paths,
 
   if (selection.secondaries && !secondaryRows.empty()) {
     auto secondaryNative = ToNative(secondaryRows);
-    if (!AppendBinaryRecords(paths.secondaries, secondaryNative)) {
+    if (!AppendBinaryRecords(BinaryOutputKind::Secondaries,
+                             paths.secondaries,
+                             secondaryNative)) {
       if (errorMessage) {
         *errorMessage = "Failed to append secondary records to " + paths.secondaries;
       }
@@ -286,7 +353,9 @@ bool AppendOutput(const OutputPaths& paths,
 
   if (selection.photons && !photonRows.empty()) {
     auto photonNative = ToNative(photonRows);
-    if (!AppendBinaryRecords(paths.photons, photonNative)) {
+    if (!AppendBinaryRecords(BinaryOutputKind::Photons,
+                             paths.photons,
+                             photonNative)) {
       if (errorMessage) {
         *errorMessage = "Failed to append photon records to " + paths.photons;
       }
