@@ -1,5 +1,6 @@
 #include "RunAction.hh"
 
+#include "EventAction.hh"
 #include "config.hh"
 
 #include "G4Exception.hh"
@@ -7,16 +8,13 @@
 #include "G4Run.hh"
 #include "G4ios.hh"
 
+#include <atomic>
+#include <cstdint>
 #include <filesystem>
-#include <mutex>
 #include <string>
-#include <vector>
 
 namespace {
-std::mutex gOutputRowsMutex;
-std::vector<SimIO::PrimaryInfo> gPrimaryRows;
-std::vector<SimIO::SecondaryInfo> gSecondaryRows;
-std::vector<SimIO::PhotonInfo> gPhotonRows;
+std::atomic<std::uint64_t> gNextOutputPartIndex{0};
 
 // Return true when the output path has no parent or its parent exists.
 bool ParentDirectoryExists(const std::string& outputFilePath) {
@@ -38,12 +36,7 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
     return;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(gOutputRowsMutex);
-    gPrimaryRows.clear();
-    gSecondaryRows.clear();
-    gPhotonRows.clear();
-  }
+  gNextOutputPartIndex.store(0);
 
   std::string missingPaths;
 
@@ -79,43 +72,11 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
 }
 
 void RunAction::EndOfRunAction(const G4Run* /*run*/) {
-  if (!IsMaster() || fConfig == nullptr) {
-    return;
-  }
-
-  std::vector<SimIO::PrimaryInfo> primaryRows;
-  std::vector<SimIO::SecondaryInfo> secondaryRows;
-  std::vector<SimIO::PhotonInfo> photonRows;
-  {
-    std::lock_guard<std::mutex> lock(gOutputRowsMutex);
-    primaryRows = gPrimaryRows;
-    secondaryRows = gSecondaryRows;
-    photonRows = gPhotonRows;
-  }
-
-  const SimIO::ParquetOutputPaths paths = {
-      fConfig->GetPrimariesOutputFile(),
-      fConfig->GetSecondariesOutputFile(),
-      fConfig->GetPhotonsOutputFile(),
-  };
-
-  std::string error;
-  if (!SimIO::WriteParquet(paths, primaryRows, secondaryRows, photonRows, &error)) {
-    if (error.empty()) {
-      G4cout << "Failed writing Parquet output." << G4endl;
-    } else {
-      G4cout << error << G4endl;
-    }
+  if (auto* eventAction = EventAction::Instance()) {
+    eventAction->FlushOutputRows();
   }
 }
 
-void RunAction::AppendOutputRows(
-    const std::vector<SimIO::PrimaryInfo>& primaryRows,
-    const std::vector<SimIO::SecondaryInfo>& secondaryRows,
-    const std::vector<SimIO::PhotonInfo>& photonRows) {
-  std::lock_guard<std::mutex> lock(gOutputRowsMutex);
-  gPrimaryRows.insert(gPrimaryRows.end(), primaryRows.begin(), primaryRows.end());
-  gSecondaryRows.insert(gSecondaryRows.end(), secondaryRows.begin(),
-                        secondaryRows.end());
-  gPhotonRows.insert(gPhotonRows.end(), photonRows.begin(), photonRows.end());
+std::uint64_t RunAction::NextOutputPartIndex() {
+  return gNextOutputPartIndex.fetch_add(1);
 }

@@ -437,6 +437,19 @@ void Config::SetPhotonsOutputFile(const std::string& value) {
   fPhotonsOutputFile = normalized;
 }
 
+G4int Config::GetEventsPerOutput() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fEventsPerOutput;
+}
+
+void Config::SetEventsPerOutput(G4int value) {
+  if (value <= 0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fEventsPerOutput = value;
+}
+
 SourceTimingMode Config::GetSourceTimingMode() const {
   std::lock_guard<std::mutex> lock(fMutex);
   return fSourceTimingMode;

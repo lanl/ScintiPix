@@ -288,6 +288,13 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fOpticalInterfacePosZCmd->SetUnitCategory("Length");
   fOpticalInterfacePosZCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+  fEventsPerOutputCmd = new G4UIcmdWithAnInteger("/output/eventsPerOutput", this);
+  fEventsPerOutputCmd->SetGuidance(
+      "Set number of Geant4 events accumulated before writing one Parquet part.");
+  fEventsPerOutputCmd->SetParameterName("eventsPerOutput", false);
+  fEventsPerOutputCmd->SetRange("eventsPerOutput > 0");
+  fEventsPerOutputCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
   fPrimariesOutputFileCmd = new G4UIcmdWithAString("/output/primariesFile", this);
   fPrimariesOutputFileCmd->SetGuidance("Set primaries Parquet output file.");
   fPrimariesOutputFileCmd->SetParameterName("primariesFile", false);
@@ -382,6 +389,7 @@ Messenger::~Messenger() {
   delete fPhotonsOutputFileCmd;
   delete fSecondariesOutputFileCmd;
   delete fPrimariesOutputFileCmd;
+  delete fEventsPerOutputCmd;
 
   delete fOpticalInterfacePosZCmd;
   delete fOpticalInterfacePosYCmd;
@@ -711,6 +719,13 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     fConfig->SetPrimariesOutputFile(newValue);
     G4cout << "Primaries Parquet output file set to '"
            << fConfig->GetPrimariesOutputFile() << "'." << G4endl;
+    return;
+  }
+
+  if (command == fEventsPerOutputCmd) {
+    fConfig->SetEventsPerOutput(fEventsPerOutputCmd->GetNewIntValue(newValue));
+    G4cout << "Parquet events per output part set to "
+           << fConfig->GetEventsPerOutput() << "." << G4endl;
     return;
   }
 

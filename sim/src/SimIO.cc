@@ -4,8 +4,11 @@
 #include <arrow/io/api.h>
 #include <parquet/arrow/writer.h>
 
+#include <cstdint>
 #include <filesystem>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -93,6 +96,23 @@ bool WriteTable(const std::string& path,
     return false;
   }
   return true;
+}
+
+std::string PartFilePath(const std::string& basePath, std::uint64_t partIndex) {
+  const std::filesystem::path path(basePath);
+  const std::filesystem::path parent = path.parent_path();
+  const std::string stem =
+      path.stem().string().empty() ? "part" : path.stem().string();
+  const std::string extension =
+      path.extension().string().empty() ? ".parquet" : path.extension().string();
+
+  std::ostringstream filename;
+  filename << stem << "_part-" << std::setw(6) << std::setfill('0') << partIndex
+           << extension;
+  if (parent.empty()) {
+    return filename.str();
+  }
+  return (parent / filename.str()).string();
 }
 
 bool WritePrimaries(const std::string& path,
@@ -355,6 +375,21 @@ bool WriteParquet(const ParquetOutputPaths& paths,
   return WritePrimaries(paths.primaries, primaryRows, errorMessage) &&
          WriteSecondaries(paths.secondaries, secondaryRows, errorMessage) &&
          WritePhotons(paths.photons, photonRows, errorMessage);
+}
+
+bool WriteParquetPart(const ParquetOutputPaths& basePaths,
+                      std::uint64_t partIndex,
+                      const std::vector<PrimaryInfo>& primaryRows,
+                      const std::vector<SecondaryInfo>& secondaryRows,
+                      const std::vector<PhotonInfo>& photonRows,
+                      std::string* errorMessage) {
+  const ParquetOutputPaths partPaths = {
+      PartFilePath(basePaths.primaries, partIndex),
+      PartFilePath(basePaths.secondaries, partIndex),
+      PartFilePath(basePaths.photons, partIndex),
+  };
+  return WriteParquet(partPaths, primaryRows, secondaryRows, photonRows,
+                      errorMessage);
 }
 
 }  // namespace SimIO
