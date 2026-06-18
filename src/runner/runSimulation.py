@@ -61,8 +61,7 @@ def _binary_output_filename(base_path: Path) -> str:
 
 def _has_binary_output(base_path: Path) -> bool:
     """Return true when the binary output file exists."""
-    output_file = base_path.parent / _binary_output_filename(base_path)
-    return output_file.exists()
+    return base_path.exists()
 
 
 def _expected_output_bases(config: Simulation) -> list[Path]:
