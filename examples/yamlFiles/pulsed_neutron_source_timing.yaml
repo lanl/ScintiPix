@@ -60,10 +60,10 @@ source:
   timing:
     mode: pulsed
     start_time_ns: 0.0
-    particle_flux: 79577.47154594767
-    pulse_period_ns: 1000000.0
+    particle_flux: 10000000
+    pulse_period_ns: 10000.0
     pulse_time_offset_ns: 0.0
-    pulse_time_width_ns: 270.0
+    pulse_time_width_ns: 1000.0
     pulse_shape: uniform
 
 optical:
@@ -105,7 +105,8 @@ sensor:
     dead_time_ns: 475.0
 
 geant4runner:
-  numberOfParticles: 200
+  numberOfParticles: 100000
+  eventsPerOutput: 10000
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
