@@ -247,6 +247,32 @@ class TestGeant4RunTime:
         runtime = Geant4RunTime(number_of_particles=1000)
         assert runtime.binary == "scintipix"
 
+    def test_events_per_output_alias_handling(self) -> None:
+        """camelCase eventsPerOutput alias should map to events_per_output."""
+        runtime = Geant4RunTime.model_validate(
+            {
+                "numberOfParticles": 1000,
+                "eventsPerOutput": 25,
+            }
+        )
+        assert runtime.events_per_output == 25
+
+    def test_events_per_output_default(self) -> None:
+        """events_per_output should default to 100."""
+        runtime = Geant4RunTime(number_of_particles=1000)
+        assert runtime.events_per_output == 100
+
+    def test_events_per_output_positive(self) -> None:
+        """events_per_output must be positive."""
+        runtime = Geant4RunTime(number_of_particles=1000, events_per_output=1)
+        assert runtime.events_per_output == 1
+
+        with pytest.raises(ValidationError, match="events_per_output"):
+            Geant4RunTime(number_of_particles=1000, events_per_output=0)
+
+        with pytest.raises(ValidationError, match="events_per_output"):
+            Geant4RunTime(number_of_particles=1000, events_per_output=-1)
+
     def test_binary_custom_value(self) -> None:
         """Custom binary name should be accepted."""
         runtime = Geant4RunTime(
@@ -365,6 +391,7 @@ class TestGeant4RunTime:
                 "storeTrajectory": True,
             },
             binary="custom_geant4_binary",
+            events_per_output=250,
             show_progress=True,
             verify_output=False,
         )
@@ -374,6 +401,7 @@ class TestGeant4RunTime:
         assert runtime.runtime_controls.print_progress == 1000
         assert runtime.runtime_controls.store_trajectory is True
         assert runtime.binary == "custom_geant4_binary"
+        assert runtime.events_per_output == 250
         assert runtime.show_progress is True
         assert runtime.verify_output is False
 
@@ -410,6 +438,7 @@ class TestGeant4RunTime:
         dumped = runtime.model_dump(by_alias=True)
         assert "numberOfParticles" in dumped
         assert "runtimeControls" in dumped
+        assert "eventsPerOutput" in dumped
         assert "showProgress" in dumped
         assert "verifyOutput" in dumped
 

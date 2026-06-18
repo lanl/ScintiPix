@@ -191,6 +191,7 @@ class MacroWriteTests(unittest.TestCase):
 
             # Verify key command categories are present
             self.assertTrue(any(cmd.startswith("/control/verbose") for cmd in commands))
+            self.assertTrue(any(cmd == "/output/eventsPerOutput 100" for cmd in commands))
             self.assertTrue(any(cmd.startswith("/output/primariesFile ") for cmd in commands))
             self.assertTrue(any(cmd.startswith("/output/secondariesFile ") for cmd in commands))
             self.assertTrue(any(cmd.startswith("/output/photonsFile ") for cmd in commands))

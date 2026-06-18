@@ -93,6 +93,10 @@ class RunSimulationTests(unittest.TestCase):
             / config.metadata.run_environment.primaries_filename
         )
 
+    def _primaries_parquet_part(self, config, index: int = 0) -> Path:
+        base = self._primaries_parquet_file(config)
+        return base.parent / f"{base.stem}_part-{index:06d}{base.suffix}"
+
     def test_parse_simulated_events_extracts_aggregate_count(self) -> None:
         self.assertEqual(
             self.parse_simulated_events("G4WT10 > Simulated 3000 events\n"),
@@ -122,7 +126,7 @@ class RunSimulationTests(unittest.TestCase):
             config = self._config_for_tmp(tmp_path)
             config.geant4runner.binary = "pixi run scintipix"
             self.write_macro(config)
-            output_parquet = self._primaries_parquet_file(config)
+            output_parquet = self._primaries_parquet_part(config)
             expected_log_path = self._log_file(config)
             output_parquet.parent.mkdir(parents=True, exist_ok=True)
             output_parquet.write_text("ok\n", encoding="utf-8")
@@ -158,7 +162,7 @@ class RunSimulationTests(unittest.TestCase):
             config = self._config_for_tmp(tmp_path)
             config.geant4runner.show_progress = False
             self.write_macro(config)
-            output_parquet = self._primaries_parquet_file(config)
+            output_parquet = self._primaries_parquet_part(config)
             output_parquet.parent.mkdir(parents=True, exist_ok=True)
             output_parquet.write_text("ok\n", encoding="utf-8")
 
@@ -244,7 +248,7 @@ class RunSimulationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
-            output_parquet = self._primaries_parquet_file(config)
+            output_parquet = self._primaries_parquet_part(config)
 
             def _popen_side_effect(*args, **kwargs):
                 output_parquet.parent.mkdir(parents=True, exist_ok=True)
