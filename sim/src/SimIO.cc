@@ -378,6 +378,7 @@ bool WriteParquet(const ParquetOutputPaths& paths,
 }
 
 bool WriteParquetPart(const ParquetOutputPaths& basePaths,
+                      const ParquetOutputSelection& selection,
                       std::uint64_t partIndex,
                       const std::vector<PrimaryInfo>& primaryRows,
                       const std::vector<SecondaryInfo>& secondaryRows,
@@ -388,8 +389,19 @@ bool WriteParquetPart(const ParquetOutputPaths& basePaths,
       PartFilePath(basePaths.secondaries, partIndex),
       PartFilePath(basePaths.photons, partIndex),
   };
-  return WriteParquet(partPaths, primaryRows, secondaryRows, photonRows,
-                      errorMessage);
+  if (selection.primaries &&
+      !WritePrimaries(partPaths.primaries, primaryRows, errorMessage)) {
+    return false;
+  }
+  if (selection.secondaries &&
+      !WriteSecondaries(partPaths.secondaries, secondaryRows, errorMessage)) {
+    return false;
+  }
+  if (selection.photons &&
+      !WritePhotons(partPaths.photons, photonRows, errorMessage)) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace SimIO

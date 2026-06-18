@@ -450,6 +450,36 @@ void Config::SetEventsPerOutput(G4int value) {
   fEventsPerOutput = value;
 }
 
+G4bool Config::GetWritePrimariesOutput() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fWritePrimariesOutput;
+}
+
+void Config::SetWritePrimariesOutput(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fWritePrimariesOutput = value;
+}
+
+G4bool Config::GetWriteSecondariesOutput() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fWriteSecondariesOutput;
+}
+
+void Config::SetWriteSecondariesOutput(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fWriteSecondariesOutput = value;
+}
+
+G4bool Config::GetWritePhotonsOutput() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fWritePhotonsOutput;
+}
+
+void Config::SetWritePhotonsOutput(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fWritePhotonsOutput = value;
+}
+
 SourceTimingMode Config::GetSourceTimingMode() const {
   std::lock_guard<std::mutex> lock(fMutex);
   return fSourceTimingMode;

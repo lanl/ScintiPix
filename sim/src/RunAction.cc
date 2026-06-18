@@ -45,13 +45,14 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
       fConfig->GetSecondariesOutputFile(),
       fConfig->GetPhotonsOutputFile(),
   };
-  if (!ParentDirectoryExists(paths.primaries)) {
+  if (fConfig->GetWritePrimariesOutput() && !ParentDirectoryExists(paths.primaries)) {
     missingPaths += "  - Parquet primaries target: " + paths.primaries + "\n";
   }
-  if (!ParentDirectoryExists(paths.secondaries)) {
+  if (fConfig->GetWriteSecondariesOutput() &&
+      !ParentDirectoryExists(paths.secondaries)) {
     missingPaths += "  - Parquet secondaries target: " + paths.secondaries + "\n";
   }
-  if (!ParentDirectoryExists(paths.photons)) {
+  if (fConfig->GetWritePhotonsOutput() && !ParentDirectoryExists(paths.photons)) {
     missingPaths += "  - Parquet photons target: " + paths.photons + "\n";
   }
 
