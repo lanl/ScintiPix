@@ -67,6 +67,21 @@ def _has_parquet_parts(base_path: Path) -> bool:
     return any(base_path.parent.glob(_parquet_part_pattern(base_path)))
 
 
+def _expected_output_bases(config: Simulation) -> list[Path]:
+    """Return configured base paths for enabled Geant4 output tables."""
+
+    env = config.metadata.run_environment
+    output = config.geant4runner.output
+    paths: list[Path] = []
+    if output.primaries:
+        paths.append(Path(env.primaries_directory) / env.primaries_filename)
+    if output.secondaries:
+        paths.append(Path(env.secondaries_directory) / env.secondaries_filename)
+    if output.photons:
+        paths.append(Path(env.simulated_photons_directory) / env.photons_filename)
+    return [path.resolve() for path in paths]
+
+
 def _write_progress(current: int, total: int) -> None:
     """Render a simple in-terminal simulation progress bar."""
 
@@ -107,18 +122,20 @@ def run(
         raise ValueError("Macro directory not configured in run environment")
     if run_environment.log_directory is None:
         raise ValueError("Log directory not configured in run environment")
-    if run_environment.primaries_directory is None:
+    output = config.geant4runner.output
+    if output.primaries and run_environment.primaries_directory is None:
         raise ValueError("Primaries directory not configured in run environment")
+    if output.secondaries and run_environment.secondaries_directory is None:
+        raise ValueError("Secondaries directory not configured in run environment")
+    if output.photons and run_environment.simulated_photons_directory is None:
+        raise ValueError("Simulated photons directory not configured in run environment")
 
     macro_filename = (
         f"{run_environment.simulation_run_id}_"
         f"{run_environment.sub_run_number:03d}.mac"
     )
     macro_path = (Path(run_environment.macro_directory) / macro_filename).resolve()
-    output_primaries_base = (
-        Path(run_environment.primaries_directory)
-        / run_environment.primaries_filename
-    ).resolve()
+    output_bases = _expected_output_bases(config)
 
     if not macro_path.exists():
         raise FileNotFoundError(
@@ -153,12 +170,12 @@ def run(
     last_progress = 0
     displayed_progress = False
     logger.info(f"[simulation] Command: {shlex.join(command)}")
-    output_primaries_pattern = (
-        output_primaries_base.parent / _parquet_part_pattern(output_primaries_base)
-    )
+    output_patterns = [
+        base.parent / _parquet_part_pattern(base) for base in output_bases
+    ]
     logger.info(
-        "[simulation] Primaries Parquet parts: "
-        f"{output_primaries_pattern}"
+        "[simulation] Parquet output parts: "
+        f"{', '.join(str(pattern) for pattern in output_patterns)}"
     )
     with log_stage("simulation"):
         with log_path.open("a", encoding="utf-8") as log_file:
@@ -194,11 +211,17 @@ def run(
         raise subprocess.CalledProcessError(return_code, command)
 
     completed = subprocess.CompletedProcess(command, return_code)
-    if config.geant4runner.verify_output and not _has_parquet_parts(output_primaries_base):
-        raise FileNotFoundError(
-            "Simulation finished but expected primaries Parquet parts were not found: "
-            f"{output_primaries_pattern}"
-        )
+    if config.geant4runner.verify_output:
+        missing_patterns = [
+            str(pattern)
+            for base, pattern in zip(output_bases, output_patterns, strict=True)
+            if not _has_parquet_parts(base)
+        ]
+        if missing_patterns:
+            raise FileNotFoundError(
+                "Simulation finished but expected Parquet parts were not found: "
+                + ", ".join(missing_patterns)
+            )
     return completed
 
 
