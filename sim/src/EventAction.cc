@@ -241,25 +241,23 @@ void EventAction::FlushOutputRows() {
     return;
   }
 
-  const SimIO::ParquetOutputPaths paths = {
+  const SimIO::HDF5OutputPaths paths = {
       fConfig->GetPrimariesOutputFile(),
       fConfig->GetSecondariesOutputFile(),
       fConfig->GetPhotonsOutputFile(),
   };
-  const SimIO::ParquetOutputSelection selection = {
+  const SimIO::HDF5OutputSelection selection = {
       fConfig->GetWritePrimariesOutput(),
       fConfig->GetWriteSecondariesOutput(),
       fConfig->GetWritePhotonsOutput(),
   };
 
-  const auto partIndex = RunAction::NextOutputPartIndex();
   std::string error;
-  if (!SimIO::WriteParquetPart(paths, selection, partIndex, fBufferedPrimaryRows,
-                               fBufferedSecondaryRows, fBufferedPhotonRows,
-                               &error)) {
+  if (!SimIO::AppendHDF5(paths, selection, fBufferedPrimaryRows,
+                         fBufferedSecondaryRows, fBufferedPhotonRows,
+                         &error)) {
     if (error.empty()) {
-      G4cout << "Failed writing Parquet output part " << partIndex << "."
-             << G4endl;
+      G4cout << "Failed writing HDF5 output." << G4endl;
     } else {
       G4cout << error << G4endl;
     }
