@@ -14,17 +14,25 @@ scintillator:
   maskRadius: 18.0
   properties:
     name: EJ200
-    photonEnergy: [2.8, 3.0, 3.2]
-    rIndex: [1.58, 1.59, 1.60]
-    nKEntries: 3
-    timeComponents:
-      default:
-        - timeConstant: 2.1
-          yieldFraction: 1.0
-        - timeConstant: 0.0
-          yieldFraction: 0.0
-        - timeConstant: 0.0
-          yieldFraction: 0.0
+    composition:
+      density: 1.023
+      atoms:
+        C: 9
+        H: 10
+    optical:
+      photonEnergy: [2.8, 3.0, 3.2]
+      rIndex: [1.58, 1.59, 1.60]
+      nKEntries: 3
+      scintYield: 10000.0
+      resolutionScale: 1.0
+      timeComponents:
+        default:
+          - timeConstant: 2.1
+            yieldFraction: 1.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
 
 source:
   gps:
@@ -48,8 +56,8 @@ source:
   timing:
     mode: pulsed
     start_time_ns: 0.0
+    particle_flux: 31830.98861837907
     pulse_period_ns: 1000000.0
-    neutrons_per_pulse: 100
     pulse_time_offset_ns: 0.0
     pulse_time_width_ns: 270.0
     pulse_shape: uniform
@@ -110,6 +118,11 @@ Metadata:
   date: 2026-02-19
   version: ScintPiX v0.1
   description: Canon EF 50 mm f/1.0L simulation configuration with intensifier and Timepix3 sensor.
+  RunControls:
+    geant4_simulation: true
+    transportation: false
+    intensification: false
+    sensor_detection: false
   RunEnvironment:
     SimulationRunID: CanonEF50mmf1p0L_run
     WorkingDirectory: data

@@ -1,0 +1,97 @@
+# Test YAML with only catalog references (no inline properties)
+
+source:
+  gps:
+    particle: neutron
+    position:
+      type: Plane
+      shape: Circle
+      centerMm:
+        x_mm: 0.0
+        y_mm: 0.0
+        z_mm: -100.0
+      radiusMm: 10.0
+    angular:
+      type: beam2d
+      rot1: {x: 1.0, y: 0.0, z: 0.0}
+      rot2: {x: 0.0, y: 1.0, z: 0.0}
+      direction: {x: 0.0, y: 0.0, z: 1.0}
+    energy:
+      type: Mono
+      monoMeV: 6.0
+  timing:
+    mode: continuous
+    start_time_ns: 0.0
+    particle_flux: 3183098.861837907
+
+scintillator:
+  catalogId: EJ-276D
+  position_mm:
+    x_mm: 0.0
+    y_mm: 0.0
+    z_mm: 0.0
+  dimension_mm:
+    x_mm: 100.0
+    y_mm: 100.0
+    z_mm: 20.0
+  maskRadius: 18.0
+
+geant4runner:
+  numberOfParticles: 5000
+  binary: scintipix
+  showProgress: true
+  verifyOutput: true
+  runtimeControls:
+    controlVerbose: 0
+    runVerbose: 0
+    eventVerbose: 0
+    trackingVerbose: 0
+    printProgress: 500
+
+metadata:
+  author: Alex Long
+  date: 2026-06-16
+  version: ScintPiX v0.1
+  description: Test catalog-only loading
+  RunEnvironment:
+    SimulationRunID: catalog_test
+    SubRunNumber: 0
+    WorkingDirectory: data
+    MacroDirectory: macros
+    LogDirectory: logs
+    SimulatedPhotonsDirectory: simulatedPhotons
+    TransportedPhotonsDirectory: transportedPhotons
+
+optical:
+  lenses:
+    - catalogId: CanonEF50mmf1.0L
+      primary: true
+  geometry:
+    entranceDiameter: 60.55
+    sensorMaxWidth: 36.0
+  sensitiveDetectorConfig:
+    position_mm:
+      x_mm: 0.0
+      y_mm: 0.0
+      z_mm: 210.05
+    shape: circle
+    diameterRule: min(entranceDiameter,sensorMaxWidth)
+  showTransportProgress: true
+
+intensifier:
+  model: Cricket2
+  input_screen:
+    image_circle_diameter_mm: 18.0
+    center_mm: [0.0, 0.0]
+    magnification: 1.0
+    coordinate_frame: intensifier_input_plane
+    notes: Cricket2 nominal image-circle diameter and 1:1 magnification.
+
+sensor:
+  model: Timepix3
+  timepix:
+    pixels_x: 256
+    pixels_y: 256
+    pixel_pitch_mm: 0.055
+    max_tot_ns: 25550.0
+    dead_time_ns: 475.0

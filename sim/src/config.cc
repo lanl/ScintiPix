@@ -1,5 +1,4 @@
 #include "config.hh"
-#include "SimIO.hh"
 #include "utils.hh"
 
 #include "G4SystemOfUnits.hh"
@@ -59,9 +58,9 @@ Config::Config()
       fScintTimeConstants({2.1 * ns, 0.0, 0.0}),
       fScintYieldFractions({1.0, 0.0, 0.0}),
       fScintMaterialVersion(0),
-      fOutputFilename("data/photon_optical_interface_hits"),
-      fOutputPath(""),
-      fOutputRunName("") {}
+      fPrimariesOutputFile("data/example_000/primaries/primaries.parquet"),
+      fSecondariesOutputFile("data/example_000/secondaries/secondaries.parquet"),
+      fPhotonsOutputFile("data/example_000/simulatedPhotons/photons.parquet") {}
 
 G4double Config::GetScintX() const {
   std::lock_guard<std::mutex> lock(fMutex);
@@ -390,54 +389,95 @@ G4int Config::GetScintMaterialVersion() const {
   return fScintMaterialVersion;
 }
 
-std::string Config::GetOutputFilename() const {
+std::string Config::GetPrimariesOutputFile() const {
   std::lock_guard<std::mutex> lock(fMutex);
-  return fOutputFilename;
+  return fPrimariesOutputFile;
 }
 
-void Config::SetOutputFilename(const std::string& value) {
-  if (value.empty()) {
-    return;
-  }
-
-  const std::string normalized = SimIO::StripKnownOutputExtension(value);
+void Config::SetPrimariesOutputFile(const std::string& value) {
+  std::string normalized = Utils::Unquote(Utils::Trim(value));
   if (normalized.empty()) {
     return;
   }
+  normalized = std::filesystem::path(normalized).lexically_normal().string();
 
   std::lock_guard<std::mutex> lock(fMutex);
-  fOutputFilename = normalized;
+  fPrimariesOutputFile = normalized;
 }
 
-std::string Config::GetOutputPath() const {
+std::string Config::GetSecondariesOutputFile() const {
   std::lock_guard<std::mutex> lock(fMutex);
-  return fOutputPath;
+  return fSecondariesOutputFile;
 }
 
-void Config::SetOutputPath(const std::string& value) {
+void Config::SetSecondariesOutputFile(const std::string& value) {
   std::string normalized = Utils::Unquote(Utils::Trim(value));
-  if (!normalized.empty()) {
-    normalized = std::filesystem::path(normalized).lexically_normal().string();
+  if (normalized.empty()) {
+    return;
   }
+  normalized = std::filesystem::path(normalized).lexically_normal().string();
 
   std::lock_guard<std::mutex> lock(fMutex);
-  fOutputPath = normalized;
+  fSecondariesOutputFile = normalized;
 }
 
-std::string Config::GetOutputRunName() const {
+std::string Config::GetPhotonsOutputFile() const {
   std::lock_guard<std::mutex> lock(fMutex);
-  return fOutputRunName;
+  return fPhotonsOutputFile;
 }
 
-void Config::SetOutputRunName(const std::string& value) {
+void Config::SetPhotonsOutputFile(const std::string& value) {
+  std::string normalized = Utils::Unquote(Utils::Trim(value));
+  if (normalized.empty()) {
+    return;
+  }
+  normalized = std::filesystem::path(normalized).lexically_normal().string();
+
   std::lock_guard<std::mutex> lock(fMutex);
-  fOutputRunName = SimIO::NormalizeRunName(value);
+  fPhotonsOutputFile = normalized;
 }
 
-std::string Config::GetHdf5FilePath() const {
+G4int Config::GetEventsPerOutput() const {
   std::lock_guard<std::mutex> lock(fMutex);
-  return SimIO::ComposeOutputPath(fOutputFilename, fOutputPath, fOutputRunName,
-                                  ".h5");
+  return fEventsPerOutput;
+}
+
+void Config::SetEventsPerOutput(G4int value) {
+  if (value <= 0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fEventsPerOutput = value;
+}
+
+G4bool Config::GetWritePrimariesOutput() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fWritePrimariesOutput;
+}
+
+void Config::SetWritePrimariesOutput(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fWritePrimariesOutput = value;
+}
+
+G4bool Config::GetWriteSecondariesOutput() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fWriteSecondariesOutput;
+}
+
+void Config::SetWriteSecondariesOutput(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fWriteSecondariesOutput = value;
+}
+
+G4bool Config::GetWritePhotonsOutput() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fWritePhotonsOutput;
+}
+
+void Config::SetWritePhotonsOutput(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fWritePhotonsOutput = value;
 }
 
 SourceTimingMode Config::GetSourceTimingMode() const {

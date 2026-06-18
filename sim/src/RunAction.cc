@@ -1,15 +1,21 @@
 #include "RunAction.hh"
 
+#include "EventAction.hh"
 #include "config.hh"
 
 #include "G4Exception.hh"
 #include "G4ExceptionSeverity.hh"
 #include "G4Run.hh"
+#include "G4ios.hh"
 
+#include <atomic>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 
 namespace {
+std::atomic<std::uint64_t> gNextOutputPartIndex{0};
+
 // Return true when the output path has no parent or its parent exists.
 bool ParentDirectoryExists(const std::string& outputFilePath) {
   const std::filesystem::path parent =
@@ -30,11 +36,24 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
     return;
   }
 
+  gNextOutputPartIndex.store(0);
+
   std::string missingPaths;
 
-  const std::string hdf5Path = fConfig->GetHdf5FilePath();
-  if (!ParentDirectoryExists(hdf5Path)) {
-    missingPaths += "  - HDF5 target: " + hdf5Path + "\n";
+  const SimIO::ParquetOutputPaths paths = {
+      fConfig->GetPrimariesOutputFile(),
+      fConfig->GetSecondariesOutputFile(),
+      fConfig->GetPhotonsOutputFile(),
+  };
+  if (fConfig->GetWritePrimariesOutput() && !ParentDirectoryExists(paths.primaries)) {
+    missingPaths += "  - Parquet primaries target: " + paths.primaries + "\n";
+  }
+  if (fConfig->GetWriteSecondariesOutput() &&
+      !ParentDirectoryExists(paths.secondaries)) {
+    missingPaths += "  - Parquet secondaries target: " + paths.secondaries + "\n";
+  }
+  if (fConfig->GetWritePhotonsOutput() && !ParentDirectoryExists(paths.photons)) {
+    missingPaths += "  - Parquet photons target: " + paths.photons + "\n";
   }
 
   if (missingPaths.empty()) {
@@ -51,4 +70,14 @@ void RunAction::BeginOfRunAction(const G4Run* /*run*/) {
 
   G4Exception("RunAction::BeginOfRunAction", "scintipix/output/missing-directory",
               FatalException, message);
+}
+
+void RunAction::EndOfRunAction(const G4Run* /*run*/) {
+  if (auto* eventAction = EventAction::Instance()) {
+    eventAction->FlushOutputRows();
+  }
+}
+
+std::uint64_t RunAction::NextOutputPartIndex() {
+  return gNextOutputPartIndex.fetch_add(1);
 }

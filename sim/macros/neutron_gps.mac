@@ -3,9 +3,9 @@
 /event/verbose 0
 /tracking/verbose 0
 /run/printProgress 1000
-/output/path data
-/output/filename data/photon_optical_interface_hits
-/output/runname example
+/output/primariesFile data/example_000/primaries/primaries.parquet
+/output/secondariesFile data/example_000/secondaries/secondaries.parquet
+/output/photonsFile data/example_000/simulatedPhotons/photons.parquet
 /scintillator/geom/material EJ200
 /scintillator/geom/scintX 5 cm
 /scintillator/geom/scintY 5 cm

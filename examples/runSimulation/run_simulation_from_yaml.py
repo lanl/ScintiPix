@@ -1,57 +1,33 @@
-"""Generate macro from YAML and run scintipix in one step."""
+"""Generate a Geant4 macro from Simulation YAML and run ScintiPix."""
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 import sys
 
-# Ensure repository root is importable when this file is run directly.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(REPO_ROOT))
 
-from src.config.ConfigIO import from_yaml  # noqa: E402
-from src.config.SimConfig import SimulationConfig  # noqa: E402
+from src.config.yaml import from_yaml  # noqa: E402
 from src.runner.runSimulation import run_simulation  # noqa: E402
 
+DEFAULT_YAML_PATH = (
+    REPO_ROOT / "examples" / "yamlFiles" / "pulsed_neutron_source_timing.yaml"
+)
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Load SimConfig YAML, generate macro, and run scintipix with that macro."
-        )
-    )
-    parser.add_argument(
-        "yaml_path",
-        nargs="?",
-        type=Path,
-        default=REPO_ROOT / "examples" / "yamlFiles" / "CanonEF50mmf1p0L_example.yaml",
-        help="SimConfig YAML path (default: Canon example under examples/yamlFiles).",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Generate macro and print run command without launching scintipix.",
-    )
-    parser.add_argument(
-        "--beam-on",
-        type=int,
-        default=None,
-        help="Optional override for simulation numberOfParticles.",
-    )
-    return parser
 
 def main() -> None:
-    parser = _build_parser()
-    args = parser.parse_args()
+    if len(sys.argv) > 2:
+        raise SystemExit(
+            "Usage: python examples/runSimulation/run_simulation_from_yaml.py "
+            "[path/to/simulation.yaml]"
+        )
 
-    config = from_yaml(args.yaml_path.expanduser().resolve())
-    if args.beam_on is not None:
-        if config.simulation is None:
-            config.simulation = SimulationConfig(number_of_particles=args.beam_on)
-        else:
-            config.simulation.number_of_particles = args.beam_on
-    run_simulation(config, dry_run=args.dry_run)
+    yaml_path = (
+        Path(sys.argv[1]) if len(sys.argv) == 2 else DEFAULT_YAML_PATH
+    ).expanduser().resolve()
+    config = from_yaml(yaml_path)
+    run_simulation(config)
 
 
 if __name__ == "__main__":

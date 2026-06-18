@@ -163,27 +163,34 @@ class Config {
   /// Get monotonic material revision; increments when scintillator properties change.
   G4int GetScintMaterialVersion() const;
 
-  /// Get output base filename/path (without output-format extension).
-  std::string GetOutputFilename() const;
-  /// Set output base filename/path (extension, if provided, is normalized away).
-  void SetOutputFilename(const std::string& value);
-
-  /// Get optional output directory path used to place output files.
-  std::string GetOutputPath() const;
-  /// Set optional output directory path (empty clears explicit path override).
-  void SetOutputPath(const std::string& value);
-
-  /// Get optional run name used to place outputs under a run-specific subdirectory.
-  std::string GetOutputRunName() const;
-  /// Set optional run name (empty string disables run-specific subdirectory).
-  /// With output-path override set, run outputs go under
-  /// `<outputPath>/<runName>/simulatedPhotons/`.
-  /// Without output-path override, run outputs go under
-  /// `data/<runName>/simulatedPhotons/`.
-  void SetOutputRunName(const std::string& value);
-
-  /// Get HDF5 output file path derived from output settings.
-  std::string GetHdf5FilePath() const;
+  /// Get configured primaries Parquet file.
+  std::string GetPrimariesOutputFile() const;
+  /// Set configured primaries Parquet file.
+  void SetPrimariesOutputFile(const std::string& value);
+  /// Get configured secondaries Parquet file.
+  std::string GetSecondariesOutputFile() const;
+  /// Set configured secondaries Parquet file.
+  void SetSecondariesOutputFile(const std::string& value);
+  /// Get configured photons Parquet file.
+  std::string GetPhotonsOutputFile() const;
+  /// Set configured photons Parquet file.
+  void SetPhotonsOutputFile(const std::string& value);
+  /// Get number of Geant4 events accumulated before writing one Parquet part.
+  G4int GetEventsPerOutput() const;
+  /// Set number of Geant4 events accumulated before writing one Parquet part.
+  void SetEventsPerOutput(G4int value);
+  /// Return true when primary rows should be assembled and written.
+  G4bool GetWritePrimariesOutput() const;
+  /// Enable or disable primary output rows.
+  void SetWritePrimariesOutput(G4bool value);
+  /// Return true when secondary rows should be assembled and written.
+  G4bool GetWriteSecondariesOutput() const;
+  /// Enable or disable secondary output rows.
+  void SetWriteSecondariesOutput(G4bool value);
+  /// Return true when photon rows should be assembled and written.
+  G4bool GetWritePhotonsOutput() const;
+  /// Enable or disable photon output rows.
+  void SetWritePhotonsOutput(G4bool value);
 
   /// Get configured source timing mode.
   SourceTimingMode GetSourceTimingMode() const;
@@ -248,9 +255,13 @@ class Config {
   std::array<G4double, 3> fScintTimeConstants = {0.0, 0.0, 0.0};
   std::array<G4double, 3> fScintYieldFractions = {1.0, 0.0, 0.0};
   G4int fScintMaterialVersion = 0;
-  std::string fOutputFilename;
-  std::string fOutputPath;
-  std::string fOutputRunName;
+  std::string fPrimariesOutputFile;
+  std::string fSecondariesOutputFile;
+  std::string fPhotonsOutputFile;
+  G4int fEventsPerOutput = 1000;
+  G4bool fWritePrimariesOutput = true;
+  G4bool fWriteSecondariesOutput = true;
+  G4bool fWritePhotonsOutput = true;
 
   /// Source timing settings in Geant4 internal units.
   SourceTimingMode fSourceTimingMode = SourceTimingMode::None;

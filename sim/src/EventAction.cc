@@ -1,9 +1,9 @@
 #include "EventAction.hh"
 
+#include "RunAction.hh"
 #include "SimIO.hh"
 #include "config.hh"
 
-#include "G4AutoLock.hh"
 #include "G4Event.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4PrimaryParticle.hh"
@@ -13,15 +13,13 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <limits>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 namespace {
-/// Serialize appends to shared HDF5 output files across worker threads.
-G4Mutex gOutputMutex = G4MUTEX_INITIALIZER;
-
 /// Convert Geant4 particle names into compact labels used in output tables.
 std::string ToSpeciesLabel(const G4String& particleName) {
   if (particleName == "neutron") return "n";
@@ -46,7 +44,10 @@ EventAction::EventAction(const Config* config) : fConfig(config) {
   fgInstance = this;
 }
 
-EventAction::~EventAction() { fgInstance = nullptr; }
+EventAction::~EventAction() {
+  FlushOutputRows();
+  fgInstance = nullptr;
+}
 
 EventAction* EventAction::Instance() { return fgInstance; }
 
@@ -96,9 +97,12 @@ void EventAction::EndOfEventAction(const G4Event* event) {
   }
 
   const auto eventID64 = static_cast<std::int64_t>(event->GetEventID());
-  const std::string hdf5Path =
-      fConfig ? fConfig->GetHdf5FilePath() : "photon_optical_interface_hits.h5";
-
+  const auto writePrimaries =
+      fConfig == nullptr ? true : fConfig->GetWritePrimariesOutput();
+  const auto writeSecondaries =
+      fConfig == nullptr ? true : fConfig->GetWriteSecondariesOutput();
+  const auto writePhotons =
+      fConfig == nullptr ? true : fConfig->GetWritePhotonsOutput();
   std::vector<SimIO::PrimaryInfo> primaryRows;
   std::vector<SimIO::SecondaryInfo> secondaryRows;
   std::vector<SimIO::PhotonInfo> photonRows;
@@ -110,111 +114,161 @@ void EventAction::EndOfEventAction(const G4Event* event) {
     return std::numeric_limits<double>::quiet_NaN();
   };
 
-  // Include only primaries that created at least one secondary in scintillator.
-  std::vector<G4int> primaryTrackIDs;
-  primaryTrackIDs.reserve(fPrimaryActivity.size());
-  for (const auto& entry : fPrimaryActivity) {
-    if (entry.second.createdSecondaryCount <= 0) {
-      continue;
+  if (writePrimaries) {
+    // Include only primaries that created at least one secondary in scintillator.
+    std::vector<G4int> primaryTrackIDs;
+    primaryTrackIDs.reserve(fPrimaryActivity.size());
+    for (const auto& entry : fPrimaryActivity) {
+      if (entry.second.createdSecondaryCount <= 0) {
+        continue;
+      }
+      primaryTrackIDs.push_back(entry.first);
     }
-    primaryTrackIDs.push_back(entry.first);
-  }
-  std::sort(primaryTrackIDs.begin(), primaryTrackIDs.end());
+    std::sort(primaryTrackIDs.begin(), primaryTrackIDs.end());
 
-  for (const auto primaryTrackID : primaryTrackIDs) {
-    const auto activityIt = fPrimaryActivity.find(primaryTrackID);
-    if (activityIt == fPrimaryActivity.end()) {
-      continue;
+    for (const auto primaryTrackID : primaryTrackIDs) {
+      const auto activityIt = fPrimaryActivity.find(primaryTrackID);
+      if (activityIt == fPrimaryActivity.end()) {
+        continue;
+      }
+      const auto& activity = activityIt->second;
+      SimIO::PrimaryInfo row;
+      row.gunCallId = eventID64;
+      row.primaryTrackId = static_cast<std::int32_t>(primaryTrackID);
+      row.primarySpecies = fPrimarySpecies;
+      row.primaryXmm = fPrimaryPosition.x() / mm;
+      row.primaryYmm = fPrimaryPosition.y() / mm;
+      row.primaryEnergyMeV = fPrimaryEnergy / MeV;
+      row.primaryInteractionTimeNs = resolvePrimaryInteractionTimeNs(primaryTrackID);
+      row.primaryCreatedSecondaryCount = activity.createdSecondaryCount;
+      row.primaryGeneratedOpticalPhotonCount = activity.generatedOpticalPhotonCount;
+      row.primaryDetectedOpticalInterfacePhotonCount =
+          activity.detectedOpticalInterfacePhotonCount;
+      if (const auto* info = FindTrackInfo(primaryTrackID)) {
+        row.primarySpecies = info->species;
+        row.primaryXmm = info->originPosition.x() / mm;
+        row.primaryYmm = info->originPosition.y() / mm;
+        row.primaryEnergyMeV = info->originEnergy / MeV;
+      }
+      primaryRows.push_back(row);
     }
-    const auto& activity = activityIt->second;
-    SimIO::PrimaryInfo row;
-    row.gunCallId = eventID64;
-    row.primaryTrackId = static_cast<std::int32_t>(primaryTrackID);
-    row.primarySpecies = fPrimarySpecies;
-    row.primaryXmm = fPrimaryPosition.x() / mm;
-    row.primaryYmm = fPrimaryPosition.y() / mm;
-    row.primaryEnergyMeV = fPrimaryEnergy / MeV;
-    row.primaryInteractionTimeNs = resolvePrimaryInteractionTimeNs(primaryTrackID);
-    row.primaryCreatedSecondaryCount = activity.createdSecondaryCount;
-    row.primaryGeneratedOpticalPhotonCount = activity.generatedOpticalPhotonCount;
-    row.primaryDetectedOpticalInterfacePhotonCount =
-        activity.detectedOpticalInterfacePhotonCount;
-    if (const auto* info = FindTrackInfo(primaryTrackID)) {
-      row.primarySpecies = info->species;
-      row.primaryXmm = info->originPosition.x() / mm;
-      row.primaryYmm = info->originPosition.y() / mm;
-      row.primaryEnergyMeV = info->originEnergy / MeV;
-    }
-    primaryRows.push_back(row);
-  }
-
-  std::unordered_set<G4int> seenSecondary;
-  for (const auto& hit : fPhotonHits) {
-    if (hit.secondaryID < 0 || !seenSecondary.insert(hit.secondaryID).second) {
-      continue;
-    }
-
-    SimIO::SecondaryInfo row;
-    row.gunCallId = eventID64;
-    row.primaryTrackId = static_cast<std::int32_t>(hit.primaryID);
-    row.secondaryTrackId = static_cast<std::int32_t>(hit.secondaryID);
-    row.secondarySpecies = hit.secondarySpecies;
-    row.secondaryOriginXmm = hit.secondaryOriginPosition.x() / mm;
-    row.secondaryOriginYmm = hit.secondaryOriginPosition.y() / mm;
-    row.secondaryOriginZmm = hit.secondaryOriginPosition.z() / mm;
-    row.secondaryOriginEnergyMeV = hit.secondaryOriginEnergy / MeV;
-    G4ThreeVector endpoint = hit.secondaryOriginPosition;
-    FindSecondaryScintillatorEndpoint(hit.secondaryID, &endpoint);
-    row.secondaryEndXmm = endpoint.x() / mm;
-    row.secondaryEndYmm = endpoint.y() / mm;
-    row.secondaryEndZmm = endpoint.z() / mm;
-    secondaryRows.push_back(row);
   }
 
-  // One output row per detected optical-interface photon hit.
-  photonRows.reserve(fPhotonHits.size());
-  for (const auto& hit : fPhotonHits) {
-    SimIO::PhotonInfo row;
-    row.gunCallId = eventID64;
-    row.primaryTrackId = static_cast<std::int32_t>(hit.primaryID);
-    row.secondaryTrackId = static_cast<std::int32_t>(hit.secondaryID);
-    row.photonTrackId = static_cast<std::int32_t>(hit.photonID);
-    row.photonOriginXmm = hit.scintOriginPosition.x() / mm;
-    row.photonOriginYmm = hit.scintOriginPosition.y() / mm;
-    row.photonOriginZmm = hit.scintOriginPosition.z() / mm;
-    row.opticalInterfaceHitXmm = hit.opticalInterfaceHitPosition.x() / mm;
-    row.opticalInterfaceHitYmm = hit.opticalInterfaceHitPosition.y() / mm;
-    row.opticalInterfaceHitTimeNs = hit.opticalInterfaceHitTime / ns;
-    row.opticalInterfaceHitDirX = hit.opticalInterfaceHitDirection.x();
-    row.opticalInterfaceHitDirY = hit.opticalInterfaceHitDirection.y();
-    row.opticalInterfaceHitDirZ = hit.opticalInterfaceHitDirection.z();
-    row.photonScintExitXmm =
-        hit.hasPhotonScintExitPosition ? hit.photonScintExitPosition.x() / mm
-                                       : std::numeric_limits<double>::quiet_NaN();
-    row.photonScintExitYmm =
-        hit.hasPhotonScintExitPosition ? hit.photonScintExitPosition.y() / mm
-                                       : std::numeric_limits<double>::quiet_NaN();
-    row.photonScintExitZmm =
-        hit.hasPhotonScintExitPosition ? hit.photonScintExitPosition.z() / mm
-                                       : std::numeric_limits<double>::quiet_NaN();
-    row.opticalInterfaceHitPolX = hit.opticalInterfaceHitPolarization.x();
-    row.opticalInterfaceHitPolY = hit.opticalInterfaceHitPolarization.y();
-    row.opticalInterfaceHitPolZ = hit.opticalInterfaceHitPolarization.z();
-    row.photonCreationTimeNs = hit.photonCreationTime / ns;
-    row.opticalInterfaceHitEnergyEV = hit.opticalInterfaceHitEnergy / eV;
-    row.opticalInterfaceHitWavelengthNm = hit.opticalInterfaceHitWavelength / nm;
-    photonRows.push_back(row);
+  if (writeSecondaries) {
+    std::unordered_set<G4int> seenSecondary;
+    for (const auto& hit : fPhotonHits) {
+      if (hit.secondaryID < 0 || !seenSecondary.insert(hit.secondaryID).second) {
+        continue;
+      }
+
+      SimIO::SecondaryInfo row;
+      row.gunCallId = eventID64;
+      row.primaryTrackId = static_cast<std::int32_t>(hit.primaryID);
+      row.secondaryTrackId = static_cast<std::int32_t>(hit.secondaryID);
+      row.secondarySpecies = hit.secondarySpecies;
+      row.secondaryOriginXmm = hit.secondaryOriginPosition.x() / mm;
+      row.secondaryOriginYmm = hit.secondaryOriginPosition.y() / mm;
+      row.secondaryOriginZmm = hit.secondaryOriginPosition.z() / mm;
+      row.secondaryOriginEnergyMeV = hit.secondaryOriginEnergy / MeV;
+      G4ThreeVector endpoint = hit.secondaryOriginPosition;
+      FindSecondaryScintillatorEndpoint(hit.secondaryID, &endpoint);
+      row.secondaryEndXmm = endpoint.x() / mm;
+      row.secondaryEndYmm = endpoint.y() / mm;
+      row.secondaryEndZmm = endpoint.z() / mm;
+      secondaryRows.push_back(row);
+    }
   }
 
-  G4AutoLock lock(&gOutputMutex);
+  if (writePhotons) {
+    // One output row per detected optical-interface photon hit.
+    photonRows.reserve(fPhotonHits.size());
+    for (const auto& hit : fPhotonHits) {
+      SimIO::PhotonInfo row;
+      row.gunCallId = eventID64;
+      row.primaryTrackId = static_cast<std::int32_t>(hit.primaryID);
+      row.secondaryTrackId = static_cast<std::int32_t>(hit.secondaryID);
+      row.photonTrackId = static_cast<std::int32_t>(hit.photonID);
+      row.photonOriginXmm = hit.scintOriginPosition.x() / mm;
+      row.photonOriginYmm = hit.scintOriginPosition.y() / mm;
+      row.photonOriginZmm = hit.scintOriginPosition.z() / mm;
+      row.opticalInterfaceHitXmm = hit.opticalInterfaceHitPosition.x() / mm;
+      row.opticalInterfaceHitYmm = hit.opticalInterfaceHitPosition.y() / mm;
+      row.opticalInterfaceHitTimeNs = hit.opticalInterfaceHitTime / ns;
+      row.opticalInterfaceHitDirX = hit.opticalInterfaceHitDirection.x();
+      row.opticalInterfaceHitDirY = hit.opticalInterfaceHitDirection.y();
+      row.opticalInterfaceHitDirZ = hit.opticalInterfaceHitDirection.z();
+      row.photonScintExitXmm =
+          hit.hasPhotonScintExitPosition ? hit.photonScintExitPosition.x() / mm
+                                         : std::numeric_limits<double>::quiet_NaN();
+      row.photonScintExitYmm =
+          hit.hasPhotonScintExitPosition ? hit.photonScintExitPosition.y() / mm
+                                         : std::numeric_limits<double>::quiet_NaN();
+      row.photonScintExitZmm =
+          hit.hasPhotonScintExitPosition ? hit.photonScintExitPosition.z() / mm
+                                         : std::numeric_limits<double>::quiet_NaN();
+      row.opticalInterfaceHitPolX = hit.opticalInterfaceHitPolarization.x();
+      row.opticalInterfaceHitPolY = hit.opticalInterfaceHitPolarization.y();
+      row.opticalInterfaceHitPolZ = hit.opticalInterfaceHitPolarization.z();
+      row.photonCreationTimeNs = hit.photonCreationTime / ns;
+      row.opticalInterfaceHitEnergyEV = hit.opticalInterfaceHitEnergy / eV;
+      row.opticalInterfaceHitWavelengthNm = hit.opticalInterfaceHitWavelength / nm;
+      photonRows.push_back(row);
+    }
+  }
+
+  fBufferedPrimaryRows.insert(
+      fBufferedPrimaryRows.end(),
+      std::make_move_iterator(primaryRows.begin()),
+      std::make_move_iterator(primaryRows.end()));
+  fBufferedSecondaryRows.insert(
+      fBufferedSecondaryRows.end(),
+      std::make_move_iterator(secondaryRows.begin()),
+      std::make_move_iterator(secondaryRows.end()));
+  fBufferedPhotonRows.insert(
+      fBufferedPhotonRows.end(),
+      std::make_move_iterator(photonRows.begin()),
+      std::make_move_iterator(photonRows.end()));
+  ++fBufferedOutputEvents;
+
+  const auto eventsPerOutput = fConfig ? fConfig->GetEventsPerOutput() : 1000;
+  if (fBufferedOutputEvents >= eventsPerOutput) {
+    FlushOutputRows();
+  }
+}
+
+void EventAction::FlushOutputRows() {
+  if (fBufferedOutputEvents <= 0 || fConfig == nullptr) {
+    return;
+  }
+
+  const SimIO::ParquetOutputPaths paths = {
+      fConfig->GetPrimariesOutputFile(),
+      fConfig->GetSecondariesOutputFile(),
+      fConfig->GetPhotonsOutputFile(),
+  };
+  const SimIO::ParquetOutputSelection selection = {
+      fConfig->GetWritePrimariesOutput(),
+      fConfig->GetWriteSecondariesOutput(),
+      fConfig->GetWritePhotonsOutput(),
+  };
+
+  const auto partIndex = RunAction::NextOutputPartIndex();
   std::string error;
-  if (!SimIO::AppendHdf5(hdf5Path, primaryRows, secondaryRows, photonRows, &error)) {
+  if (!SimIO::WriteParquetPart(paths, selection, partIndex, fBufferedPrimaryRows,
+                               fBufferedSecondaryRows, fBufferedPhotonRows,
+                               &error)) {
     if (error.empty()) {
-      G4cout << "Failed writing HDF5 output to " << hdf5Path << G4endl;
+      G4cout << "Failed writing Parquet output part " << partIndex << "."
+             << G4endl;
     } else {
       G4cout << error << G4endl;
     }
   }
+
+  fBufferedPrimaryRows.clear();
+  fBufferedSecondaryRows.clear();
+  fBufferedPhotonRows.clear();
+  fBufferedOutputEvents = 0;
 }
 
 void EventAction::RecordTrackInfo(G4int trackID, const TrackInfo& info) {
@@ -314,6 +368,10 @@ void EventAction::RecordPrimarySecondaryCreation(
 void EventAction::RecordPhotonHit(const PhotonHitRecord& hit) {
   if (hit.primaryID >= 0) {
     ++fPrimaryActivity[hit.primaryID].detectedOpticalInterfacePhotonCount;
+  }
+  if (fConfig != nullptr && !fConfig->GetWriteSecondariesOutput() &&
+      !fConfig->GetWritePhotonsOutput()) {
+    return;
   }
   fPhotonHits.push_back(hit);
 }

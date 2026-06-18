@@ -3,6 +3,7 @@
 
 #include "structures.hh"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -13,24 +14,33 @@ using PrimaryInfo = SimStructures::PrimaryInfo;
 using SecondaryInfo = SimStructures::SecondaryInfo;
 using PhotonInfo = SimStructures::PhotonInfo;
 
-/// Normalize run name for filesystem-safe directory usage.
-std::string NormalizeRunName(const std::string& value);
+struct ParquetOutputPaths {
+  std::string primaries;
+  std::string secondaries;
+  std::string photons;
+};
 
-/// Strip `.h5` or `.hdf5` suffixes (case-insensitive) when present.
-std::string StripKnownOutputExtension(const std::string& value);
+struct ParquetOutputSelection {
+  bool primaries = true;
+  bool secondaries = true;
+  bool photons = true;
+};
 
-/// Compose absolute output file path with run/output-path routing rules.
-std::string ComposeOutputPath(const std::string& base,
-                              const std::string& outputPath,
-                              const std::string& runName,
-                              const char* extension);
+/// Write primary/secondary/photon rows as separate Parquet tables.
+bool WriteParquet(const ParquetOutputPaths& paths,
+                  const std::vector<PrimaryInfo>& primaryRows,
+                  const std::vector<SecondaryInfo>& secondaryRows,
+                  const std::vector<PhotonInfo>& photonRows,
+                  std::string* errorMessage);
 
-/// Append primary/secondary/photon rows to HDF5 datasets.
-bool AppendHdf5(const std::string& hdf5Path,
-                const std::vector<PrimaryInfo>& primaryRows,
-                const std::vector<SecondaryInfo>& secondaryRows,
-                const std::vector<PhotonInfo>& photonRows,
-                std::string* errorMessage);
+/// Write one primary/secondary/photon Parquet part beside each configured base file.
+bool WriteParquetPart(const ParquetOutputPaths& basePaths,
+                      const ParquetOutputSelection& selection,
+                      std::uint64_t partIndex,
+                      const std::vector<PrimaryInfo>& primaryRows,
+                      const std::vector<SecondaryInfo>& secondaryRows,
+                      const std::vector<PhotonInfo>& photonRows,
+                      std::string* errorMessage);
 
 }  // namespace SimIO
 

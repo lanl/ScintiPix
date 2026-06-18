@@ -1,4 +1,4 @@
-"""Thin simulation launcher built on validated `SimConfig`."""
+"""Thin simulation launcher built on validated `Simulation` config."""
 
 from __future__ import annotations
 
@@ -9,47 +9,39 @@ import subprocess
 import sys
 
 try:
-    from src.common.logger import get_logger, log_stage, resolve_run_log_path
-    from src.config.ConfigIO import prepare_simulation_run
-    from src.config.ConfigIO import (
-        resolve_run_environment_paths,
-        simulated_output_filename,
-    )
-    from src.config.SimConfig import SimConfig
+    from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
+    from src.config.macro import write_macro
+    from src.models.simulation import Simulation
 except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from src.common.logger import get_logger, log_stage, resolve_run_log_path
-    from src.config.ConfigIO import prepare_simulation_run
-    from src.config.ConfigIO import (
-        resolve_run_environment_paths,
-        simulated_output_filename,
-    )
-    from src.config.SimConfig import SimConfig
+    from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
+    from src.config.macro import write_macro
+    from src.models.simulation import Simulation
 
 
 _SIMULATED_EVENTS_PATTERN = re.compile(r"Simulated\s+(\d+)\s+events\b")
 
 
-def _simulation_command(config: SimConfig, macro_path: Path) -> list[str]:
-    """Build subprocess command tokens from `config.runner.binary` + macro."""
+def _simulation_command(config: Simulation, macro_path: Path) -> list[str]:
+    """Build subprocess command tokens from `config.geant4runner.binary` + macro."""
 
     try:
-        tokens = shlex.split(config.runner.binary)
+        tokens = shlex.split(config.geant4runner.binary)
     except ValueError as exc:
         raise ValueError(
-            f"Could not parse `runner.binary` into command tokens: {exc}"
+            f"Could not parse `geant4runner.binary` into command tokens: {exc}"
         ) from exc
     if not tokens:
-        raise ValueError("`runner.binary` did not resolve to an executable command.")
+        raise ValueError(
+            "`geant4runner.binary` did not resolve to an executable command."
+        )
     return [*tokens, str(macro_path)]
 
 
-def _simulation_total_events(config: SimConfig) -> int | None:
+def _simulation_total_events(config: Simulation) -> int | None:
     """Return total configured events for progress display, if available."""
 
-    if config.simulation is None:
-        return None
-    return config.simulation.number_of_particles
+    return config.geant4runner.number_of_particles
 
 
 def _parse_simulated_events(line: str) -> int | None:
@@ -59,6 +51,35 @@ def _parse_simulated_events(line: str) -> int | None:
     if match is None:
         return None
     return int(match.group(1))
+
+
+def _parquet_part_pattern(base_path: Path) -> str:
+    """Return the part-file glob used by the Geant4 Parquet writer."""
+
+    suffix = base_path.suffix or ".parquet"
+    stem = base_path.stem or "part"
+    return f"{stem}_part-*{suffix}"
+
+
+def _has_parquet_parts(base_path: Path) -> bool:
+    """Return true when at least one Parquet part exists beside `base_path`."""
+
+    return any(base_path.parent.glob(_parquet_part_pattern(base_path)))
+
+
+def _expected_output_bases(config: Simulation) -> list[Path]:
+    """Return configured base paths for enabled Geant4 output tables."""
+
+    env = config.metadata.run_environment
+    output = config.geant4runner.output
+    paths: list[Path] = []
+    if output.primaries:
+        paths.append(Path(env.primaries_directory) / env.primaries_filename)
+    if output.secondaries:
+        paths.append(Path(env.secondaries_directory) / env.secondaries_filename)
+    if output.photons:
+        paths.append(Path(env.simulated_photons_directory) / env.photons_filename)
+    return [path.resolve() for path in paths]
 
 
 def _write_progress(current: int, total: int) -> None:
@@ -82,7 +103,7 @@ def _write_progress(current: int, total: int) -> None:
 
 
 def run(
-    config: SimConfig,
+    config: Simulation,
     *,
     dry_run: bool = False,
     log_filename: str | Path | None = None,
@@ -96,9 +117,25 @@ def run(
     Returns the raw subprocess result when executed, or ``None`` for dry runs.
     """
 
-    run_paths = resolve_run_environment_paths(config)
-    macro_path = run_paths.macro_file.resolve()
-    output_hdf5 = (run_paths.simulated_photons / simulated_output_filename(config)).resolve()
+    run_environment = config.metadata.run_environment
+    if run_environment.macro_directory is None:
+        raise ValueError("Macro directory not configured in run environment")
+    if run_environment.log_directory is None:
+        raise ValueError("Log directory not configured in run environment")
+    output = config.geant4runner.output
+    if output.primaries and run_environment.primaries_directory is None:
+        raise ValueError("Primaries directory not configured in run environment")
+    if output.secondaries and run_environment.secondaries_directory is None:
+        raise ValueError("Secondaries directory not configured in run environment")
+    if output.photons and run_environment.simulated_photons_directory is None:
+        raise ValueError("Simulated photons directory not configured in run environment")
+
+    macro_filename = (
+        f"{run_environment.simulation_run_id}_"
+        f"{run_environment.sub_run_number:03d}.mac"
+    )
+    macro_path = (Path(run_environment.macro_directory) / macro_filename).resolve()
+    output_bases = _expected_output_bases(config)
 
     if not macro_path.exists():
         raise FileNotFoundError(
@@ -111,11 +148,19 @@ def run(
             f"{macro_path}"
         )
 
-    # Resolve the canonical log path for consistency with caller reporting.
-    log_path = resolve_run_log_path(config)
+    if log_filename is None:
+        log_path = Path(run_environment.log_directory) / DEFAULT_RUN_LOG_FILENAME
+    else:
+        log_path = Path(log_filename)
+        if not log_path.is_absolute() and log_path.parent == Path("."):
+            log_path = Path(run_environment.log_directory) / log_path
+    log_path = log_path.resolve()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
     command = _simulation_command(config, macro_path)
     total_events = (
-        _simulation_total_events(config) if config.runner.show_progress else None
+        _simulation_total_events(config)
+        if config.geant4runner.show_progress
+        else None
     )
 
     logger = get_logger()
@@ -124,10 +169,14 @@ def run(
 
     last_progress = 0
     displayed_progress = False
-    if log_filename is not None:
-        log_path = Path(log_filename)
     logger.info(f"[simulation] Command: {shlex.join(command)}")
-    logger.info(f"[simulation] Output HDF5: {output_hdf5}")
+    output_patterns = [
+        base.parent / _parquet_part_pattern(base) for base in output_bases
+    ]
+    logger.info(
+        "[simulation] Parquet output parts: "
+        f"{', '.join(str(pattern) for pattern in output_patterns)}"
+    )
     with log_stage("simulation"):
         with log_path.open("a", encoding="utf-8") as log_file:
             with subprocess.Popen(
@@ -162,28 +211,31 @@ def run(
         raise subprocess.CalledProcessError(return_code, command)
 
     completed = subprocess.CompletedProcess(command, return_code)
-    if config.runner.verify_output and not output_hdf5.exists():
-        raise FileNotFoundError(
-            "Simulation finished but expected HDF5 was not found: "
-            f"{output_hdf5}"
-        )
+    if config.geant4runner.verify_output:
+        missing_patterns = [
+            str(pattern)
+            for base, pattern in zip(output_bases, output_patterns, strict=True)
+            if not _has_parquet_parts(base)
+        ]
+        if missing_patterns:
+            raise FileNotFoundError(
+                "Simulation finished but expected Parquet parts were not found: "
+                + ", ".join(missing_patterns)
+            )
     return completed
 
 
 def run_simulation(
-    config: SimConfig,
+    config: Simulation,
     *,
     dry_run: bool = False,
     log_filename: str | Path | None = None,
 ) -> subprocess.CompletedProcess[str] | None:
     """Prepare and launch one simulation from validated config."""
 
-    prepare_simulation_run(config)
+    write_macro(config)
     completed = run(config, dry_run=dry_run, log_filename=log_filename)
-    if log_filename is not None:
-        logger = get_logger(filename=str(log_filename))
-    else:
-        logger = get_logger()
+    logger = get_logger()
     if completed is None:
         logger.info("[simulation] Dry run requested; skipping scintipix launch.")
         return None

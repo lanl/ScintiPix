@@ -4,9 +4,9 @@
 /tracking/verbose 0
 /run/printProgress 1000
 
-/output/path data
-/output/filename data/photon_optical_interface_hits
-/output/runname microscope
+/output/primariesFile data/microscope_000/primaries/primaries.parquet
+/output/secondariesFile data/microscope_000/secondaries/secondaries.parquet
+/output/photonsFile data/microscope_000/simulatedPhotons/photons.parquet
 
 /scintillator/geom/material EJ200
 /scintillator/geom/scintX 5 cm

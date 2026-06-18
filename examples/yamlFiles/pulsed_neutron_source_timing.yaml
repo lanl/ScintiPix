@@ -1,8 +1,8 @@
 # Lightweight Geant4-only pulsed neutron timing example.
 #
 # The downstream optical/intensifier/sensor blocks are present only because the
-# shared SimConfig schema and Geant4 geometry expect them. This example inspects
-# only /primaries timing fields from the simulation HDF5 output.
+# shared Simulation schema and Geant4 geometry expect them. This example
+# writes the enabled Geant4 Parquet outputs.
 
 scintillator:
   position_mm:
@@ -16,24 +16,27 @@ scintillator:
   maskRadius: 0.0
   properties:
     name: EJ200
-    photonEnergy: [2.8, 3.0, 3.2]
-    rIndex: [1.58, 1.59, 1.60]
-    absLength: [380.0, 380.0, 300.0]
-    scintSpectrum: [0.2, 1.0, 0.2]
-    nKEntries: 3
-    density: 1.023
-    carbonAtoms: 9
-    hydrogenAtoms: 10
-    scintYield: 10000.0
-    resolutionScale: 1.0
-    timeComponents:
-      default:
-        - timeConstant: 2.1
-          yieldFraction: 1.0
-        - timeConstant: 0.0
-          yieldFraction: 0.0
-        - timeConstant: 0.0
-          yieldFraction: 0.0
+    composition:
+      density: 1.023
+      atoms:
+        C: 9
+        H: 10
+    optical:
+      photonEnergy: [2.8, 3.0, 3.2]
+      rIndex: [1.58, 1.59, 1.60]
+      absLength: [380.0, 380.0, 300.0]
+      scintSpectrum: [0.2, 1.0, 0.2]
+      nKEntries: 3
+      scintYield: 10000.0
+      resolutionScale: 1.0
+      timeComponents:
+        default:
+          - timeConstant: 2.1
+            yieldFraction: 1.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
 
 source:
   gps:
@@ -57,10 +60,10 @@ source:
   timing:
     mode: pulsed
     start_time_ns: 0.0
-    pulse_period_ns: 1000000.0
-    neutrons_per_pulse: 10
+    particle_flux: 10000000
+    pulse_period_ns: 10000.0
     pulse_time_offset_ns: 0.0
-    pulse_time_width_ns: 270.0
+    pulse_time_width_ns: 1000.0
     pulse_shape: uniform
 
 optical:
@@ -101,30 +104,41 @@ sensor:
     max_tot_ns: 25550.0
     dead_time_ns: 475.0
 
-simulation:
-  numberOfParticles: 200
+geant4runner:
+  numberOfParticles: 10000
+  eventsPerOutput: 100
+  output:
+    primaries: true
+    secondaries: true
+    photons: true
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
     eventVerbose: 0
     trackingVerbose: 0
     printProgress: 50
-
-runner:
   binary: scintipix
   showProgress: true
   verifyOutput: true
 
-Metadata:
+metadata:
   author: Alex Long
   date: 2026-06-05
   version: ScintPiX v0.1
   description: Pulsed neutron source timing example.
+  RunControls:
+    geant4_simulation: true
+    transportation: false
+    intensification: false
+    sensor_detection: false
   RunEnvironment:
     SimulationRunID: pulsed_neutron_source_timing
     WorkingDirectory: data
     MacroDirectory: macros
     LogDirectory: logs
-    OutputInfo:
-      SimulatedPhotonsDirectory: simulatedPhotons
-      TransportedPhotonsDirectory: transportedPhotons
+    PrimariesDirectory: primaries
+    SecondariesDirectory: secondaries
+    SimulatedPhotonsDirectory: simulatedPhotons
+    PrimariesFilename: primaries.parquet
+    SecondariesFilename: secondaries.parquet
+    PhotonsFilename: photons.parquet
