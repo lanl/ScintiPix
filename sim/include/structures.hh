@@ -68,6 +68,71 @@ struct PhotonInfo {
   double opticalInterfaceHitWavelengthNm = -1.0;
 };
 
+namespace detail {
+
+constexpr std::size_t kHdf5SpeciesLabelSize = 24;
+
+struct Hdf5PrimaryNativeRow {
+  std::int64_t gun_call_id;
+  std::int32_t primary_track_id;
+  char primary_species[kHdf5SpeciesLabelSize];
+  double primary_x_mm;
+  double primary_y_mm;
+  double primary_energy_MeV;
+  double primary_interaction_time_ns;
+  std::int64_t primary_created_secondary_count;
+  std::int64_t primary_generated_optical_photon_count;
+  std::int64_t primary_detected_optical_interface_photon_count;
+};
+
+struct Hdf5SecondaryNativeRow {
+  std::int64_t gun_call_id;
+  std::int32_t primary_track_id;
+  std::int32_t secondary_track_id;
+  char secondary_species[kHdf5SpeciesLabelSize];
+  double secondary_origin_x_mm;
+  double secondary_origin_y_mm;
+  double secondary_origin_z_mm;
+  double secondary_origin_energy_MeV;
+  double secondary_end_x_mm;
+  double secondary_end_y_mm;
+  double secondary_end_z_mm;
+};
+
+struct Hdf5PhotonNativeRow {
+  std::int64_t gun_call_id;
+  std::int32_t primary_track_id;
+  std::int32_t secondary_track_id;
+  std::int32_t photon_track_id;
+  double photon_creation_time_ns;
+  double photon_origin_x_mm;
+  double photon_origin_y_mm;
+  double photon_origin_z_mm;
+  double photon_scint_exit_x_mm;
+  double photon_scint_exit_y_mm;
+  double photon_scint_exit_z_mm;
+  double optical_interface_hit_x_mm;
+  double optical_interface_hit_y_mm;
+  double optical_interface_hit_time_ns;
+  double optical_interface_hit_dir_x;
+  double optical_interface_hit_dir_y;
+  double optical_interface_hit_dir_z;
+  double optical_interface_hit_pol_x;
+  double optical_interface_hit_pol_y;
+  double optical_interface_hit_pol_z;
+  double optical_interface_hit_energy_eV;
+  double optical_interface_hit_wavelength_nm;
+};
+
+struct Hdf5State {
+  int file = -1;
+  int datasetType = -1;
+  int dataset = -1;
+  std::string openPath;
+  bool registeredAtExit = false;
+};
+
+}  // namespace detail
 }  // namespace SimStructures
 
 #endif
