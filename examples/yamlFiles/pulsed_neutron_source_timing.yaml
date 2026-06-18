@@ -12,8 +12,8 @@ scintillator:
   dimension_mm:
     x_mm: 100.0
     y_mm: 100.0
-    z_mm: 200.0
-  maskRadius: 0.0
+    z_mm: 20.0
+  maskRadius: 18.0
   properties:
     name: EJ200
     composition:
@@ -27,7 +27,7 @@ scintillator:
       absLength: [380.0, 380.0, 300.0]
       scintSpectrum: [0.2, 1.0, 0.2]
       nKEntries: 3
-      scintYield: 10000.0
+      scintYield: 9800.0
       resolutionScale: 1.0
       timeComponents:
         default:
@@ -47,8 +47,8 @@ source:
       centerMm:
         x_mm: 0.0
         y_mm: 0.0
-        z_mm: -500.0
-      radiusMm: 2.0
+        z_mm: -100.0
+      radiusMm: 10.0
     angular:
       type: beam2d
       rot1: {x: 1.0, y: 0.0, z: 0.0}
@@ -56,15 +56,11 @@ source:
       direction: {x: 0.0, y: 0.0, z: 1.0}
     energy:
       type: Mono
-      monoMeV: 20.0
+      monoMeV: 6.0
   timing:
-    mode: pulsed
+    mode: continuous
     start_time_ns: 0.0
-    particle_flux: 10000000
-    pulse_period_ns: 10000.0
-    pulse_time_offset_ns: 0.0
-    pulse_time_width_ns: 1000.0
-    pulse_shape: uniform
+    particle_flux: 3183098.861837907
 
 optical:
   lenses:
@@ -80,10 +76,7 @@ optical:
       z_mm: 210.05
     shape: circle
     diameterRule: min(entranceDiameter,sensorMaxWidth)
-  showTransportProgress: false
-  transportAssumptions:
-    objectPlane: scintillator_back_face
-    opticalInterfaceRepresents: lens_entrance_plane
+  showTransportProgress: true
 
 intensifier:
   model: Cricket2
@@ -105,8 +98,8 @@ sensor:
     dead_time_ns: 475.0
 
 geant4runner:
-  numberOfParticles: 10000
-  eventsPerOutput: 100
+  numberOfParticles: 5000
+  eventsPerOutput: 1000
   output:
     primaries: true
     secondaries: true
@@ -116,7 +109,7 @@ geant4runner:
     runVerbose: 0
     eventVerbose: 0
     trackingVerbose: 0
-    printProgress: 50
+    printProgress: 500
   binary: scintipix
   showProgress: true
   verifyOutput: true
@@ -139,6 +132,6 @@ metadata:
     PrimariesDirectory: primaries
     SecondariesDirectory: secondaries
     SimulatedPhotonsDirectory: simulatedPhotons
-    PrimariesFilename: primaries.parquet
-    SecondariesFilename: secondaries.parquet
-    PhotonsFilename: photons.parquet
+    PrimariesFilename: primaries.bin
+    SecondariesFilename: secondaries.bin
+    PhotonsFilename: photons.bin
