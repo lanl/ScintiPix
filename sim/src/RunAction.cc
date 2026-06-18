@@ -80,7 +80,7 @@ void RunAction::EndOfRunAction(const G4Run* /*run*/) {
     eventAction->FlushOutputRows();
   }
 
-  // Close output file handles (no-op for binary files)
+  // Close output file handles for this thread.
   if (fConfig) {
     SimIO::CloseOutput(fConfig->GetPrimariesOutputFile());
     SimIO::CloseOutput(fConfig->GetSecondariesOutputFile());
