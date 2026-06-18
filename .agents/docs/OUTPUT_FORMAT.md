@@ -127,7 +127,7 @@ The `secondaries/` dataset contains information about secondary particles produc
 - If no usable end position was recorded, the `secondary_end_*_mm` fields will be `NaN`
 - Only secondaries that generated at least one detected optical photon are recorded
 
-### simulatedPhotons (184 bytes per record)
+### simulatedPhotons (168 bytes per record)
 
 The `simulatedPhotons/` dataset contains information about optical photons generated in the scintillator and detected at the optical interface.
 
