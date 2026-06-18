@@ -74,6 +74,7 @@ class Messenger : public G4UImessenger {
   G4UIcmdWithADoubleAndUnit* fOpticalInterfacePosZCmd = nullptr;
 
   /// Output configuration commands.
+  G4UIcmdWithAnInteger* fEventsPerOutputCmd = nullptr;
   G4UIcmdWithAString* fPrimariesOutputFileCmd = nullptr;
   G4UIcmdWithAString* fSecondariesOutputFileCmd = nullptr;
   G4UIcmdWithAString* fPhotonsOutputFileCmd = nullptr;

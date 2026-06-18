@@ -1,6 +1,8 @@
 #ifndef EventAction_h
 #define EventAction_h 1
 
+#include "SimIO.hh"
+
 #include "G4ThreeVector.hh"
 #include "G4Types.hh"
 #include "G4UserEventAction.hh"
@@ -69,6 +71,8 @@ class EventAction : public G4UserEventAction {
 
   void BeginOfEventAction(const G4Event* event) override;
   void EndOfEventAction(const G4Event* event) override;
+  /// Flush this worker's buffered rows to a unique Parquet part file set.
+  void FlushOutputRows();
 
   void RecordTrackInfo(G4int trackID, const TrackInfo& info);
   const TrackInfo* FindTrackInfo(G4int trackID) const;
@@ -122,6 +126,10 @@ class EventAction : public G4UserEventAction {
   std::unordered_map<G4int, G4double> fPrimaryScintillatorFirstInteractionTime;
   std::unordered_map<G4int, PrimaryActivity> fPrimaryActivity;
   std::vector<PhotonHitRecord> fPhotonHits;
+  std::vector<SimIO::PrimaryInfo> fBufferedPrimaryRows;
+  std::vector<SimIO::SecondaryInfo> fBufferedSecondaryRows;
+  std::vector<SimIO::PhotonInfo> fBufferedPhotonRows;
+  G4int fBufferedOutputEvents = 0;
 };
 
 #endif

@@ -175,6 +175,10 @@ class Config {
   std::string GetPhotonsOutputFile() const;
   /// Set configured photons Parquet file.
   void SetPhotonsOutputFile(const std::string& value);
+  /// Get number of Geant4 events accumulated before writing one Parquet part.
+  G4int GetEventsPerOutput() const;
+  /// Set number of Geant4 events accumulated before writing one Parquet part.
+  void SetEventsPerOutput(G4int value);
 
   /// Get configured source timing mode.
   SourceTimingMode GetSourceTimingMode() const;
@@ -242,6 +246,7 @@ class Config {
   std::string fPrimariesOutputFile;
   std::string fSecondariesOutputFile;
   std::string fPhotonsOutputFile;
+  G4int fEventsPerOutput = 100;
 
   /// Source timing settings in Geant4 internal units.
   SourceTimingMode fSourceTimingMode = SourceTimingMode::None;

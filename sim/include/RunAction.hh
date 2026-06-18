@@ -1,11 +1,9 @@
 #ifndef RunAction_h
 #define RunAction_h 1
 
-#include "SimIO.hh"
-
 #include "G4UserRunAction.hh"
 
-#include <vector>
+#include <cstdint>
 
 class G4Run;
 class Config;
@@ -18,12 +16,11 @@ class RunAction : public G4UserRunAction {
 
   /// Validate output paths on run start.
   void BeginOfRunAction(const G4Run* run) override;
-  /// Write accumulated output rows once after the run.
+  /// Flush any remaining worker-local output rows after the run.
   void EndOfRunAction(const G4Run* run) override;
 
-  static void AppendOutputRows(const std::vector<SimIO::PrimaryInfo>& primaryRows,
-                               const std::vector<SimIO::SecondaryInfo>& secondaryRows,
-                               const std::vector<SimIO::PhotonInfo>& photonRows);
+  /// Reserve the next unique Parquet part index for a worker flush.
+  static std::uint64_t NextOutputPartIndex();
 
  private:
   /// Read-only runtime configuration source.

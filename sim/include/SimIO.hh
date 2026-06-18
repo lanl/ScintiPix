@@ -3,6 +3,7 @@
 
 #include "structures.hh"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,14 @@ bool WriteParquet(const ParquetOutputPaths& paths,
                   const std::vector<SecondaryInfo>& secondaryRows,
                   const std::vector<PhotonInfo>& photonRows,
                   std::string* errorMessage);
+
+/// Write one primary/secondary/photon Parquet part beside each configured base file.
+bool WriteParquetPart(const ParquetOutputPaths& basePaths,
+                      std::uint64_t partIndex,
+                      const std::vector<PrimaryInfo>& primaryRows,
+                      const std::vector<SecondaryInfo>& secondaryRows,
+                      const std::vector<PhotonInfo>& photonRows,
+                      std::string* errorMessage);
 
 }  // namespace SimIO
 
