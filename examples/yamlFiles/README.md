@@ -415,9 +415,11 @@ Geant4 macros.
 Fields:
 - `binary`: scintipix executable command. Defaults to `scintipix` and must not
   be blank.
+- `eventsPerOutput`: Geant4 events buffered by each worker before writing one
+  Parquet part file. Defaults to `1000`.
 - `showProgress`: Python runner progress display flag. Defaults to `false`.
-- `verifyOutput`: check for expected HDF5 output after simulation. Defaults to
-  `true`.
+- `verifyOutput`: check for expected simulation Parquet part files after
+  simulation. Defaults to `true`.
 
 ## `Metadata`
 
