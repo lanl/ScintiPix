@@ -106,7 +106,7 @@ geant4runner:
     photons: true
   photonCulling:
     enabled: true
-    acceptanceAngleDeg: 10.0
+    acceptanceAngleDeg: 27.0
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
