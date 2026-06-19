@@ -64,6 +64,9 @@ geant4runner:
   binary: scintipix
   showProgress: true
   verifyOutput: true
+  photonCulling:
+    enabled: false
+    acceptanceAngleDeg: 27.0
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
