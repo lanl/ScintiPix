@@ -385,17 +385,29 @@ Fields:
 - `dead_time_ns`: per-pixel dead time in ns. Defaults to `475.0` and must be
   non-negative. Alias: `deadTimeNs`.
 
-## `simulation`
+## `geant4runner`
 
-Optional Geant4 run-control block. If present, it must include
+Geant4 run-control and Python launch settings. If present, it must include
 `numberOfParticles` and/or `runtimeControls`.
 
 Fields:
 - `numberOfParticles`: optional `/run/beamOn` particle count. Must be greater
   than zero.
 - `runtimeControls`: optional macro preamble controls.
+- `binary`: scintipix executable command. Defaults to `scintipix` and must not
+  be blank.
+- `eventsPerOutput`: Geant4 events buffered by each worker before writing one
+  Parquet part file. Defaults to `1000`.
+- `output`: selects which Geant4 Parquet tables are assembled and written.
+  Defaults to all tables enabled. At least one of `primaries`, `secondaries`,
+  or `photons` must be `true`.
+- `photonCulling`: optional photon culling optimization settings.
+- `resolutionTarget`: optional Geant4-side Siemens star resolution target.
+- `showProgress`: Python runner progress display flag. Defaults to `false`.
+- `verifyOutput`: check for expected simulation Parquet part files after
+  simulation. Defaults to `true`.
 
-### `simulation.runtimeControls`
+### `geant4runner.runtimeControls`
 
 If present, at least one field must be set.
 
@@ -407,22 +419,30 @@ Fields:
 - `printProgress`: `/run/printProgress`; must be greater than zero.
 - `storeTrajectory`: `/tracking/storeTrajectory`; boolean.
 
-## `runner`
+### `geant4runner.resolutionTarget`
 
-Optional Python-side process-launch settings. These do not map directly to
-Geant4 macros.
+Optional Siemens star absorber target placed on the scintillator `+Z` face.
+Defaults to disabled. When enabled, the clear and opaque sectors are controlled
+by the line-pair count; the inner radius and thickness are fixed in the Geant4
+geometry.
 
 Fields:
-- `binary`: scintipix executable command. Defaults to `scintipix` and must not
-  be blank.
-- `eventsPerOutput`: Geant4 events buffered by each worker before writing one
-  Parquet part file. Defaults to `1000`.
-- `output`: selects which Geant4 Parquet tables are assembled and written.
-  Defaults to all tables enabled. At least one of `primaries`, `secondaries`,
-  or `photons` must be `true`.
-- `showProgress`: Python runner progress display flag. Defaults to `false`.
-- `verifyOutput`: check for expected simulation Parquet part files after
-  simulation. Defaults to `true`.
+- `resolutionTargetEnabled`: boolean. Defaults to `false`.
+- `resolutionTargetOuterRadiusMm`: outer radius in mm. Defaults to `100.0` and
+  must be greater than zero.
+- `resolutionTargetLinePairs`: number of opaque/clear line pairs. Defaults to
+  `64` and must be greater than zero.
+
+Example:
+
+```yaml
+geant4runner:
+  numberOfParticles: 5000
+  resolutionTarget:
+    resolutionTargetEnabled: true
+    resolutionTargetOuterRadiusMm: 50.0
+    resolutionTargetLinePairs: 64
+```
 
 ## `Metadata`
 
@@ -480,13 +500,13 @@ The YAML configuration is processed into a sequence of Geant4 macro commands
 that initialize the simulation environment, geometry, source, and beam setup.
 `ConfigIO.macro_commands(...)` emits commands in this order:
 
-1. `simulation.runtimeControls`: runtime parameters and verbosity settings
+1. `geant4runner.runtimeControls`: runtime parameters and verbosity settings
 2. `/output/*` commands from `Metadata.RunEnvironment`: output directory setup
 3. scintillator and optical-interface geometry/material commands: physics models
 4. `/run/initialize`: initialize the Geant4 run
 5. `/gps/*` source commands: General Particle Source configuration
 6. `/source/timing/*` commands when `source.timing` is present: time structure
-7. `/run/beamOn <N>` when `simulation.numberOfParticles` is set: execute beam
+7. `/run/beamOn <N>` when `geant4runner.numberOfParticles` is set: execute beam
 
 These YAMLs are consumed by scripts in:
 - [`SimulationSetup/`](../SimulationSetup/README.md)
