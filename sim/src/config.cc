@@ -471,28 +471,28 @@ void Config::SetWriteSecondariesOutput(G4bool value) {
 }
 
 G4bool Config::GetWritePhotonsOutput() const {
-   std::lock_guard<std::mutex> lock(fMutex);
-   return fWritePhotonsOutput;
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fWritePhotonsOutput;
 }
 
 G4bool Config::GetPhotonCullingEnabled() const {
-   std::lock_guard<std::mutex> lock(fMutex);
-   return fPhotonCullingEnabled;
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fPhotonCullingEnabled;
 }
 
 G4double Config::GetPhotonCullingAcceptanceAngleDeg() const {
-   std::lock_guard<std::mutex> lock(fMutex);
-   return fPhotonCullingAcceptanceAngleDeg;
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fPhotonCullingAcceptanceAngleDeg;
 }
 
 void Config::SetPhotonCullingEnabled(G4bool value) {
-   std::lock_guard<std::mutex> lock(fMutex);
-   fPhotonCullingEnabled = value;
+  std::lock_guard<std::mutex> lock(fMutex);
+  fPhotonCullingEnabled = value;
 }
 
 void Config::SetPhotonCullingAcceptanceAngleDeg(G4double value) {
-   std::lock_guard<std::mutex> lock(fMutex);
-   fPhotonCullingAcceptanceAngleDeg = value;
+  std::lock_guard<std::mutex> lock(fMutex);
+  fPhotonCullingAcceptanceAngleDeg = value;
 }
 
 void Config::SetWritePhotonsOutput(G4bool value) {
