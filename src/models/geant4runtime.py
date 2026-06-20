@@ -58,6 +58,16 @@ class Geant4OutputConfig(StrictModel):
             raise ValueError("`geant4runner.output` must enable at least one table.")
         return self
 
+class ResolutionTarget(StrictModel):
+    """Configuration for the Geant4-side resolution target (Siemens star)."""
+
+    enabled: bool = Field(default=False, alias="resolutionTargetEnabled")
+    outer_radius_mm: float = Field(
+        default=100.0, alias="resolutionTargetOuterRadiusMm", gt=0.0
+    )
+    line_pairs: int = Field(
+        default=64, alias="resolutionTargetLinePairs", gt=0
+    )
 
 class PhotonCullingConfig(StrictModel):
     """Photon culling optimization settings.
@@ -90,6 +100,9 @@ class Geant4RunTime(StrictModel):
     output: Geant4OutputConfig = Field(default_factory=Geant4OutputConfig)
     photon_culling: PhotonCullingConfig = Field(
         default_factory=PhotonCullingConfig, alias="photonCulling"
+    )
+    resolution_target: ResolutionTarget = Field(
+        default_factory=ResolutionTarget, alias="resolutionTarget"
     )
 
     binary: str = Field(min_length=1, default="scintipix")
