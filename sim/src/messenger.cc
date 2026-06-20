@@ -160,6 +160,34 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fGeomMaskRadiusCmd->SetRange("maskRadius >= 0.");
   fGeomMaskRadiusCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+  fResolutionTargetEnabledCmd =
+      new G4UIcmdWithAnInteger("/scintillator/geom/resolutionTargetEnabled", this);
+  fResolutionTargetEnabledCmd->SetGuidance(
+      "Enable Siemens star resolution target on scintillator +Z face: 0 or 1");
+  fResolutionTargetEnabledCmd->SetParameterName("resolutionTargetEnabled", false);
+  fResolutionTargetEnabledCmd->SetRange(
+      "resolutionTargetEnabled >= 0 && resolutionTargetEnabled <= 1");
+  fResolutionTargetEnabledCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fResolutionTargetOuterRadiusCmd = new G4UIcmdWithADoubleAndUnit(
+      "/scintillator/geom/resolutionTargetOuterRadius", this);
+  fResolutionTargetOuterRadiusCmd->SetGuidance(
+      "Set Siemens star resolution target outer radius");
+  fResolutionTargetOuterRadiusCmd->SetParameterName(
+      "resolutionTargetOuterRadius", false);
+  fResolutionTargetOuterRadiusCmd->SetUnitCategory("Length");
+  fResolutionTargetOuterRadiusCmd->SetRange("resolutionTargetOuterRadius > 0.");
+  fResolutionTargetOuterRadiusCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fResolutionTargetLinePairsCmd = new G4UIcmdWithAnInteger(
+      "/scintillator/geom/resolutionTargetLinePairs", this);
+  fResolutionTargetLinePairsCmd->SetGuidance(
+      "Set Siemens star resolution target line-pair count");
+  fResolutionTargetLinePairsCmd->SetParameterName(
+      "resolutionTargetLinePairs", false);
+  fResolutionTargetLinePairsCmd->SetRange("resolutionTargetLinePairs > 0");
+  fResolutionTargetLinePairsCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
   fScintDensityCmd =
       new G4UIcmdWithADoubleAndUnit("/scintillator/properties/density", this);
   fScintDensityCmd->SetGuidance("Set scintillator density");
@@ -463,6 +491,9 @@ Messenger::~Messenger() {
   delete fScintHydrogenAtomsCmd;
   delete fScintCarbonAtomsCmd;
   delete fScintDensityCmd;
+  delete fResolutionTargetLinePairsCmd;
+  delete fResolutionTargetOuterRadiusCmd;
+  delete fResolutionTargetEnabledCmd;
   delete fGeomMaskRadiusCmd;
   delete fGeomScintZCmd;
   delete fGeomScintYCmd;
@@ -532,6 +563,27 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
   if (command == fGeomMaskRadiusCmd) {
     fConfig->SetMaskRadius(
         fGeomMaskRadiusCmd->GetNewDoubleValue(newValue));
+    NotifyGeometryChanged();
+    return;
+  }
+
+  if (command == fResolutionTargetEnabledCmd) {
+    fConfig->SetResolutionTargetEnabled(
+        fResolutionTargetEnabledCmd->GetNewIntValue(newValue) != 0);
+    NotifyGeometryChanged();
+    return;
+  }
+
+  if (command == fResolutionTargetOuterRadiusCmd) {
+    fConfig->SetResolutionTargetOuterRadius(
+        fResolutionTargetOuterRadiusCmd->GetNewDoubleValue(newValue));
+    NotifyGeometryChanged();
+    return;
+  }
+
+  if (command == fResolutionTargetLinePairsCmd) {
+    fConfig->SetResolutionTargetLinePairs(
+        fResolutionTargetLinePairsCmd->GetNewIntValue(newValue));
     NotifyGeometryChanged();
     return;
   }

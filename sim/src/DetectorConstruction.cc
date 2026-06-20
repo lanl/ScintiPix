@@ -1,5 +1,6 @@
 #include "DetectorConstruction.hh"
 #include "PhotonOpticalInterfaceSD.hh"
+#include "ResolutionTargetConstruction.hh"
 #include "config.hh"
 
 #include "G4Box.hh"
@@ -227,6 +228,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   // Optional circular mask aperture centered on scintillator +Z face.
   auto maskRadius = 0.0 * mm;
   const auto maskThickness = 0.01 * mm;
+  auto resolutionTargetEnabled = false;
+  auto resolutionTargetOuterRadius = 100.0 * mm;
+  auto resolutionTargetLinePairs = 64;
+  const auto resolutionTargetInnerRadius = 1.0 * um;
+  const auto resolutionTargetThickness = 1.0 * um;
+  const auto resolutionTargetClearance = 1.0 * um;
 
   if (fConfig) {
     scintX = PositiveOrDefault(fConfig->GetScintX(), scintX);
@@ -246,6 +253,14 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     opticalInterfacePosY = fConfig->GetOpticalInterfacePosY();
     opticalInterfacePosZ = fConfig->GetOpticalInterfacePosZ();
     maskRadius = std::max(0.0, fConfig->GetMaskRadius());
+    resolutionTargetEnabled = fConfig->GetResolutionTargetEnabled();
+    resolutionTargetOuterRadius =
+        PositiveOrDefault(fConfig->GetResolutionTargetOuterRadius(),
+                          resolutionTargetOuterRadius);
+    resolutionTargetLinePairs =
+        (fConfig->GetResolutionTargetLinePairs() > 0)
+            ? fConfig->GetResolutionTargetLinePairs()
+            : resolutionTargetLinePairs;
   }
 
   const auto scintBackFaceZ = scintPosZ + 0.5 * scintZ;
@@ -261,11 +276,29 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     maskEnabled = false;
   }
 
+  if (resolutionTargetEnabled &&
+      resolutionTargetOuterRadius <= resolutionTargetInnerRadius) {
+    G4cout << "[Geom] resolutionTargetOuterRadius ("
+           << resolutionTargetOuterRadius / mm
+           << " mm) must be larger than the fixed inner radius ("
+           << resolutionTargetInnerRadius / mm
+           << " mm). Resolution target disabled." << G4endl;
+    resolutionTargetEnabled = false;
+  }
+
+  const auto resolutionTargetCenterZ =
+      scintBackFaceZ + (maskEnabled ? maskThickness : 0.0) +
+      resolutionTargetClearance + 0.5 * resolutionTargetThickness;
+  const auto absorberStackThickness =
+      (maskEnabled ? maskThickness : 0.0) +
+      (resolutionTargetEnabled
+           ? (resolutionTargetClearance + resolutionTargetThickness)
+           : 0.0);
+
   const auto defaultOpticalInterfaceX = scintPosX;
   const auto defaultOpticalInterfaceY = scintPosY;
   const auto defaultOpticalInterfaceZ =
-      scintBackFaceZ + (maskEnabled ? maskThickness : 0.0) +
-      0.5 * opticalInterfaceThickness;
+      scintBackFaceZ + absorberStackThickness + 0.5 * opticalInterfaceThickness;
 
   const auto opticalInterfaceCenterX =
       std::isnan(opticalInterfacePosX) ? defaultOpticalInterfaceX : opticalInterfacePosX;
@@ -275,18 +308,29 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
       std::isnan(opticalInterfacePosZ) ? defaultOpticalInterfaceZ : opticalInterfacePosZ;
 
   // Auto-size world from required half-extents with margin.
-  const auto requiredHalfX = std::max(std::abs(scintPosX) + 0.5 * scintX,
-                                      std::abs(opticalInterfaceCenterX) +
-                                          0.5 * opticalInterfaceX);
-  const auto requiredHalfY = std::max(std::abs(scintPosY) + 0.5 * scintY,
-                                      std::abs(opticalInterfaceCenterY) +
-                                          0.5 * opticalInterfaceY);
+  auto requiredHalfX = std::max(std::abs(scintPosX) + 0.5 * scintX,
+                                std::abs(opticalInterfaceCenterX) +
+                                    0.5 * opticalInterfaceX);
+  auto requiredHalfY = std::max(std::abs(scintPosY) + 0.5 * scintY,
+                                std::abs(opticalInterfaceCenterY) +
+                                    0.5 * opticalInterfaceY);
+  if (resolutionTargetEnabled) {
+    requiredHalfX =
+        std::max(requiredHalfX, std::abs(scintPosX) + resolutionTargetOuterRadius);
+    requiredHalfY =
+        std::max(requiredHalfY, std::abs(scintPosY) + resolutionTargetOuterRadius);
+  }
   auto requiredHalfZ = std::max(std::abs(scintPosZ) + 0.5 * scintZ,
                                 std::abs(opticalInterfaceCenterZ) +
                                     0.5 * opticalInterfaceThickness);
   if (maskEnabled) {
     requiredHalfZ =
         std::max(requiredHalfZ, std::abs(maskCenterZ) + 0.5 * maskThickness);
+  }
+  if (resolutionTargetEnabled) {
+    requiredHalfZ = std::max(requiredHalfZ,
+                             std::abs(resolutionTargetCenterZ) +
+                                 0.5 * resolutionTargetThickness);
   }
 
   const auto worldX = std::max(1.0 * m, 8.0 * requiredHalfX);
@@ -354,6 +398,17 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
                         0,
                         true);
     }
+  }
+
+  if (resolutionTargetEnabled) {
+    ConstructSiemensStarResolutionTarget(
+        worldLV,
+        BuildOrGetMaskAbsorber(nist),
+        G4ThreeVector(scintPosX, scintPosY, resolutionTargetCenterZ),
+        resolutionTargetInnerRadius,
+        resolutionTargetOuterRadius,
+        resolutionTargetThickness,
+        resolutionTargetLinePairs);
   }
 
   auto* opticalInterfaceSolid =

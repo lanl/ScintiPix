@@ -39,6 +39,9 @@ Config::Config()
       fScintPosY(0.0),
       fScintPosZ(0.0),
       fMaskRadius(0.0),
+      fResolutionTargetEnabled(false),
+      fResolutionTargetOuterRadius(100.0 * mm),
+      fResolutionTargetLinePairs(64),
       fOpticalInterfaceX(0.0),
       fOpticalInterfaceY(0.0),
       fOpticalInterfaceThickness(0.1 * mm),
@@ -95,6 +98,21 @@ G4double Config::GetScintPosZ() const {
 G4double Config::GetMaskRadius() const {
   std::lock_guard<std::mutex> lock(fMutex);
   return fMaskRadius;
+}
+
+G4bool Config::GetResolutionTargetEnabled() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fResolutionTargetEnabled;
+}
+
+G4double Config::GetResolutionTargetOuterRadius() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fResolutionTargetOuterRadius;
+}
+
+G4int Config::GetResolutionTargetLinePairs() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fResolutionTargetLinePairs;
 }
 
 G4double Config::GetOpticalInterfaceX() const {
@@ -160,6 +178,27 @@ void Config::SetScintPosZ(G4double value) {
 void Config::SetMaskRadius(G4double value) {
   std::lock_guard<std::mutex> lock(fMutex);
   fMaskRadius = value;
+}
+
+void Config::SetResolutionTargetEnabled(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fResolutionTargetEnabled = value;
+}
+
+void Config::SetResolutionTargetOuterRadius(G4double value) {
+  if (value <= 0.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fResolutionTargetOuterRadius = value;
+}
+
+void Config::SetResolutionTargetLinePairs(G4int value) {
+  if (value <= 0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fResolutionTargetLinePairs = value;
 }
 
 void Config::SetOpticalInterfaceX(G4double value) {
