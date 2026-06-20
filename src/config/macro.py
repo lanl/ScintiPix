@@ -239,6 +239,22 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
     if scint.mask_radius_mm > 0.0:
         commands.append(f"/scintillator/geom/maskRadius {scint.mask_radius_mm:g} mm")
 
+    resolution_target = simulation.geant4runner.resolution_target
+    if resolution_target.enabled:
+        commands.extend(
+            [
+                "/scintillator/geom/resolutionTargetEnabled 1",
+                (
+                    "/scintillator/geom/resolutionTargetOuterRadius "
+                    f"{resolution_target.outer_radius_mm:g} mm"
+                ),
+                (
+                    "/scintillator/geom/resolutionTargetLinePairs "
+                    f"{resolution_target.line_pairs}"
+                ),
+            ]
+        )
+
     commands.extend(
         [
             f"/optical_interface/geom/sizeX {optical.geometry.entrance_diameter:g} mm",
