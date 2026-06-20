@@ -23,6 +23,7 @@ from src.models.geant4runtime import (
     Geant4OutputConfig,
     Geant4RunTime,
     Geant4RuntimeControls,
+    PhotonCullingConfig,
 )
 
 
@@ -322,6 +323,61 @@ class TestGeant4RunTime:
                     },
                 }
             )
+
+    def test_photon_culling_defaults(self) -> None:
+        """Photon culling should default to disabled with a 30 degree angle."""
+        runtime = Geant4RunTime(number_of_particles=1000)
+        assert runtime.photon_culling.enabled is False
+        assert runtime.photon_culling.acceptance_angle_deg == 30.0
+
+    def test_photon_culling_alias_handling(self) -> None:
+        """camelCase photonCulling aliases should map to Python fields."""
+        runtime = Geant4RunTime.model_validate(
+            {
+                "numberOfParticles": 1000,
+                "photonCulling": {
+                    "enabled": True,
+                    "acceptanceAngleDeg": 45.0,
+                },
+            }
+        )
+        assert runtime.photon_culling.enabled is True
+        assert runtime.photon_culling.acceptance_angle_deg == 45.0
+
+    def test_photon_culling_field_name_handling(self) -> None:
+        """Python field names should also validate for photon culling."""
+        culling = PhotonCullingConfig(
+            enabled=True,
+            acceptance_angle_deg=12.5,
+        )
+        assert culling.enabled is True
+        assert culling.acceptance_angle_deg == 12.5
+
+    def test_photon_culling_acceptance_angle_bounds(self) -> None:
+        """Photon culling acceptance angle must be in (0, 180]."""
+        culling = PhotonCullingConfig(acceptance_angle_deg=180.0)
+        assert culling.acceptance_angle_deg == 180.0
+
+        with pytest.raises(ValidationError, match="acceptance_angle_deg"):
+            PhotonCullingConfig(acceptance_angle_deg=0.0)
+
+        with pytest.raises(ValidationError, match="acceptance_angle_deg"):
+            PhotonCullingConfig(acceptance_angle_deg=-1.0)
+
+        with pytest.raises(ValidationError, match="acceptance_angle_deg"):
+            PhotonCullingConfig(acceptance_angle_deg=180.1)
+
+    def test_photon_culling_serialization_uses_alias(self) -> None:
+        """Serialized photon culling config should use YAML aliases."""
+        dumped = PhotonCullingConfig(
+            enabled=True,
+            acceptance_angle_deg=20.0,
+        ).model_dump(by_alias=True)
+
+        assert dumped == {
+            "enabled": True,
+            "acceptanceAngleDeg": 20.0,
+        }
 
     def test_binary_custom_value(self) -> None:
         """Custom binary name should be accepted."""
