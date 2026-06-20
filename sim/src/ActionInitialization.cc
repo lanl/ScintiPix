@@ -19,7 +19,7 @@ void ActionInitialization::Build() const {
   SetUserAction(eventAction);
 
   SetUserAction(new SteppingAction(fDetector, eventAction));
-  SetUserAction(new TrackingAction(eventAction));
+  SetUserAction(new TrackingAction(eventAction, fConfig));
 }
 
 void ActionInitialization::BuildForMaster() const {

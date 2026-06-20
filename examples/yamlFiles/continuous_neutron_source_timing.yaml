@@ -100,8 +100,14 @@ sensor:
     max_tot_ns: 25550.0
     dead_time_ns: 475.0
 
-simulation:
+geant4runner:
   numberOfParticles: 200
+  binary: scintipix
+  showProgress: true
+  verifyOutput: true
+  photonCulling:
+    enabled: false
+    acceptanceAngleDeg: 27.0
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
@@ -109,12 +115,7 @@ simulation:
     trackingVerbose: 0
     printProgress: 50
 
-runner:
-  binary: scintipix
-  showProgress: true
-  verifyOutput: true
-
-Metadata:
+metadata:
   author: Alex Long
   date: 2026-06-05
   version: ScintPiX v0.1
@@ -129,6 +130,5 @@ Metadata:
     WorkingDirectory: data
     MacroDirectory: macros
     LogDirectory: logs
-    OutputInfo:
-      SimulatedPhotonsDirectory: simulatedPhotons
-      TransportedPhotonsDirectory: transportedPhotons
+    SimulatedPhotonsDirectory: simulatedPhotons
+    TransportedPhotonsDirectory: transportedPhotons

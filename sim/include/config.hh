@@ -213,6 +213,15 @@ class Config {
   /// Compute per-event source timing values in Geant4 internal units.
   SourceTimingInfo GetSourceTimingForEvent(G4int eventID) const;
 
+  /// Return true if photon culling optimization is enabled.
+  G4bool GetPhotonCullingEnabled() const;
+  /// Enable or disable photon culling optimization.
+  void SetPhotonCullingEnabled(G4bool value);
+  /// Get photon culling acceptance angle in degrees.
+  G4double GetPhotonCullingAcceptanceAngleDeg() const;
+  /// Set photon culling acceptance angle in degrees.
+  void SetPhotonCullingAcceptanceAngleDeg(G4double value);
+
  private:
   /// Guards all mutable config fields for cross-thread read/write safety.
   mutable std::mutex fMutex;
@@ -272,6 +281,10 @@ class Config {
   G4double fSourceTimingPulseTimeOffset = 0.0;
   G4double fSourceTimingPulseTimeWidth = 0.0;
   std::string fSourceTimingPulseShape = "uniform";
+
+  /// Photon culling settings.
+  G4bool fPhotonCullingEnabled = false;
+  G4double fPhotonCullingAcceptanceAngleDeg = 30.0;
 };
 
 #endif

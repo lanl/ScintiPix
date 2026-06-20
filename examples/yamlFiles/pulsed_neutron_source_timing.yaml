@@ -13,7 +13,7 @@ scintillator:
     x_mm: 100.0
     y_mm: 100.0
     z_mm: 20.0
-  maskRadius: 18.0
+  maskRadius: 0.0
   properties:
     name: EJ200
     composition:
@@ -104,6 +104,9 @@ geant4runner:
     primaries: true
     secondaries: true
     photons: true
+  photonCulling:
+    enabled: true
+    acceptanceAngleDeg: 27.0
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0

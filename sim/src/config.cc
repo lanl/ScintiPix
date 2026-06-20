@@ -475,6 +475,26 @@ G4bool Config::GetWritePhotonsOutput() const {
   return fWritePhotonsOutput;
 }
 
+G4bool Config::GetPhotonCullingEnabled() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fPhotonCullingEnabled;
+}
+
+G4double Config::GetPhotonCullingAcceptanceAngleDeg() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fPhotonCullingAcceptanceAngleDeg;
+}
+
+void Config::SetPhotonCullingEnabled(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fPhotonCullingEnabled = value;
+}
+
+void Config::SetPhotonCullingAcceptanceAngleDeg(G4double value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fPhotonCullingAcceptanceAngleDeg = value;
+}
+
 void Config::SetWritePhotonsOutput(G4bool value) {
   std::lock_guard<std::mutex> lock(fMutex);
   fWritePhotonsOutput = value;

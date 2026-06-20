@@ -143,6 +143,15 @@ def _format_macro_scalar(value: float) -> str:
     return text if text else "0"
 
 
+def _photon_culling_commands(simulation: Simulation) -> list[str]:
+    """Generate photon culling optimization commands."""
+    culling = simulation.geant4runner.photon_culling
+    return [
+        f"/photonCulling/enabled {1 if culling.enabled else 0}",
+        f"/photonCulling/acceptanceAngleDeg {culling.acceptance_angle_deg:g}",
+    ]
+
+
 def _output_commands(simulation: Simulation) -> list[str]:
     """Generate explicit Geant4 output file commands."""
     env = simulation.metadata.run_environment
@@ -268,6 +277,7 @@ def _macro_commands(
 
     if include_output:
         commands.extend(_output_commands(simulation))
+    commands.extend(_photon_culling_commands(simulation))
     commands.extend(_geometry_commands(simulation))
     if include_run_initialize:
         commands.append("/run/initialize")

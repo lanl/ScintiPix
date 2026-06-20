@@ -59,6 +59,19 @@ class Geant4OutputConfig(StrictModel):
         return self
 
 
+class PhotonCullingConfig(StrictModel):
+    """Photon culling optimization settings.
+
+    When enabled, photons emitted away from the detector are not tracked,
+    reducing simulation time while maintaining accuracy for detected photons.
+    """
+
+    enabled: bool = False
+    acceptance_angle_deg: float = Field(
+        default=30.0, alias="acceptanceAngleDeg", gt=0.0, le=180.0
+    )
+
+
 class Geant4RunTime(StrictModel):
     """Geant4 run-command settings for one simulation run.
 
@@ -75,6 +88,9 @@ class Geant4RunTime(StrictModel):
     )
     events_per_output: int = Field(default=1000, alias="eventsPerOutput", gt=0)
     output: Geant4OutputConfig = Field(default_factory=Geant4OutputConfig)
+    photon_culling: PhotonCullingConfig = Field(
+        default_factory=PhotonCullingConfig, alias="photonCulling"
+    )
 
     binary: str = Field(min_length=1, default="scintipix")
     show_progress: bool = Field(default=False, alias="showProgress")

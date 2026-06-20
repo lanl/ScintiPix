@@ -39,6 +39,7 @@ class Messenger : public G4UImessenger {
   G4UIdirectory* fSourceDir = nullptr;
   G4UIdirectory* fSourceTimingDir = nullptr;
   G4UIdirectory* fOutputDir = nullptr;
+  G4UIdirectory* fPhotonCullingDir = nullptr;
 
   /// Scintillator geometry/material commands.
   G4UIcmdWithAString* fGeomMaterialCmd = nullptr;
@@ -91,6 +92,10 @@ class Messenger : public G4UImessenger {
   G4UIcmdWithADoubleAndUnit* fSourceTimingPulseTimeOffsetCmd = nullptr;
   G4UIcmdWithADoubleAndUnit* fSourceTimingPulseTimeWidthCmd = nullptr;
   G4UIcmdWithAString* fSourceTimingPulseShapeCmd = nullptr;
+
+  /// Photon culling optimization commands.
+  G4UIcmdWithAnInteger* fPhotonCullingEnabledCmd = nullptr;
+  G4UIcmdWithADouble* fPhotonCullingAcceptanceAngleDegCmd = nullptr;
 };
 
 #endif

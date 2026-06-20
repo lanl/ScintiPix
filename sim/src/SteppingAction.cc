@@ -37,7 +37,7 @@ G4int ResolvePrimaryTrackID(const G4Track* track, const EventAction* eventAction
 }  // namespace
 
 SteppingAction::SteppingAction(const DetectorConstruction* detector,
-                               EventAction* eventAction)
+                                EventAction* eventAction)
     : fDetector(detector), fEventAction(eventAction) {}
 
 void SteppingAction::UserSteppingAction(const G4Step* step) {
@@ -106,6 +106,8 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
       continue;
     }
 
+    // Record the photon's creation point for later use in TrackingAction.
+    // Photon culling happens in TrackingAction::PreUserTrackingAction.
     fEventAction->RecordPendingPhotonOrigin(secondary, secondary->GetPosition());
   }
 }
