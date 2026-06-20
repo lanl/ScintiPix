@@ -67,6 +67,10 @@ geant4runner:
   photonCulling:
     enabled: false
     acceptanceAngleDeg: 27.0
+  resolutionTarget:
+    resolutionTargetEnabled: true
+    resolutionTargetOuterRadiusMm: 45.0
+    resolutionTargetLinePairs: 64
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
