@@ -272,19 +272,19 @@ class Config {
   G4bool fWriteSecondariesOutput = true;
   G4bool fWritePhotonsOutput = true;
 
-   /// Source timing settings in Geant4 internal units.
-   SourceTimingMode fSourceTimingMode = SourceTimingMode::None;
-   G4double fSourceTimingStartTime = 0.0;
-   G4double fSourceTimingEventSpacing = 0.0;
-   G4double fSourceTimingPulsePeriod = 0.0;
-   G4int fSourceTimingNeutronsPerPulse = 1;
-   G4double fSourceTimingPulseTimeOffset = 0.0;
-   G4double fSourceTimingPulseTimeWidth = 0.0;
-   std::string fSourceTimingPulseShape = "uniform";
-   
-   /// Photon culling settings
-   bool fPhotonCullingEnabled = false;
-   G4double fPhotonCullingAcceptanceAngleDeg = 30.0;
+  /// Source timing settings in Geant4 internal units.
+  SourceTimingMode fSourceTimingMode = SourceTimingMode::None;
+  G4double fSourceTimingStartTime = 0.0;
+  G4double fSourceTimingEventSpacing = 0.0;
+  G4double fSourceTimingPulsePeriod = 0.0;
+  G4int fSourceTimingNeutronsPerPulse = 1;
+  G4double fSourceTimingPulseTimeOffset = 0.0;
+  G4double fSourceTimingPulseTimeWidth = 0.0;
+  std::string fSourceTimingPulseShape = "uniform";
+
+  /// Photon culling settings.
+  G4bool fPhotonCullingEnabled = false;
+  G4double fPhotonCullingAcceptanceAngleDeg = 30.0;
 };
 
 #endif
