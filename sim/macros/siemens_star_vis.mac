@@ -1,0 +1,32 @@
+/control/verbose 1
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+/tracking/storeTrajectory 1
+
+/scintillator/geom/material EJ200
+/scintillator/geom/scintX 10 cm
+/scintillator/geom/scintY 10 cm
+/scintillator/geom/scintZ 2 cm
+/scintillator/geom/posX 0 cm
+/scintillator/geom/posY 0 cm
+/scintillator/geom/posZ 0 cm
+/scintillator/geom/resolutionTargetEnabled 1
+/scintillator/geom/resolutionTargetOuterRadius 45 mm
+/scintillator/geom/resolutionTargetLinePairs 64
+
+/optical_interface/geom/sizeX 10 cm
+/optical_interface/geom/sizeY 10 cm
+/optical_interface/geom/thickness 0.1 mm
+
+/run/initialize
+
+/vis/open OGL
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/viewpointThetaPhi 0 0
+/vis/viewer/zoom 4
+/vis/scene/add/axes 0 0 0 20 mm
+/vis/viewer/set/autoRefresh true
+/vis/viewer/rebuild
+/vis/viewer/refresh
