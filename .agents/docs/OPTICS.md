@@ -2,6 +2,11 @@
 
 This note is for future agents working on optical transport.
 
+Last updated: 2026-06-30 15:40 MDT.
+
+For future edits, add an `Added YYYY-MM-DD` line to new design sections so the
+age of each decision is visible.
+
 The current source of truth is the Geant4 simulation output. The downstream
 Python optics, intensifier, and sensor stages have not yet been updated to the
 new Geant4 output path. Do not treat the existing `src/optics/OpticalTransport.py`
@@ -13,8 +18,10 @@ Geant4 creates and tracks scintillation photons inside the scintillator. Photons
 that reach the optical interface are recorded by the optical-interface sensitive
 detector.
 
-The optical interface represents the lens entrance plane. For each detected
-optical photon, Geant4 records:
+The optical interface is the Geant4 collection/scoring plane for photons that
+reach the lens side of the setup. It can represent the lens entrance plane for
+acceptance and validation, but it is not the RayOptics object plane or image
+plane. For each detected optical photon, Geant4 records:
 
 - source/provenance IDs
 - photon creation position and time
@@ -40,17 +47,21 @@ The binary row layout is defined in:
 ## Intended Optical Transport
 
 The future `OpticalTransport.py` rewrite should start from the current Geant4
-photon binary output and transport photons from the optical-interface plane to
-the photocathode/input plane of the image intensifier.
+photon binary output, build RayOptics rays for photons accepted at the optical
+interface, and transport those rays from the scintillator object plane through
+the configured lens to the photocathode/input plane of the image intensifier.
 
 The core mapping should stay simple:
 
 ```text
-Geant4 optical-interface photon
-  position + direction + wavelength + time
+Geant4 photon accepted at optical-interface plane
+  scintillator-exit position + direction + wavelength + time
         |
         v
-ray optics through configured lens
+RayOptics object-plane ray at scintillator back face
+        |
+        v
+ray optics through configured ZMX lens
         |
         v
 intensifier photocathode/input-plane hit
@@ -67,19 +78,78 @@ Need to rewrite `src/optics/OpticalTransport.py`.
 Currently has a lot of legacy code and AI generated junk code. 
 Note: Avoid carrying over old HDF5 assumptions unless they are still explicitly needed.
 
-The new implementation should answer these questions:
+The new implementation should start from the object-plane/image-plane model
+above and answer these implementation questions:
 
-1. Where should the optical interface be (at the scintillator or at the lens entrance plane)?
-2. Do we need to do any configuration of the lens based on zmxFiles?
-3. Do we need to create a batch processing mechanism to accelerate this part of the code?
-4. Is the back focal plane of the lens set, or do we need to adjust the position of the intensifier to align with the focal plane?
-5. Where should the optical pydantic models live within the project?
+1. How should object-plane rays be reconstructed from scintillator-exit and
+   optical-interface records?
+2. How should the fixed photocathode/image plane be represented from lens mount
+   and passive C-mount adapter metadata?
+3. Do we need to configure lens focus or internal gaps from the selected ZMX
+   prescription?
+4. Do we need a batch processing mechanism to accelerate transport?
+5. Where should the optical Pydantic models live within the project?
 
 We need a comprehensive understanding of Ray Optics libraries to accurately model the propagation of photons through the lens system and ensure that the optical transport stage correctly maps optical-interface photons to the intensifier photocathode/input-plane hits.
 
 Keep the transport stage focused on ray optics. 
 The photocathode response, MCP/phosphor behavior will be in the intensifier module, while 
 sensor readout belongs to the sensor modules.
+
+## Practical RayOptics Transport Setup
+
+Added 2026-06-30 15:40 MDT.
+
+The practical optical problem is:
+
+```text
+object plane                    lens model                  image plane
+scintillator back face  ->  selected ZMX prescription  ->  photocathode
+```
+
+The optical interface should be treated as a Geant4 scoring/collection plane.
+It tells us which photons reached the lens side of the setup and provides a
+useful acceptance/validation point. It should not define the object plane or the
+image plane.
+
+Use this setup flow:
+
+1. Choose the lens `.zmx`/`.smx` files.
+2. Define the RayOptics object plane as the scintillator back face.
+3. Define the fixed RayOptics image plane as the intensifier photocathode.
+4. Set the object gap from the scintillator-back-face to first-lens-surface
+   distance.
+5. Load the ZMX prescription as the lens surface/gap model.
+6. Validate focus with synthetic object-plane ray bundles before bulk transport.
+7. Transport real Geant4 photons that were accepted at the optical-interface
+   scoring plane.
+8. Write transported photocathode hits with the original photon provenance IDs.
+
+For each accepted Geant4 photon, build a RayOptics ray:
+
+```python
+pt0 = [scint_exit_x_mm, scint_exit_y_mm, 0.0]
+dir0 = normalized photon direction toward the lens
+wvl = photon wavelength in nm
+```
+
+Then trace:
+
+```text
+object plane -> object gap -> lens surfaces/gaps -> fixed image surface
+```
+
+The final RayOptics image-surface intersection is the transported photon hit on
+the intensifier photocathode. If tracing fails, the ray is vignetted, or the hit
+lands outside the active intensifier area, mark the photon as missed rather than
+forcing it onto the photocathode.
+
+Focus should be validated before transporting a full Geant4 photon run. The
+focus check should sample object points on the scintillator back face, trace ray
+bundles through the selected lens model, and measure spot size at the fixed
+photocathode plane. If the spot is not minimized at the photocathode, do not move
+the photocathode in software; change a real degree of freedom such as
+scintillator-to-lens distance, lens focus state, or the selected prescription.
 
 ## RayOptics Lens Model Notes
 
@@ -121,10 +191,16 @@ definition.
 
 ## Focus And Fixed Intensifier Position
 
-The image intensifier is mechanically fixed to the back of the lens. If this is
-a C-mount interface, the standard flange focal distance is 17.526 mm from the
-C-mount flange shoulder to the image plane. Verify that the hardware is C-mount
-and not CS-mount, because CS-mount uses a different flange focal distance.
+Updated 2026-06-30 15:40 MDT.
+
+The image intensifier input is a C-mount interface and is mechanically fixed to
+the back of the selected lens through a passive adapter. The adapter has no glass
+or corrective optic, so it adds only mechanical air spacing and optional aperture
+limits. It has no optical power.
+
+For C-mount, the standard flange focal distance is 17.526 mm from the C-mount
+flange shoulder to the image plane. In this setup, that image plane is the
+intensifier photocathode.
 
 That distance is a mechanical flange-to-image-plane distance, not necessarily
 the distance from the last optical surface in the `.zmx` prescription to the
