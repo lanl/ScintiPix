@@ -12,11 +12,13 @@ try:
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
     from src.models.simulation import Simulation
+    from src.optics.Calibration import auto_focus_lens
 except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
     from src.models.simulation import Simulation
+    from src.optics.Calibration import auto_focus_lens
 
 
 _SIMULATED_EVENTS_PATTERN = re.compile(r"Simulated\s+(\d+)\s+events\b")
@@ -227,6 +229,20 @@ def run_simulation(
     log_filename: str | Path | None = None,
 ) -> subprocess.CompletedProcess[str] | None:
     """Prepare and launch one simulation from validated config."""
+
+    # Run auto-focus routine if enabled
+    if config.metadata.run_controls.auto_focus_lens:
+        logger = get_logger()
+        logger.info("Running automatic lens focusing routine...")
+        optimal_z_mm = auto_focus_lens(config)
+
+        original_z = config.optical.interface.position_mm.z_mm
+        config.optical.interface.position_mm.z_mm = optimal_z_mm
+
+        logger.info(
+            f"Auto-focus: adjusted optical interface from z={original_z:.2f}mm "
+            f"to z={optimal_z_mm:.2f}mm"
+        )
 
     write_macro(config)
     completed = run(config, dry_run=dry_run, log_filename=log_filename)
