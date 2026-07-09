@@ -33,8 +33,8 @@ class LensCatalogContext:
 
 
 DEFAULT_LENS_CATALOG_PATH = repo_root() / "catalogs" / "lenses" / "catalog.yaml"
-DEFAULT_ZMX_SUBDIR = "zmxFiles"
-DEFAULT_SMX_SUBDIR = "smxFiles"
+DEFAULT_ZMX_SUBDIR = "mxFiles"  # Contains both ZMX and SMX files
+DEFAULT_SMX_SUBDIR = "mxFiles"  # Same directory as ZMX files
 
 
 def _require_yaml_dependency() -> Any:
