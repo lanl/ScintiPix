@@ -193,7 +193,7 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
     optical = simulation.optical
     if optical is None:
         raise ValueError("`optical` configuration is required for macro generation.")
-    detector = optical.sensitive_detector_config
+    interface = optical.interface
     if scint.properties is None:
         raise ValueError(
             "`scintillator.properties` is missing. "
@@ -257,12 +257,12 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
 
     commands.extend(
         [
-            f"/optical_interface/geom/sizeX {optical.geometry.entrance_diameter:g} mm",
-            f"/optical_interface/geom/sizeY {optical.geometry.entrance_diameter:g} mm",
+            f"/optical_interface/geom/sizeX {interface.diameter_mm:g} mm",
+            f"/optical_interface/geom/sizeY {interface.diameter_mm:g} mm",
             "/optical_interface/geom/thickness 0.1 mm",
-            f"/optical_interface/geom/posX {detector.position_mm.x_mm:g} mm",
-            f"/optical_interface/geom/posY {detector.position_mm.y_mm:g} mm",
-            f"/optical_interface/geom/posZ {detector.position_mm.z_mm:g} mm",
+            f"/optical_interface/geom/posX {interface.position_mm.x_mm:g} mm",
+            f"/optical_interface/geom/posY {interface.position_mm.y_mm:g} mm",
+            f"/optical_interface/geom/posZ {interface.position_mm.z_mm:g} mm",
         ]
     )
     return commands
