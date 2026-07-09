@@ -44,24 +44,16 @@ class Lens(StrictModel):
         return self
 
 
-class OpticalGeometry(StrictModel):
-    """Optical envelope dimensions in millimeters."""
+class OpticalInterface(StrictModel):
+    """Optical interface (scoring plane) configuration.
 
-    entrance_diameter: float = Field(alias="entranceDiameter", gt=0)
-    sensor_max_width: float = Field(alias="sensorMaxWidth", gt=0)
-
-
-class SensitiveDetector(StrictModel):
-    """Sensitive detector placement and sizing strategy.
-
-    `diameterRule` is intentionally stored as a constrained expression-like
-    string so command-generation code can resolve detector diameter
-    deterministically from optical geometry values.
+    The optical interface is a circular scoring plane in Geant4 positioned
+    between the scintillator and the lens/PMT system. It records photons
+    that exit the scintillator and are accepted by the optical system.
     """
 
-    position_mm: Vec3Mm
-    shape: str = Field(min_length=1)
-    diameter_rule: str = Field(alias="diameterRule", min_length=1)
+    diameter_mm: float = Field(alias="diameterMm", gt=0)
+    position_mm: Vec3Mm = Field(alias="positionMm")
 
 
 class OpticalTransportAssumptions(StrictModel):
@@ -92,21 +84,13 @@ class Optics(StrictModel):
     """Optical subsystem definition.
 
     Includes:
-    - lens list metadata
-    - lens-derived envelope geometry
-    - sensitive detector placement/rule configuration
+    - lens list metadata (optional for PMT-only setups)
+    - optical interface (scoring plane) configuration
+    - transport progress reporting
     """
 
-    lenses: list[Lens] = Field(min_length=1)
-    geometry: OpticalGeometry
-    sensitive_detector_config: SensitiveDetector = Field(
-        validation_alias=AliasChoices(
-            "sensitiveDetectorConfig",
-            "sensitiveDetector",
-            "sensitive_detector_config",
-        ),
-        serialization_alias="sensitiveDetectorConfig",
-    )
+    lenses: list[Lens] | None = None
+    interface: OpticalInterface
     show_transport_progress: bool = Field(
         default=True,
         validation_alias=AliasChoices(
@@ -122,12 +106,14 @@ class Optics(StrictModel):
 
     @model_validator(mode="after")
     def validate_primary_lens_count(self) -> "Optics":
-        """Require exactly one primary lens designation.
+        """Require exactly one primary lens if lenses are specified.
 
         A single primary lens simplifies downstream assumptions in macro
         generation and geometry bookkeeping.
         """
 
+        if self.lenses is None or len(self.lenses) == 0:
+            return self
         primary_count = sum(1 for lens in self.lenses if lens.primary)
         if primary_count != 1:
             raise ValueError("`optical.lenses` must contain exactly one primary lens.")
