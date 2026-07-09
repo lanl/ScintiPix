@@ -22,3 +22,11 @@ lenses:
       - gapIndex: 31
         defaultThickness: 0.2
         scalingFactor: -1.0
+  NikkorZ58mmf0.95:
+    name: NikkorZ58mmf0.95
+    description: Nikkor Z 58mm f/0.95 S from G4LumaCam - configured for finite conjugates (DISZ 320mm)
+    zmxFile: NikkorZ58mmf0.95_G4LumaCam.zmx
+    focusGaps:
+      - gapIndex: 22
+        defaultThickness: 21.29
+        scalingFactor: 1.0
