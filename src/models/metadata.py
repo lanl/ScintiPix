@@ -26,6 +26,10 @@ class RunControls(StrictModel):
     detection of sensor hits.
     """
 
+    auto_focus_lens: bool = Field(
+        default=False,
+        description="Whether to run the automatic lens focusing routine to determine optimal working distance.",
+    )
     geant4_simulation: bool = Field(
         default=True,
         description="Whether to run the Geant4 simulation stage.",
