@@ -16,7 +16,7 @@ Users can define a working distance for the lens model, or have ScintiPix automa
 
 To enable automatic lens focusing:
 1. Set `metadata.RunControls.auto_focus_lens: true` in your configuration
-2. The routine calls `src/optics/Calibration.py` to determine the optimal working distance
+2. The routine calls `src/optics/focus.py` to determine the optimal working distance and internal lens element positions using RayOptics.
 3. The calculated distance is set as `optical.interface.position_mm.z_mm` 
 4. This positions the optical interface (where photons are recorded) at the correct distance from the scintillator
 
