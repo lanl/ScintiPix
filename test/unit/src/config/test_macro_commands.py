@@ -39,7 +39,7 @@ def _create_minimal_simulation(temp_dir: Path):
     )
     from src.models.base import Vec3Mm, Size3Mm, Vec3
     from src.models.source import Source, SourceGps, GpsPosition, GpsAngular, GpsEnergy
-    from src.models.optics import Optics, Lens, OpticalGeometry, SensitiveDetector
+    from src.models.optics import Optics, Lens, OpticalInterface
     from src.models.geant4runtime import Geant4RunTime, Geant4RuntimeControls
     from src.models.metadata import Metadata, WorkingDirectoryLayout
 
@@ -99,14 +99,9 @@ def _create_minimal_simulation(temp_dir: Path):
     # Create optical config
     optical = Optics(
         lenses=[Lens(name="TestLens", primary=True, zmx_file="test.zmx")],
-        geometry=OpticalGeometry(
-            entrance_diameter=60.55,
-            sensor_max_width=36.0
-        ),
-        sensitive_detector_config=SensitiveDetector(
-            position_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=210.05),
-            shape="circle",
-            diameter_rule="min(entranceDiameter,sensorMaxWidth)"
+        interface=OpticalInterface(
+            diameter_mm=60.55,
+            position_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=210.05)
         )
     )
 
