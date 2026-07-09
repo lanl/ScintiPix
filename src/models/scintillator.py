@@ -280,6 +280,17 @@ class ScintillatorProperties(StrictModel):
     composition: ScintillatorComposition
     optical: ScintillatorOpticalProperties
 
+class ScintillatorFieldOfView(StrictModel):
+    """Defines the field of view (FOV) of the scintillator in millimeters.
+
+    This is used to determine the required magnification and lens selection
+    to image the scintillator onto the intensifier active area. 
+    
+    The default is the dimension of the scintillator itself, but users can specify a smaller FOV to only image a portion of the scintillator, or a larger FOV to include some surrounding area. The optics stage will use this FOV along with the lens prescription and intensifier active area to calculate the optimal working distance and element spacing for the desired magnification.  
+       
+    """
+    width_mm: float = Field(alias="widthMm", gt=0)
+    height_mm: float = Field(alias="heightMm", gt=0)
 
 class Scintillator(StrictModel):
     """Scintillator geometry + material properties block."""
@@ -294,7 +305,11 @@ class Scintillator(StrictModel):
         ge=0,
     )
     properties: ScintillatorProperties | None = None
-
+    field_of_view: ScintillatorFieldOfView | None = Field(
+        default=None,
+        alias="fieldOfView",
+    )   
+    
     @model_validator(mode="after")
     def require_properties_or_catalog(self) -> "Scintillator":
         """Require either explicit properties or a catalog reference."""
@@ -302,5 +317,16 @@ class Scintillator(StrictModel):
         if self.catalog_id is None and self.properties is None:
             raise ValueError(
                 "`scintillator` must provide `properties` and/or `catalogId`."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def default_field_of_view(self) -> "Scintillator":
+        """Default field of view to scintillator dimensions if not specified."""
+
+        if self.field_of_view is None:
+            self.field_of_view = ScintillatorFieldOfView(
+                width_mm=self.dimension_mm.width_mm,
+                height_mm=self.dimension_mm.height_mm
             )
         return self
