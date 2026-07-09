@@ -128,6 +128,7 @@ def load_lens_definition(
             "primary": entry.primary,
             "zmxFile": entry.zmx_file,
             "smxFile": entry.smx_file,
+            "focusGaps": entry.focus_gaps,
         }
     )
 
@@ -180,5 +181,6 @@ def load_lens(
             "primary": entry.primary,
             "zmxFile": str(zmx_path),
             "smxFile": str(smx_path) if smx_path is not None else None,
+            "focusGaps": entry.focus_gaps,
         }
     )
