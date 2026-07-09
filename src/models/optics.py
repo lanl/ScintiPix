@@ -10,6 +10,26 @@ from pydantic import AliasChoices, Field, model_validator
 from .base import StrictModel, Vec3Mm
 
 
+class FocusGap(StrictModel):
+    """Definition of a lens gap that moves during focusing.
+
+    Each focus gap has a default thickness and responds to the focus
+    adjustment (zfine) with a specific scaling factor.
+    """
+
+    gap_index: int = Field(alias="gapIndex", ge=0, description="Index of the gap in the lens sequential model")
+    default_thickness_mm: float = Field(
+        alias="defaultThickness",
+        ge=0.0,
+        description="Default thickness in mm when lens is at reference focus position",
+    )
+    scaling_factor: float = Field(
+        default=1.0,
+        alias="scalingFactor",
+        description="How much this gap moves per unit of focus adjustment (can be negative for compensating groups)",
+    )
+
+
 class Lens(StrictModel):
     """Individual optical lens descriptor.
 
@@ -25,6 +45,16 @@ class Lens(StrictModel):
     catalog_id: str | None = Field(default=None, alias="catalogId", min_length=1)
     zmx_file: str | None = Field(default=None, alias="zmxFile", min_length=1)
     smx_file: str | None = Field(default=None, alias="smxFile", min_length=1)
+    focus_gaps: list[FocusGap] | None = Field(
+        default=None,
+        alias="focusGaps",
+        description="Definition of which gaps move during focusing (loaded from catalog or user-provided)",
+    )
+    focus_adjustment_mm: float | None = Field(
+        default=None,
+        alias="focusAdjustmentMm",
+        description="Internal lens focus adjustment (zfine) applied to achieve focus at image plane",
+    )
 
     @model_validator(mode="after")
     def validate_lens_reference(self) -> "Lens":
