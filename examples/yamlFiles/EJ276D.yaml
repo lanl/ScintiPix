@@ -50,16 +50,12 @@ optical:
   lenses:
     - catalogId: CanonEF50mmf1.0L
       primary: true
-  geometry:
-    entranceDiameter: 60.55
-    sensorMaxWidth: 36.0
-  sensitiveDetectorConfig:
-    position_mm:
+  interface:
+    diameterMm: 60.55
+    positionMm:
       x_mm: 0.0
       y_mm: 0.0
       z_mm: 210.05
-    shape: circle
-    diameterRule: min(entranceDiameter,sensorMaxWidth)
   showTransportProgress: true
 
 intensifier:
