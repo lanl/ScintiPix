@@ -6,11 +6,13 @@ Path: `catalogs/lenses/`
 
 Layout:
 - `catalog.yaml`: index of available lens entries and default selection
-- `zmxFiles/`: Zemax sequential lens prescriptions (`.zmx`)
-- `smxFiles/`: optional glass-replacement sidecars (`.smx`) used by rayoptics
+- `mxFiles/`: Zemax sequential prescriptions (`.zmx`) and optional
+  glass-replacement sidecars (`.smx`) used by RayOptics
 
 Conventions:
 - Lens IDs in `catalog.yaml` should map to one `.zmx` file and, when needed,
   one `.smx` file with the same base name.
-- `SimConfig` supports `optical.lenses[*].catalogId` to hydrate `name`,
-  `zmxFile`, and `smxFile` from this catalog.
+- The `Simulation` model supports `optical.lenses[*].catalogId` to hydrate lens
+  paths, focus gaps, and any configured autofocus geometry from this catalog.
+- Production autofocus bounds must describe the actual lens, mount, adapter,
+  and intensifier assembly. Do not infer them from the prescription alone.

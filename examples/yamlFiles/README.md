@@ -1,9 +1,9 @@
 # Example YAML Files
 
-This folder contains shared `SimConfig` YAML inputs used by the scripts under
-`examples/`. The authoritative schema is defined in
-`src/config/SimConfig.py`; this README is the user-facing field guide for the
-same structure.
+This folder contains shared `Simulation` YAML inputs used by the scripts under
+`examples/`. The authoritative schema is defined under `src/models/`, with the
+top-level model in `src/models/simulation.py`. YAML loading is implemented by
+`src.config.yaml.from_yaml(...)`.
 
 Current files:
 - `CanonEF50mmf1p0L_example.yaml`: primary end-to-end example configuration
@@ -33,10 +33,8 @@ blocks are present for schema and geometry completeness.
 
 ## Schema Rules
 
-`SimConfig` rejects unknown keys inside recognized config blocks. Use the field
-names below, or the listed aliases where provided. Extra top-level keys are
-ignored by `ConfigIO.from_yaml(...)` so script-specific payloads can coexist
-with the strict simulation config.
+`Simulation` rejects unknown keys. Use the field names below or the listed
+aliases where provided.
 
 Relative paths in run-environment settings are resolved by the configuration
 helpers before macro writing and pipeline execution.
@@ -46,14 +44,13 @@ helpers before macro writing and pipeline execution.
 Required:
 - `scintillator`: scintillator geometry and material/optical properties
 - `source`: Geant4 GPS source settings and optional source timing
-- `optical`: lens and optical-interface geometry assumptions
-- `Metadata`: run metadata and output directory layout
+- `metadata`: run metadata, stage controls, and output directory layout
+- `geant4runner`: Geant4 run controls, output selection, and particle count
 
 Optional:
+- `optical`: lens and optical-interface geometry assumptions
 - `intensifier`: image-intensifier model and response parameters
 - `sensor`: Timepix sensor/readout parameters
-- `simulation`: Geant4 run controls and beam count
-- `runner`: Python launcher settings
 
 ## `scintillator`
 
@@ -61,7 +58,7 @@ Defines scintillator size, position, mask, and material properties.
 
 Fields:
 - `catalogId`: optional scintillator catalog identifier. When present,
-  `ConfigIO.from_yaml(...)` hydrates missing `properties` fields from the
+  `src.config.yaml.from_yaml(...)` hydrates missing `properties` fields from the
   bundled scintillator catalog.
 - `position_mm`: required scintillator center position.
   - `x_mm`
@@ -83,24 +80,34 @@ Defines the optical/material table emitted into Geant4 macros.
 
 Required when not provided by a catalog:
 - `name`: material name used by the Geant4 scintillator material command
+- `composition`: material density and atom counts
+- `optical`: optical tables and scintillation response
+
+### `scintillator.properties.composition`
+
+- `density`: density in g/cm3; must be greater than zero
+- `atoms`: mapping of element symbols to positive atom counts
+
+### `scintillator.properties.optical`
+
+Required for inline optical tables:
+
 - `photonEnergy`: photon-energy table in eV; length must match `nKEntries`
 - `rIndex`: refractive-index table; length must match `nKEntries`
 - `nKEntries`: number of optical table entries; must be greater than zero
-- `timeComponents`: scintillation decay profiles
 
-Optional:
+Optional optical fields:
+
 - `absLength`: absorption-length table in cm; if present, length must match
   `nKEntries`
 - `scintSpectrum`: emission-spectrum table; if present, length must match
   `nKEntries`
-- `density`: density in g/cm3; must be greater than zero
-- `carbonAtoms`: stoichiometric carbon atom count; must be greater than zero
-- `hydrogenAtoms`: stoichiometric hydrogen atom count; must be greater than zero
+- `timeComponents`: scintillation decay profiles
 - `scintYield`: scintillation yield in photons/MeV; must be greater than zero
 - `resolutionScale`: Geant4 scintillation resolution scale; must be greater
   than zero
 
-### `scintillator.properties.timeComponents`
+### `scintillator.properties.optical.timeComponents`
 
 Particle-keyed scintillation timing profiles. At least one profile is required.
 Supported profile keys:
@@ -250,8 +257,8 @@ input to downstream optical transport.
 Fields:
 - `lenses`: required list of lens descriptors. Exactly one lens must have
   `primary: true`.
-- `geometry`: required optical envelope values.
-- `sensitiveDetectorConfig`: required optical-interface detector placement.
+- `interface`: required optical-interface aperture, position, and optional
+  working-distance bounds.
 - `showTransportProgress`: optional transport progress display flag. Defaults
   to `true`. Alias: `show_transport_progress`.
 - `transportAssumptions`: optional physical assumptions used by downstream
@@ -266,26 +273,28 @@ Fields:
   the `zmxFile` stem.
 - `primary`: required boolean. Exactly one lens in the list must be primary.
 - `catalogId`: optional lens catalog identifier. Catalog-backed configs are
-  hydrated by `ConfigIO.from_yaml(...)`.
+  hydrated by `src.config.yaml.from_yaml(...)`.
 - `zmxFile`: optional Zemax lens file path or catalog-resolved filename.
 - `smxFile`: optional rayoptics sidecar file path or catalog-resolved filename.
+- `focusGaps`: internal prescription gaps moved by autofocus.
+- `focusAdjustmentMm`: current internal focus adjustment.
+- `focusAdjustmentBoundsMm`: optional permitted internal focus travel.
+- `backFocusMm`: last modeled optical surface to photocathode distance.
+- `backFocusBoundsMm`: optional permitted back-focus interval.
 
-### `optical.geometry`
+### `optical.interface`
 
 Fields:
-- `entranceDiameter`: lens entrance diameter in mm; must be greater than zero.
-- `sensorMaxWidth`: sensor maximum width in mm; must be greater than zero.
-
-### `optical.sensitiveDetectorConfig`
-
-Fields:
-- `position_mm`: optical-interface center position in mm.
+- `diameterMm`: lens-entrance/scoring-plane diameter; must be greater than zero.
+- `positionMm`: absolute optical-interface center position in mm.
   - `x_mm`
   - `y_mm`
   - `z_mm`
-- `shape`: detector shape string.
-- `diameterRule`: expression-like sizing rule used by command-generation code,
-  for example `min(entranceDiameter,sensorMaxWidth)`.
+- `workingDistanceBoundsMm`: required autofocus search interval measured from
+  the scintillator back face to the lens entrance.
+
+Autofocus bounds in tests and examples are illustrative unless the associated
+lens, mount, adapter, and intensifier assembly has been mechanically validated.
 
 ### `optical.transportAssumptions`
 
@@ -498,7 +507,7 @@ Fields:
 
 The YAML configuration is processed into a sequence of Geant4 macro commands
 that initialize the simulation environment, geometry, source, and beam setup.
-`ConfigIO.macro_commands(...)` emits commands in this order:
+`src.config.macro.write_macro(...)` writes commands assembled in this order:
 
 1. `geant4runner.runtimeControls`: runtime parameters and verbosity settings
 2. `/output/*` commands from `Metadata.RunEnvironment`: output directory setup

@@ -12,11 +12,11 @@ Main Layout:
 Selection:
 - CanonEF50mmf1.0L
 - Nikkor80-200mmf2.8D
+- NikkorZ58mmf0.95
 
 Lens Layout:
 - `catalog.yaml`: lens catalog entries with metadata and references to Zemax/SMX files.
-- `zmxFiles/`: Zemax lens prescription files.
-- `smxFiles/`: optional SMX sidecar files for lenses.
+- `mxFiles/`: Zemax lens prescriptions and optional SMX sidecars.
 
 ## Scintillators ##
 Selection:

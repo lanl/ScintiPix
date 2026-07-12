@@ -2,7 +2,7 @@
 
 This example runs the full pipeline from one command:
 
-1. Load/validate SimConfig YAML
+1. Load and validate `Simulation` YAML
 2. Generate Geant4 macro
 3. Run `scintipix`
 4. Transport photons to intensifier plane

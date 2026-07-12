@@ -11,5 +11,5 @@ Use this index to jump to the example area you care about:
 - [endToEnd/README.md](endToEnd/README.md): run the full YAML -> simulation -> transport -> intensifier -> Timepix pipeline
 - [analysisLite/README.md](analysisLite/README.md): generate lightweight analysis plots from HDF5 output
 - [scintillatorCataloging/README.md](scintillatorCataloging/README.md): catalog-driven scintillator configuration examples
-- [yamlFiles/README.md](yamlFiles/README.md): shared example SimConfig YAML files
+- [yamlFiles/README.md](yamlFiles/README.md): shared example `Simulation` YAML files
 - [timingAnalysis/README.md](timingAnalysis/README.md): timing-oriented example map
