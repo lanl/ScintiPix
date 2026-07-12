@@ -55,6 +55,11 @@ class Lens(StrictModel):
         alias="focusAdjustmentMm",
         description="Internal lens focus adjustment (zfine) applied to achieve focus at image plane",
     )
+    focus_adjustment_bounds_mm: tuple[float, float] | None = Field(
+        default=None,
+        alias="focusAdjustmentBoundsMm",
+        description="Physically attainable interval for internal lens focus adjustment",
+    )
     back_focus_mm: float | None = Field(
         default=None,
         alias="backFocusMm",
@@ -103,6 +108,19 @@ class Lens(StrictModel):
                 raise ValueError(
                     "`backFocusMm` must lie within `backFocusBoundsMm`."
                 )
+
+        if self.focus_adjustment_bounds_mm is not None:
+            lower_mm, upper_mm = self.focus_adjustment_bounds_mm
+            if lower_mm > upper_mm:
+                raise ValueError(
+                    "`focusAdjustmentBoundsMm` minimum must not exceed its maximum."
+                )
+            if self.focus_adjustment_mm is not None and not (
+                lower_mm <= self.focus_adjustment_mm <= upper_mm
+            ):
+                raise ValueError(
+                    "`focusAdjustmentMm` must lie within `focusAdjustmentBoundsMm`."
+                )
         return self
 
 
@@ -116,6 +134,27 @@ class OpticalInterface(StrictModel):
 
     diameter_mm: float = Field(alias="diameterMm", gt=0)
     position_mm: Vec3Mm = Field(alias="positionMm")
+    working_distance_bounds_mm: tuple[float, float] | None = Field(
+        default=None,
+        alias="workingDistanceBoundsMm",
+        description=(
+            "Physically attainable scintillator-back-face to lens-entrance interval"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_working_distance_bounds(self) -> "OpticalInterface":
+        """Require positive, ordered working-distance bounds."""
+
+        if self.working_distance_bounds_mm is not None:
+            lower_mm, upper_mm = self.working_distance_bounds_mm
+            if lower_mm <= 0.0 or upper_mm <= 0.0:
+                raise ValueError("`workingDistanceBoundsMm` values must be positive.")
+            if lower_mm > upper_mm:
+                raise ValueError(
+                    "`workingDistanceBoundsMm` minimum must not exceed its maximum."
+                )
+        return self
 
 
 class OpticalTransportAssumptions(StrictModel):
