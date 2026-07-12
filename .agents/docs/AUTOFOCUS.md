@@ -36,10 +36,15 @@ working_distance = focal_length * (1 + 1/M)  # Thin lens approximation
 - Minimize RMS spot size
 - Two-stage: paraxial (fast) → ray-based (accurate)
 
-### 4. Return Results
+### 4. Update the Simulation
 ```python
-return (working_distance_mm, focus_adjustment_mm, back_focus_mm)
+config.optical.interface.position_mm.z_mm
+primary_lens.focus_adjustment_mm
+primary_lens.back_focus_mm
 ```
+
+`auto_focus_lens(config)` updates the validated configuration and returns
+`None`.
 
 ---
 
@@ -51,6 +56,7 @@ return (working_distance_mm, focus_adjustment_mm, back_focus_mm)
 - ✅ Helper functions (`get_focus_gaps_as_tuples`, `apply_focus_adjustment`)
 - ✅ Hybrid optimization (`optimize_focus_hybrid`)
 - ✅ Main function (`auto_focus_lens`)
+- ✅ Runner integration before macro generation
 
 **Current Issue:**
 - Canon EF 50mm ZMX fails at finite distances (DISZ INFINITY)
@@ -61,7 +67,6 @@ return (working_distance_mm, focus_adjustment_mm, back_focus_mm)
 1. Modify optimization to allow variable back focus (10-30mm)
 2. Use Nikkor Z 58mm with G4LumaCam mods as Navitar proxy
 3. Complete unit tests
-4. Integrate with runner`
 
 ---
 
