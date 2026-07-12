@@ -9,7 +9,7 @@ It is designed to be:
 
 - physically staged
 - fast enough for routine simulation work
-- configured through `SimConfig`
+- configured through `Simulation`
 - separate from downstream sensor/readout models
 
 ## What It Does
@@ -86,7 +86,7 @@ Each output event carries:
 
 ## Configuration
 
-All intensifier parameters are defined through `SimConfig` under
+All intensifier parameters are defined through `Simulation` under
 `intensifier`.
 
 The current stage blocks are:
@@ -183,7 +183,7 @@ Use the stage modules directly only if you want lower-level control:
 Included now:
 
 - fast staged intensifier model
-- `SimConfig`-driven parameters
+- `Simulation`-driven parameters
 - input loading from optical transport output
 - in-memory intensifier output events
 - optional standalone intensifier output writing
