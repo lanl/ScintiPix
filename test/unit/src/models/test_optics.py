@@ -139,11 +139,63 @@ class TestLens:
             catalog_id="TestLens",
             zmx_file="test.zmx",
             smx_file="test.smx",
+            back_focus_mm=24.3,
+            back_focus_bounds_mm=(23.8, 24.8),
         )
         dumped = lens.model_dump(by_alias=True)
         assert "catalogId" in dumped
         assert "zmxFile" in dumped
         assert "smxFile" in dumped
+        assert dumped["backFocusMm"] == 24.3
+        assert dumped["backFocusBoundsMm"] == (23.8, 24.8)
+
+    def test_back_focus_aliases_validate(self) -> None:
+        """Back-focus values should accept their YAML aliases."""
+        lens = Lens.model_validate(
+            {
+                "catalogId": "TestLens",
+                "backFocusMm": 24.3,
+                "backFocusBoundsMm": [23.8, 24.8],
+            }
+        )
+        assert lens.back_focus_mm == 24.3
+        assert lens.back_focus_bounds_mm == (23.8, 24.8)
+
+    def test_back_focus_can_be_fixed(self) -> None:
+        """A back-focus value without bounds represents fixed geometry."""
+        lens = Lens(catalog_id="TestLens", back_focus_mm=24.3)
+        assert lens.back_focus_mm == 24.3
+        assert lens.back_focus_bounds_mm is None
+
+    def test_back_focus_bounds_can_define_search_space(self) -> None:
+        """Mechanical bounds may be supplied without an initial value."""
+        lens = Lens(
+            catalog_id="TestLens",
+            back_focus_bounds_mm=(23.8, 24.8),
+        )
+        assert lens.back_focus_mm is None
+        assert lens.back_focus_bounds_mm == (23.8, 24.8)
+
+    @pytest.mark.parametrize(
+        "bounds",
+        [(-1.0, 20.0), (20.0, 0.0), (25.0, 20.0)],
+    )
+    def test_invalid_back_focus_bounds_rejected(
+        self,
+        bounds: tuple[float, float],
+    ) -> None:
+        """Back-focus bounds must be positive and ordered."""
+        with pytest.raises(ValidationError, match="backFocusBoundsMm"):
+            Lens(catalog_id="TestLens", back_focus_bounds_mm=bounds)
+
+    def test_back_focus_outside_bounds_rejected(self) -> None:
+        """The configured back focus must be mechanically attainable."""
+        with pytest.raises(ValidationError, match="backFocusMm"):
+            Lens(
+                catalog_id="TestLens",
+                back_focus_mm=25.0,
+                back_focus_bounds_mm=(23.8, 24.8),
+            )
 
 
 # ============================================================================
