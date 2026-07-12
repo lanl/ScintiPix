@@ -129,6 +129,10 @@ def load_lens_definition(
             "zmxFile": entry.zmx_file,
             "smxFile": entry.smx_file,
             "focusGaps": entry.focus_gaps,
+            "focusAdjustmentMm": entry.focus_adjustment_mm,
+            "focusAdjustmentBoundsMm": entry.focus_adjustment_bounds_mm,
+            "backFocusMm": entry.back_focus_mm,
+            "backFocusBoundsMm": entry.back_focus_bounds_mm,
         }
     )
 
@@ -182,5 +186,9 @@ def load_lens(
             "zmxFile": str(zmx_path),
             "smxFile": str(smx_path) if smx_path is not None else None,
             "focusGaps": entry.focus_gaps,
+            "focusAdjustmentMm": entry.focus_adjustment_mm,
+            "focusAdjustmentBoundsMm": entry.focus_adjustment_bounds_mm,
+            "backFocusMm": entry.back_focus_mm,
+            "backFocusBoundsMm": entry.back_focus_bounds_mm,
         }
     )
