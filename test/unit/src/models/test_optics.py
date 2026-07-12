@@ -139,6 +139,8 @@ class TestLens:
             catalog_id="TestLens",
             zmx_file="test.zmx",
             smx_file="test.smx",
+            focus_adjustment_mm=0.5,
+            focus_adjustment_bounds_mm=(-1.0, 1.0),
             back_focus_mm=24.3,
             back_focus_bounds_mm=(23.8, 24.8),
         )
@@ -146,6 +148,8 @@ class TestLens:
         assert "catalogId" in dumped
         assert "zmxFile" in dumped
         assert "smxFile" in dumped
+        assert dumped["focusAdjustmentMm"] == 0.5
+        assert dumped["focusAdjustmentBoundsMm"] == (-1.0, 1.0)
         assert dumped["backFocusMm"] == 24.3
         assert dumped["backFocusBoundsMm"] == (23.8, 24.8)
 
@@ -195,6 +199,27 @@ class TestLens:
                 catalog_id="TestLens",
                 back_focus_mm=25.0,
                 back_focus_bounds_mm=(23.8, 24.8),
+            )
+
+    def test_focus_adjustment_bounds_validate(self) -> None:
+        """Internal focus travel should accept an ordered signed interval."""
+        lens = Lens.model_validate(
+            {
+                "catalogId": "TestLens",
+                "focusAdjustmentMm": 0.5,
+                "focusAdjustmentBoundsMm": [-1.0, 1.0],
+            }
+        )
+        assert lens.focus_adjustment_mm == 0.5
+        assert lens.focus_adjustment_bounds_mm == (-1.0, 1.0)
+
+    def test_invalid_focus_adjustment_rejected(self) -> None:
+        """Internal focus must remain inside its mechanical travel."""
+        with pytest.raises(ValidationError, match="focusAdjustmentMm"):
+            Lens(
+                catalog_id="TestLens",
+                focus_adjustment_mm=2.0,
+                focus_adjustment_bounds_mm=(-1.0, 1.0),
             )
 
 
@@ -257,10 +282,28 @@ class TestOpticalInterface:
         interface = OpticalInterface(
             diameter_mm=60.5,
             position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
+            working_distance_bounds_mm=(180.0, 240.0),
         )
         dumped = interface.model_dump(by_alias=True)
         assert "diameterMm" in dumped
         assert "positionMm" in dumped
+        assert dumped["workingDistanceBoundsMm"] == (180.0, 240.0)
+
+    @pytest.mark.parametrize(
+        "bounds",
+        [(-1.0, 200.0), (200.0, 0.0), (240.0, 180.0)],
+    )
+    def test_invalid_working_distance_bounds_rejected(
+        self,
+        bounds: tuple[float, float],
+    ) -> None:
+        """Working-distance bounds must be positive and ordered."""
+        with pytest.raises(ValidationError, match="workingDistanceBoundsMm"):
+            OpticalInterface(
+                diameter_mm=60.5,
+                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
+                working_distance_bounds_mm=bounds,
+            )
 
 
 # ============================================================================

@@ -282,7 +282,7 @@ class TestScintillationTimeComponentsByExcitation:
 
 
 class TestScintillatorProperties:
-    """Tests for scintillator optical properties."""
+    """Tests for nested scintillator material properties."""
 
     @staticmethod
     def _valid_time_components() -> dict[str, object]:
@@ -300,89 +300,105 @@ class TestScintillatorProperties:
         props = ScintillatorProperties.model_validate(
             {
                 "name": "TestScint",
-                "photonEnergy": [2.0, 2.4, 2.8],
-                "rIndex": [1.58, 1.58, 1.58],
-                "absLength": [100.0, 100.0, 100.0],
-                "scintSpectrum": [0.1, 0.8, 0.1],
-                "nKEntries": 3,
-                "timeComponents": self._valid_time_components(),
+                "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                "optical": {
+                    "photonEnergy": [2.0, 2.4, 2.8],
+                    "rIndex": [1.58, 1.58, 1.58],
+                    "absLength": [100.0, 100.0, 100.0],
+                    "scintSpectrum": [0.1, 0.8, 0.1],
+                    "nKEntries": 3,
+                    "timeComponents": self._valid_time_components(),
+                },
             }
         )
         assert props.name == "TestScint"
-        assert props.photon_energy == [2.0, 2.4, 2.8]
-        assert props.r_index == [1.58, 1.58, 1.58]
-        assert props.abs_length == [100.0, 100.0, 100.0]
-        assert props.scint_spectrum == [0.1, 0.8, 0.1]
-        assert props.n_k_entries == 3
+        assert props.optical.photon_energy == [2.0, 2.4, 2.8]
+        assert props.optical.r_index == [1.58, 1.58, 1.58]
+        assert props.optical.abs_length == [100.0, 100.0, 100.0]
+        assert props.optical.scint_spectrum == [0.1, 0.8, 0.1]
+        assert props.optical.n_k_entries == 3
 
     def test_valid_file_backed_curves(self) -> None:
         """File-backed curves without inline arrays should validate."""
         props = ScintillatorProperties.model_validate(
             {
                 "name": "TestScint",
-                "rIndexFile": "curves/test/rindex.csv",
-                "absLengthFile": "curves/test/abs.csv",
-                "scintSpectrumFile": "curves/test/scint.csv",
-                "timeComponents": self._valid_time_components(),
+                "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                "optical": {
+                    "rIndexFile": "curves/test/rindex.csv",
+                    "absLengthFile": "curves/test/abs.csv",
+                    "scintSpectrumFile": "curves/test/scint.csv",
+                    "timeComponents": self._valid_time_components(),
+                },
             }
         )
-        assert props.r_index_file == "curves/test/rindex.csv"
-        assert props.abs_length_file == "curves/test/abs.csv"
-        assert props.scint_spectrum_file == "curves/test/scint.csv"
-        assert props.photon_energy is None
-        assert props.n_k_entries is None
+        assert props.optical.r_index_file == "curves/test/rindex.csv"
+        assert props.optical.abs_length_file == "curves/test/abs.csv"
+        assert props.optical.scint_spectrum_file == "curves/test/scint.csv"
+        assert props.optical.photon_energy is None
+        assert props.optical.n_k_entries is None
 
     def test_rindex_and_rindex_file_mutually_exclusive(self) -> None:
         """Cannot provide both rIndex and rIndexFile."""
-        with pytest.raises(ValidationError, match="rIndex.*rIndexFile"):
+        with pytest.raises(ValidationError, match="r_index.*r_index_file"):
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4, 2.8],
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "rIndexFile": "curves/test/rindex.csv",
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4, 2.8],
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "rIndexFile": "curves/test/rindex.csv",
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
     def test_abs_length_and_abs_length_file_mutually_exclusive(self) -> None:
         """Cannot provide both absLength and absLengthFile."""
-        with pytest.raises(ValidationError, match="absLength.*absLengthFile"):
+        with pytest.raises(ValidationError, match="abs_length.*abs_length_file"):
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4, 2.8],
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "absLength": [100.0, 100.0, 100.0],
-                    "absLengthFile": "curves/test/abs.csv",
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4, 2.8],
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "absLength": [100.0, 100.0, 100.0],
+                        "absLengthFile": "curves/test/abs.csv",
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
     def test_scint_spectrum_and_scint_spectrum_file_mutually_exclusive(self) -> None:
         """Cannot provide both scintSpectrum and scintSpectrumFile."""
-        with pytest.raises(ValidationError, match="scintSpectrum.*scintSpectrumFile"):
+        with pytest.raises(ValidationError, match="scint_spectrum.*scint_spectrum_file"):
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4, 2.8],
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "scintSpectrum": [0.1, 0.8, 0.1],
-                    "scintSpectrumFile": "curves/test/scint.csv",
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4, 2.8],
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "scintSpectrum": [0.1, 0.8, 0.1],
+                        "scintSpectrumFile": "curves/test/scint.csv",
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
     def test_missing_rindex_and_rindex_file_raises(self) -> None:
         """Must provide either rIndex or rIndexFile."""
-        with pytest.raises(ValidationError, match="rIndex.*rIndexFile.*must be provided"):
+        with pytest.raises(ValidationError, match="rIndex or rIndexFile must be provided"):
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {"timeComponents": self._valid_time_components()},
                 }
             )
 
@@ -392,9 +408,12 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
@@ -404,9 +423,12 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4, 2.8],
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4, 2.8],
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
@@ -416,10 +438,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4],
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4],
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
@@ -429,10 +454,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4, 2.8],
-                    "rIndex": [1.58, 1.58],
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4, 2.8],
+                        "rIndex": [1.58, 1.58],
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
@@ -442,11 +470,14 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4, 2.8],
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "absLength": [100.0, 100.0],
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4, 2.8],
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "absLength": [100.0, 100.0],
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
@@ -456,11 +487,14 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "photonEnergy": [2.0, 2.4, 2.8],
-                    "rIndex": [1.58, 1.58, 1.58],
-                    "scintSpectrum": [0.1, 0.8],
-                    "nKEntries": 3,
-                    "timeComponents": self._valid_time_components(),
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "photonEnergy": [2.0, 2.4, 2.8],
+                        "rIndex": [1.58, 1.58, 1.58],
+                        "scintSpectrum": [0.1, 0.8],
+                        "nKEntries": 3,
+                        "timeComponents": self._valid_time_components(),
+                    },
                 }
             )
 
@@ -470,33 +504,30 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "rIndexFile": "curves/test/rindex.csv",
-                    "timeComponents": self._valid_time_components(),
-                    "density": -1.0,
+                    "composition": {"density": -1.0, "atoms": {"C": 9, "H": 10}},
+                    "optical": {"rIndexFile": "curves/test/rindex.csv"},
                 }
             )
 
     def test_optional_field_carbon_atoms_positive(self) -> None:
         """carbonAtoms must be > 0 if provided."""
-        with pytest.raises(ValidationError, match="carbonAtoms"):
+        with pytest.raises(ValidationError, match="atom counts"):
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "rIndexFile": "curves/test/rindex.csv",
-                    "timeComponents": self._valid_time_components(),
-                    "carbonAtoms": -5,
+                    "composition": {"density": 1.032, "atoms": {"C": -5, "H": 10}},
+                    "optical": {"rIndexFile": "curves/test/rindex.csv"},
                 }
             )
 
     def test_optional_field_hydrogen_atoms_positive(self) -> None:
         """hydrogenAtoms must be > 0 if provided."""
-        with pytest.raises(ValidationError, match="hydrogenAtoms"):
+        with pytest.raises(ValidationError, match="atom counts"):
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "rIndexFile": "curves/test/rindex.csv",
-                    "timeComponents": self._valid_time_components(),
-                    "hydrogenAtoms": 0,
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 0}},
+                    "optical": {"rIndexFile": "curves/test/rindex.csv"},
                 }
             )
 
@@ -506,9 +537,11 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "rIndexFile": "curves/test/rindex.csv",
-                    "timeComponents": self._valid_time_components(),
-                    "scintYield": 0.0,
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "rIndexFile": "curves/test/rindex.csv",
+                        "scintYield": 0.0,
+                    },
                 }
             )
 
@@ -518,9 +551,11 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "rIndexFile": "curves/test/rindex.csv",
-                    "timeComponents": self._valid_time_components(),
-                    "resolutionScale": -0.5,
+                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "optical": {
+                        "rIndexFile": "curves/test/rindex.csv",
+                        "resolutionScale": -0.5,
+                    },
                 }
             )
 
@@ -529,20 +564,19 @@ class TestScintillatorProperties:
         props = ScintillatorProperties.model_validate(
             {
                 "name": "TestScint",
-                "rIndexFile": "curves/test/rindex.csv",
-                "timeComponents": self._valid_time_components(),
-                "density": 1.032,
-                "carbonAtoms": 9,
-                "hydrogenAtoms": 10,
-                "scintYield": 10000.0,
-                "resolutionScale": 1.0,
+                "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                "optical": {
+                    "rIndexFile": "curves/test/rindex.csv",
+                    "timeComponents": self._valid_time_components(),
+                    "scintYield": 10000.0,
+                    "resolutionScale": 1.0,
+                },
             }
         )
-        assert props.density == 1.032
-        assert props.carbon_atoms == 9
-        assert props.hydrogen_atoms == 10
-        assert props.scint_yield == 10000.0
-        assert props.resolution_scale == 1.0
+        assert props.composition.density == 1.032
+        assert props.composition.atoms == {"C": 9, "H": 10}
+        assert props.optical.scint_yield == 10000.0
+        assert props.optical.resolution_scale == 1.0
 
 
 # ============================================================================
@@ -558,15 +592,18 @@ class TestScintillator:
         """Helper for valid inline properties."""
         return {
             "name": "TestScint",
-            "photonEnergy": [2.0, 2.4, 2.8],
-            "rIndex": [1.58, 1.58, 1.58],
-            "nKEntries": 3,
-            "timeComponents": {
-                "default": [
-                    {"timeConstant": 2.1, "yieldFraction": 1.0},
-                    {"timeConstant": 0.0, "yieldFraction": 0.0},
-                    {"timeConstant": 0.0, "yieldFraction": 0.0},
-                ]
+            "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+            "optical": {
+                "photonEnergy": [2.0, 2.4, 2.8],
+                "rIndex": [1.58, 1.58, 1.58],
+                "nKEntries": 3,
+                "timeComponents": {
+                    "default": [
+                        {"timeConstant": 2.1, "yieldFraction": 1.0},
+                        {"timeConstant": 0.0, "yieldFraction": 0.0},
+                        {"timeConstant": 0.0, "yieldFraction": 0.0},
+                    ]
+                },
             },
         }
 
@@ -581,6 +618,19 @@ class TestScintillator:
         )
         assert scint.catalog_id == "EJ200"
         assert scint.properties is None
+
+    def test_field_of_view_defaults_to_xy_dimensions(self) -> None:
+        """Omitted FOV should use the scintillator X and Y dimensions."""
+        scint = Scintillator.model_validate(
+            {
+                "catalogId": "EJ200",
+                "position_mm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 0.0},
+                "dimension_mm": {"x_mm": 50.0, "y_mm": 40.0, "z_mm": 10.0},
+            }
+        )
+        assert scint.field_of_view is not None
+        assert scint.field_of_view.width_mm == 50.0
+        assert scint.field_of_view.height_mm == 40.0
 
     def test_valid_with_properties_only(self) -> None:
         """Scintillator with only properties should validate."""
