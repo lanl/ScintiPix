@@ -55,10 +55,27 @@ class Lens(StrictModel):
         alias="focusAdjustmentMm",
         description="Internal lens focus adjustment (zfine) applied to achieve focus at image plane",
     )
+    back_focus_mm: float | None = Field(
+        default=None,
+        alias="backFocusMm",
+        gt=0.0,
+        description=(
+            "Distance from the last modeled optical surface to the "
+            "intensifier photocathode image plane"
+        ),
+    )
+    back_focus_bounds_mm: tuple[float, float] | None = Field(
+        default=None,
+        alias="backFocusBoundsMm",
+        description=(
+            "Physically attainable back-focus interval imposed by the lens "
+            "mount, adapter, and intensifier interface"
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_lens_reference(self) -> "Lens":
-        """Require lens reference and fill a fallback display name."""
+        """Validate the lens reference, name, and mechanical back focus."""
 
         if self.catalog_id is None and self.zmx_file is None:
             raise ValueError(
@@ -71,6 +88,21 @@ class Lens(StrictModel):
                 self.name = Path(self.zmx_file).stem
             else:
                 self.name = "Lens"
+
+        if self.back_focus_bounds_mm is not None:
+            lower_mm, upper_mm = self.back_focus_bounds_mm
+            if lower_mm <= 0.0 or upper_mm <= 0.0:
+                raise ValueError("`backFocusBoundsMm` values must be positive.")
+            if lower_mm > upper_mm:
+                raise ValueError(
+                    "`backFocusBoundsMm` minimum must not exceed its maximum."
+                )
+            if self.back_focus_mm is not None and not (
+                lower_mm <= self.back_focus_mm <= upper_mm
+            ):
+                raise ValueError(
+                    "`backFocusMm` must lie within `backFocusBoundsMm`."
+                )
         return self
 
 
