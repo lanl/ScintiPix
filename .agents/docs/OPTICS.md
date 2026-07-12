@@ -90,7 +90,7 @@ Added 2026-06-30.
 
 Use this setup flow:
 
-1. Choose the primary lens `.zmx` and optional `.smx` files from `SimConfig`.
+1. Choose the primary lens `.zmx` and optional `.smx` files from `Simulation`.
 2. Load the ZMX prescription with RayOptics.
 3. Define the object plane as the scintillator back face.
 4. Set the RayOptics object gap from the scintillator-back-face to first-lens
@@ -181,8 +181,8 @@ configured back focus is fixed. Autofocus must not create generic bounds.
 
 Added 2026-06-30. Updated 2026-07-12.
 
-Focus validation should be a separate optics routine that can run before a full
-Geant4 photon simulation.
+Focus validation is implemented in `src/optics/focus.py` as a separate routine
+that runs before a full Geant4 photon simulation.
 
 Inputs:
 
@@ -192,7 +192,7 @@ Inputs:
 - fixed photocathode/image-plane geometry
 - mechanically attainable back-focus bounds, when the assembly is adjustable
 
-Basic metric:
+The implemented metric:
 
 1. Sample representative object points on the scintillator back face.
 2. Trace a ray bundle from each object point through the selected lens model.
@@ -213,6 +213,11 @@ run. If the system is out of focus, change a real degree of freedom:
 
 Do not move the photocathode in software unless the physical C-mount/adaptor
 geometry changes.
+
+The bounded integration test in `test/unit/src/optics/test_focus.py` exercises
+the Canon EF 50 mm, Nikkor 80-200 mm, and Nikkor Z 58 mm prescriptions. Its
+bounds validate the software path only; they are not production mechanical
+limits.
 
 ## Related Geant4 Resolution Target
 
@@ -247,12 +252,10 @@ Added 2026-06-30.
   output path.
 - Decide how lens mount/flange references map to the imported RayOptics/ZMX
   coordinate system for each catalog lens.
-- Implement the focus-validation routine before bulk photon transport.
 - Reconstruct object-plane rays from scintillator-exit and optical-interface
   records.
 - Preserve photon provenance IDs in transported photon output.
 - Mark trace failures, aperture misses, and active-area misses explicitly.
 - Add a simple correct transport path first; add batching only after correctness
   is clear.
-- Add focused tests for config validation, lens loading, focus validation, and
-  photon provenance preservation.
+- Add focused tests for photon provenance preservation.
