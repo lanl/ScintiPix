@@ -57,6 +57,14 @@ class ScintillationTimeComponent(StrictModel):
     time_constant: ValueWithUnit | float = Field(alias="timeConstant")
     yield_fraction: float = Field(alias="yieldFraction", ge=0)
 
+    @model_validator(mode="after")
+    def validate_time_constant(self) -> "ScintillationTimeComponent":
+        """Require a non-negative decay time."""
+
+        if extract_numeric_value(self.time_constant, converter=convert_time_to_ns) < 0:
+            raise ValueError("time_constant must be >= 0")
+        return self
+
     @property
     def time_constant_ns(self) -> float:
         """Get time constant in nanoseconds."""
@@ -177,6 +185,20 @@ class ScintillatorComposition(StrictModel):
     density: ValueWithUnit | float
     atoms: dict[str, int] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def validate_composition(self) -> "ScintillatorComposition":
+        """Require positive density and atom counts."""
+
+        density = extract_numeric_value(
+            self.density,
+            converter=convert_density_to_g_cm3,
+        )
+        if density <= 0:
+            raise ValueError("density must be > 0")
+        if any(count <= 0 for count in self.atoms.values()):
+            raise ValueError("atom counts must be > 0")
+        return self
+
 
 class ScintillatorOpticalProperties(StrictModel):
     """Optical properties of scintillator material.
@@ -215,6 +237,10 @@ class ScintillatorOpticalProperties(StrictModel):
             or self.r_index is not None
             or self.r_index_file is not None
         )
+        has_catalog_format = self.curves is not None or self.constants is not None
+
+        if not has_catalog_format and self.r_index is None and self.r_index_file is None:
+            raise ValueError("rIndex or rIndexFile must be provided")
 
         # Validate positive values
         if self.resolution_scale is not None and self.resolution_scale <= 0:
@@ -326,7 +352,7 @@ class Scintillator(StrictModel):
 
         if self.field_of_view is None:
             self.field_of_view = ScintillatorFieldOfView(
-                width_mm=self.dimension_mm.width_mm,
-                height_mm=self.dimension_mm.height_mm
+                width_mm=self.dimension_mm.x_mm,
+                height_mm=self.dimension_mm.y_mm,
             )
         return self
