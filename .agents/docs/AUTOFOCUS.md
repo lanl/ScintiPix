@@ -1,26 +1,19 @@
-# Auto-Focus Implementation
+# Autofocus
 
 **Updated:** 2026-07-12  
-**Status:** In Progress
+**Status:** Autofocus implemented and tested; runner integration pending
 
----
+## Purpose
 
-## Overview
+Autofocus runs before Geant4. It traces synthetic rays through the selected
+RayOptics lens prescription and updates the permitted physical degrees of
+freedom needed to image the requested scintillator field of view (FOV) onto the
+intensifier photocathode.
 
-Auto-focus runs before Geant4 and adjusts the permitted physical degrees of
-freedom so the selected lens images the requested scintillator field of view
-(FOV) onto the intensifier photocathode.
+The requested FOV is a hard requirement. Autofocus does not silently crop or
+replace it.
 
-**Key Requirements:**
-1. Treat the requested scintillator FOV as a hard coverage requirement.
-2. Keep the intensifier photocathode as the RayOptics image plane.
-3. Search only mechanically attainable working distances, internal lens gaps,
-   and back-focus distances.
-4. Minimize RMS spot size across representative FOV points.
-
----
-
-## Geometry Definitions
+## Geometry
 
 ```text
 scintillator back face -- working distance --> lens entrance / first surface
@@ -29,17 +22,15 @@ scintillator back face -- working distance --> lens entrance / first surface
                                                    -- back focus --> photocathode
 ```
 
-- **Scintillator back face:** RayOptics object plane.
-- **Optical interface:** Geant4 scoring plane representing the lens entrance
-  plane. It is not the RayOptics object or image plane.
-- **Working distance:** Distance from the scintillator back face to the lens
-  entrance plane. It is not the absolute interface `z` coordinate.
-- **Back focus:** Distance from the last modeled optical surface to the
+- The scintillator back face is the RayOptics object plane.
+- The optical interface is the Geant4 scoring plane at the lens entrance.
+- Working distance is measured from the scintillator back face to that lens
+  entrance plane. It is not the interface's absolute `z` coordinate.
+- Back focus is measured from the last modeled optical surface to the
   intensifier photocathode image plane.
-- **Focus adjustment:** Motion of the internal lens gaps listed in
-  `focusGaps`.
+- Internal focus adjustment moves only the gaps listed in `focusGaps`.
 
-For a scintillator centered at `position_mm.z_mm`, the current geometry uses:
+The working distance represented by a `Simulation` is:
 
 ```python
 scintillator_back_z_mm = (
@@ -48,131 +39,105 @@ scintillator_back_z_mm = (
 working_distance_mm = interface.position_mm.z_mm - scintillator_back_z_mm
 ```
 
-## Mechanical Back-Focus Constraint
+## Mechanical Bounds
 
-`backFocusMm` records the current or fixed distance from the prescription's
-last modeled optical surface to the photocathode. `backFocusBoundsMm` records
-the physically attainable interval for an adjustable assembly.
+Autofocus searches only explicit bounds:
+
+- `optical.interface.workingDistanceBoundsMm`
+- `optical.lenses[*].focusAdjustmentBoundsMm`
+- `optical.lenses[*].backFocusBoundsMm`
+
+`workingDistanceBoundsMm` is required. Internal focus and back focus are varied
+only when their bounds are provided. A `backFocusMm` without bounds is treated
+as fixed geometry. Autofocus never invents a generic search range.
 
 ```yaml
 optical:
   lenses:
     - catalogId: CanonEF50mmf1.0L
       primary: true
-      focusAdjustmentBoundsMm: [-2.0, 2.0]
-      backFocusMm: 24.3
-      backFocusBoundsMm: [23.8, 24.8]
+      focusAdjustmentBoundsMm: [-2.0, 2.0]  # Example only
+      backFocusMm: 38.65                    # Example only
+      backFocusBoundsMm: [30.0, 60.0]       # Example only
   interface:
     diameterMm: 60.55
     positionMm: {x_mm: 0.0, y_mm: 0.0, z_mm: 210.05}
-    workingDistanceBoundsMm: [180.0, 240.0]
+    workingDistanceBoundsMm: [150.0, 1000.0]  # Example only
 ```
 
-The bounds must account for the complete mechanical stack:
+The numbers above demonstrate the schema. They are computational test bounds,
+not validated Canon/adapter travel limits.
+
+For C-mount, the flange focal distance is `17.526 mm` from the C-mount flange
+shoulder to the image plane. It is not automatically the RayOptics back focus,
+which begins at the last modeled optical surface. Real bounds must account for:
 
 ```text
-last modeled optical surface
-    -> native lens flange
-    -> adapter
-    -> C-mount flange
-    -> intensifier photocathode
+last modeled surface -> native flange -> adapter -> C-mount flange -> photocathode
 ```
 
-The C-mount flange focal distance is `17.526 mm`, measured from the C-mount
-flange shoulder to the image plane. It is not automatically the RayOptics final
-image gap, which begins at the last modeled optical surface.
+## Algorithm
 
-Autofocus follows these rules:
+1. Load the primary lens ZMX prescription.
+2. Sample the FOV center, edge midpoints, and corners on the scintillator back
+   face.
+3. Trace inner and outer pupil rays through the sequential model with aperture
+   checks enabled.
+4. Compute RMS spot radius separately for every field point.
+5. Minimize worst-field RMS spot size and image-circle fill error while
+   penalizing rays outside the active intensifier radius.
+6. Reject candidates that cannot trace enough rays, violate bounds, or fail to
+   fit the requested FOV.
+7. Update the validated `Simulation` directly:
 
-- `backFocusMm` without bounds is fixed geometry.
-- `backFocusBoundsMm` permits optimization only within those bounds.
-- `focusAdjustmentBoundsMm` limits internal focus-gap motion.
-- `workingDistanceBoundsMm` limits scintillator-to-lens motion.
-- Bounds without an initial value use their midpoint as the initial value.
-- Missing back-focus geometry is an error when autofocus needs it.
-- Autofocus never invents a generic back-focus search range.
+   ```python
+   config.optical.interface.position_mm.z_mm
+   primary_lens.focus_adjustment_mm
+   primary_lens.back_focus_mm
+   ```
 
-## Planned Algorithm
+`auto_focus_lens(config)` returns `None`.
 
-### 1. Calculate Required Magnification
+## Tested Prescriptions
 
-```python
-M = intensifier_diameter / scintillator_fov_diagonal
-```
+The three catalog prescriptions pass the bounded integration test using a
+100 x 100 mm FOV and an 18 mm intensifier image circle:
 
-### 2. Estimate Working Distance
+| Lens | Working distance | Focus adjustment | Back focus | Worst RMS spot |
+|---|---:|---:|---:|---:|
+| Canon EF 50 mm f/1.0L | 385.971 mm | +2.000 mm | 44.191 mm | 0.138857 mm |
+| Nikkor 80-200 mm f/2.8D | 615.546 mm | +0.149 mm | 65.777 mm | 0.059734 mm |
+| Nikkor Z 58 mm f/0.95 | 495.299 mm | -5.000 mm | 0.500 mm | 0.203119 mm |
 
-```python
-working_distance = focal_length * (1 + 1/M)  # Thin lens approximation
-```
+These results validate the software path, not the mechanical assemblies. The
+Canon and Nikkor Z solutions reached one or more computational test bounds.
+Production configurations require measured or manufacturer-supported mount,
+adapter, back-focus, and internal-focus limits.
 
-This estimate initializes the search; it is not the final optical result.
+The older statement that the Canon prescription cannot run at finite distance
+is obsolete. Autofocus replaces its infinity object gap with a bounded finite
+working distance before tracing.
 
-### 3. Optimize Permitted Degrees of Freedom
+## Current Status
 
-- Vary working distance within its allowed geometry.
-- Vary configured internal focus gaps within their allowed travel.
-- Vary back focus only when `backFocusBoundsMm` is present.
-- Trace each field point separately.
-- Minimize the summarized per-field RMS spot size at the photocathode.
-- Reject solutions that do not cover the requested FOV or violate mechanical
-  bounds.
+Completed:
 
-### 4. Update the Simulation
+- bounded working-distance, internal-focus, and back-focus models
+- finite-FOV sequential ray tracing
+- active-area and aperture checks
+- catalog loading for all three prescriptions
+- three-lens bounded integration tests
 
-The routine updates the validated `Simulation` before Geant4 macro generation:
+Next:
 
-```python
-config.optical.interface.position_mm.z_mm
-primary_lens.focus_adjustment_mm
-primary_lens.back_focus_mm
-```
-
-The requested scintillator FOV is not changed by autofocus.
-
----
-
-## Implementation Status
-
-**Completed:**
-- ✅ Models (`FocusGap`, lens catalog structure)
-- ✅ Back-focus value and mechanical bounds on `Lens`
-- ✅ Focus gaps identified (Canon: gap 10, Nikkor: gaps 22/24/31)
-
-**In Progress:**
-- Rewrite `src/optics/focus.py` around the geometry contract above.
-- Update the runner so autofocus updates the validated `Simulation` directly.
-- Add focused model and ray-tracing tests.
-
-**Known Lens Issues:**
-- Canon EF 50mm ZMX fails at finite distances (DISZ INFINITY)
-- Nikkor Z 58mm ZMX works but needs G4LumaCam modifications (gap 22: 21.29mm → 2.68mm)
-- Need proper lens for Navitar DO-5095 proxy
-
----
-
-## Lens Catalog
-
-Focus gaps defined in `catalogs/lenses/catalog.yaml`:
-
-```yaml
-CanonEF50mmf1.0L:
-  focusGaps:
-    - gapIndex: 10
-      defaultThickness: 10.229
-      scalingFactor: 1.0
-
-NikkorZ58mmf0.95:
-  focusGaps:
-    - gapIndex: 22
-      defaultThickness: 21.29  # G4LumaCam uses 2.68mm
-      scalingFactor: 1.0
-```
-
----
+- integrate the mutating `auto_focus_lens(config)` contract into
+  `src/runner/runSimulation.py`
+- replace computational bounds with validated mechanical bounds for production
+  lens/adapter assemblies
 
 ## References
 
 - Implementation: `src/optics/focus.py`
-- G4LumaCam: https://github.com/TsvikiHirsh/G4LumaCam
-- C-mount flange focal distance: 17.526 mm
+- Models: `src/models/optics.py`
+- Tests: `test/unit/src/optics/test_focus.py`
+- Lens catalog: `catalogs/lenses/catalog.yaml`
