@@ -16,10 +16,10 @@ Users can define a working distance for the lens model, or have ScintiPix automa
 
 The implemented `src/optics/focus.py` routine determines the bounded working
 distance, internal lens adjustment, and back focus using RayOptics. It updates
-the `Simulation` object directly. Runner integration is pending; until that work
-is complete, keep `metadata.RunControls.auto_focus_lens: false`.
+the `Simulation` object directly. Enable it with
+`metadata.RunControls.auto_focus_lens: true`.
 
-The runner integration will:
+The runner integration:
 
 1. Call `auto_focus_lens(config)` before macro generation.
 2. Use the updated absolute `optical.interface.position_mm.z_mm` coordinate.
