@@ -187,10 +187,10 @@ metadata:
 
 **Run controls**:
 - `auto_focus_lens`: Enable automatic lens focusing routine to determine optimal working distance (default: `false`)
-  - When enabled, runs `src/optics/focus.py` before Geant4 macro generation
-  - This should be run as a one-time setup step before the Geant4 simulation
-  - The routine tunes only physically permitted lens geometry while preserving
-    the requested scintillator FOV
+  - Runner integration is pending; keep this `false` until
+    `src/runner/runSimulation.py` uses the mutating autofocus contract
+  - The implemented routine tunes only explicitly bounded lens geometry while
+    preserving the requested scintillator FOV
   - See `.agents/docs/WORKFLOWS.md` for more details on the lens focusing subroutine
 - Stages must be enabled sequentially (can't enable intensifier without optics)
 - Typical workflow: start with `geant4_simulation: true` only, then add stages
@@ -239,6 +239,10 @@ optical:
   back-face position; `position_mm.z_mm` is an absolute coordinate
 - This simplified design eliminates unnecessary complexity from sensor-level constraints
 
+The numeric focus bounds in this example demonstrate the schema only. Do not
+use them as production limits without validating the lens, mount, adapter, and
+intensifier assembly.
+
 For the primary lens:
 
 - `backFocusMm` is the distance from the last modeled optical surface to the
@@ -255,10 +259,13 @@ For the primary lens:
 
 **Automatic lens focusing**:
 - You can manually specify `position_mm.z_mm` or use the automatic focusing routine
-- Enable `metadata.RunControls.auto_focus_lens: true` to automatically calculate the optimal working distance
+- `auto_focus_lens(config)` updates the validated `Simulation` directly and
+  returns `None`
 - The automatic routine uses the lens prescription, requested FOV, and physical
   bounds to determine `position_mm.z_mm` and the lens focus state
 - This is a one-time setup step that should be run before the Geant4 simulation
+- Runner integration is the next implementation step; leave
+  `metadata.RunControls.auto_focus_lens` disabled until it is complete
 - Manual specification is faster if you already know the correct working distance
 
 **Note**: The optics stage is under active development. See `.agents/docs/OPTICS.md` for current status.
