@@ -59,8 +59,13 @@ optical:
   lenses:
     - catalogId: CanonEF50mmf1.0L
       primary: true
+      focusAdjustmentBoundsMm: [-2.0, 2.0]
       backFocusMm: 24.3
       backFocusBoundsMm: [23.8, 24.8]
+  interface:
+    diameterMm: 60.55
+    positionMm: {x_mm: 0.0, y_mm: 0.0, z_mm: 210.05}
+    workingDistanceBoundsMm: [180.0, 240.0]
 ```
 
 The bounds must account for the complete mechanical stack:
@@ -81,6 +86,8 @@ Autofocus follows these rules:
 
 - `backFocusMm` without bounds is fixed geometry.
 - `backFocusBoundsMm` permits optimization only within those bounds.
+- `focusAdjustmentBoundsMm` limits internal focus-gap motion.
+- `workingDistanceBoundsMm` limits scintillator-to-lens motion.
 - Bounds without an initial value use their midpoint as the initial value.
 - Missing back-focus geometry is an error when autofocus needs it.
 - Autofocus never invents a generic back-focus search range.
@@ -134,7 +141,6 @@ The requested scintillator FOV is not changed by autofocus.
 
 **In Progress:**
 - Rewrite `src/optics/focus.py` around the geometry contract above.
-- Define mechanically valid working-distance and internal-gap search bounds.
 - Update the runner so autofocus updates the validated `Simulation` directly.
 - Add focused model and ray-tracing tests.
 

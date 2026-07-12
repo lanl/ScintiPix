@@ -219,6 +219,7 @@ optical:
   lenses:
     - catalogId: CanonEF50mmf1.0L
       primary: true
+      focusAdjustmentBoundsMm: [-2.0, 2.0]
       backFocusMm: 24.3
       backFocusBoundsMm: [23.8, 24.8]
   interface:
@@ -227,6 +228,7 @@ optical:
       x_mm: 0.0
       y_mm: 0.0
       z_mm: 210.05              # Absolute lens-entrance/scoring-plane position
+    workingDistanceBoundsMm: [180.0, 240.0]
   showTransportProgress: true
 ```
 
@@ -243,6 +245,10 @@ For the primary lens:
   intensifier photocathode.
 - `backFocusBoundsMm` is the optional mechanically attainable interval imposed
   by the lens mount and adapter. Without bounds, `backFocusMm` is fixed.
+- `focusAdjustmentBoundsMm` limits motion of the configured internal focus
+  gaps. Without bounds, the current focus adjustment is fixed.
+- `workingDistanceBoundsMm` limits physical scintillator-to-lens motion and is
+  required when autofocus is enabled.
 - The C-mount flange focal distance of 17.526 mm must not be used as the final
   RayOptics image gap unless the modeled last surface is the C-mount flange
   reference.

@@ -168,6 +168,9 @@ The lens configuration records the net prescription-to-image geometry:
   photocathode.
 - `backFocusBoundsMm`: physically attainable interval imposed by the lens
   mount, adapter, and intensifier interface.
+- `focusAdjustmentBoundsMm`: permitted internal focus travel.
+- `workingDistanceBoundsMm`: permitted scintillator-to-lens travel, stored on
+  the optical interface.
 
 The photocathode remains the image plane. When back focus is adjustable, the
 physical lens or adapter spacing changes relative to that plane; the optimizer
@@ -242,8 +245,6 @@ Added 2026-06-30.
 
 - Rewrite `src/optics/OpticalTransport.py` around the current Geant4 photon
   output path.
-- Add remaining optical configuration needed to bound working-distance and
-  internal-gap travel.
 - Decide how lens mount/flange references map to the imported RayOptics/ZMX
   coordinate system for each catalog lens.
 - Implement the focus-validation routine before bulk photon transport.
