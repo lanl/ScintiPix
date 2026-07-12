@@ -12,13 +12,13 @@ try:
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
     from src.models.simulation import Simulation
-    from optics.focus import auto_focus_lens
+    from src.optics.focus import auto_focus_lens
 except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
     from src.models.simulation import Simulation
-    from optics.focus import auto_focus_lens
+    from src.optics.focus import auto_focus_lens
 
 
 _SIMULATED_EVENTS_PATTERN = re.compile(r"Simulated\s+(\d+)\s+events\b")
@@ -232,16 +232,35 @@ def run_simulation(
 
     # Run auto-focus routine if enabled
     if config.metadata.run_controls.auto_focus_lens:
+        if config.optical is None or not config.optical.lenses:
+            raise ValueError("Autofocus requires an optical lens configuration.")
+
         logger = get_logger()
         logger.info("Running automatic lens focusing routine...")
-        optimal_z_mm = auto_focus_lens(config)
+        primary_lens = next(lens for lens in config.optical.lenses if lens.primary)
+        original_z_mm = config.optical.interface.position_mm.z_mm
+        original_focus_mm = primary_lens.focus_adjustment_mm
+        original_back_focus_mm = primary_lens.back_focus_mm
 
-        original_z = config.optical.interface.position_mm.z_mm
-        config.optical.interface.position_mm.z_mm = optimal_z_mm
+        auto_focus_lens(config)
+
+        scintillator_back_z_mm = (
+            config.scintillator.position_mm.z_mm
+            + config.scintillator.dimension_mm.z_mm / 2.0
+        )
+        working_distance_mm = (
+            config.optical.interface.position_mm.z_mm - scintillator_back_z_mm
+        )
 
         logger.info(
-            f"Auto-focus: adjusted optical interface from z={original_z:.2f}mm "
-            f"to z={optimal_z_mm:.2f}mm"
+            "Auto-focus updated "
+            f"interface z: {original_z_mm:.3f} -> "
+            f"{config.optical.interface.position_mm.z_mm:.3f} mm; "
+            f"working distance: {working_distance_mm:.3f} mm; "
+            f"focus adjustment: {original_focus_mm} -> "
+            f"{primary_lens.focus_adjustment_mm} mm; "
+            f"back focus: {original_back_focus_mm} -> "
+            f"{primary_lens.back_focus_mm} mm"
         )
 
     write_macro(config)
