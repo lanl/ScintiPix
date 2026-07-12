@@ -187,9 +187,10 @@ metadata:
 
 **Run controls**:
 - `auto_focus_lens`: Enable automatic lens focusing routine to determine optimal working distance (default: `false`)
-  - When enabled, runs `src/optics/Calibration.py` to calculate the optimal `optical.interface.position_mm.z_mm` 
+  - When enabled, runs `src/optics/focus.py` before Geant4 macro generation
   - This should be run as a one-time setup step before the Geant4 simulation
-  - The routine determines the working distance that achieves the desired magnification for the given lens prescription
+  - The routine tunes only physically permitted lens geometry while preserving
+    the requested scintillator FOV
   - See `.agents/docs/WORKFLOWS.md` for more details on the lens focusing subroutine
 - Stages must be enabled sequentially (can't enable intensifier without optics)
 - Typical workflow: start with `geant4_simulation: true` only, then add stages
@@ -218,25 +219,39 @@ optical:
   lenses:
     - catalogId: CanonEF50mmf1.0L
       primary: true
+      backFocusMm: 24.3
+      backFocusBoundsMm: [23.8, 24.8]
   interface:
     diameter_mm: 60.55          # Circular aperture diameter (lens or PMT)
     position_mm:
       x_mm: 0.0
       y_mm: 0.0
-      z_mm: 210.05              # Working distance from scintillator
+      z_mm: 210.05              # Absolute lens-entrance/scoring-plane position
   showTransportProgress: true
 ```
 
 **Design rationale**:
 - Scintillators are always viewed through circular optics (lenses or PMTs), so the interface is always circular
 - The `diameter_mm` specifies the acceptance aperture of your optical system
-- The `position_mm.z_mm` is the working distance from the scintillator back face
+- Working distance is derived from `position_mm.z_mm` minus the scintillator
+  back-face position; `position_mm.z_mm` is an absolute coordinate
 - This simplified design eliminates unnecessary complexity from sensor-level constraints
+
+For the primary lens:
+
+- `backFocusMm` is the distance from the last modeled optical surface to the
+  intensifier photocathode.
+- `backFocusBoundsMm` is the optional mechanically attainable interval imposed
+  by the lens mount and adapter. Without bounds, `backFocusMm` is fixed.
+- The C-mount flange focal distance of 17.526 mm must not be used as the final
+  RayOptics image gap unless the modeled last surface is the C-mount flange
+  reference.
 
 **Automatic lens focusing**:
 - You can manually specify `position_mm.z_mm` or use the automatic focusing routine
 - Enable `metadata.RunControls.auto_focus_lens: true` to automatically calculate the optimal working distance
-- The automatic routine uses the lens prescription and desired magnification to determine `position_mm.z_mm`
+- The automatic routine uses the lens prescription, requested FOV, and physical
+  bounds to determine `position_mm.z_mm` and the lens focus state
 - This is a one-time setup step that should be run before the Geant4 simulation
 - Manual specification is faster if you already know the correct working distance
 

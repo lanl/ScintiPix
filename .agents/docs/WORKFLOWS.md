@@ -12,12 +12,12 @@ The Pydantic configuration is defined in `src/config.py`. The main configuration
 
 ### Sub-routine for lens focusing
 
-Users can define a working distance for the lens model, or have ScintiPix automatically determine the working distance based on the lens prescription and the desired magnification. The working distance is the distance from the lens to the scintillator back face that achieves the desired magnification. 
+Users can define a working distance for the lens model, or have ScintiPix automatically determine the working distance based on the lens prescription and requested FOV. The working distance is the distance from the scintillator back face to the lens entrance plane. It is derived from the absolute geometry coordinates rather than being equal to `optical.interface.position_mm.z_mm`.
 
 To enable automatic lens focusing:
 1. Set `metadata.RunControls.auto_focus_lens: true` in your configuration
-2. The routine calls `src/optics/focus.py` to determine the optimal working distance and internal lens element positions using RayOptics.
-3. The calculated distance is set as `optical.interface.position_mm.z_mm` 
+2. The routine calls `src/optics/focus.py` to determine the optimal working distance, internal lens element positions, and mechanically permitted back focus using RayOptics.
+3. The calculated working distance is converted back to the absolute `optical.interface.position_mm.z_mm` coordinate.
 4. This positions the optical interface (where photons are recorded) at the correct distance from the scintillator
 
 This is a one-time setup step that should be done before running the Geant4 simulation, since the working distance affects the optical interface position in the Geant4 geometry.

@@ -127,7 +127,7 @@ plane.
 
 ## C-Mount Image Plane
 
-Added 2026-06-30.
+Added 2026-06-30. Updated 2026-07-12.
 
 The image intensifier input is always C-mount and is mechanically fixed to the
 back of the selected lens through a passive adapter. The adapter has no glass or
@@ -162,9 +162,21 @@ If the adapter is the correct fixed length, the photocathode should sit at the
 native lens image plane. The transport code should treat this as a fixed
 mechanical image plane, not a focusing degree of freedom.
 
+The lens configuration records the net prescription-to-image geometry:
+
+- `backFocusMm`: distance from the last modeled optical surface to the
+  photocathode.
+- `backFocusBoundsMm`: physically attainable interval imposed by the lens
+  mount, adapter, and intensifier interface.
+
+The photocathode remains the image plane. When back focus is adjustable, the
+physical lens or adapter spacing changes relative to that plane; the optimizer
+does not move the photocathode in software. Without `backFocusBoundsMm`, the
+configured back focus is fixed. Autofocus must not create generic bounds.
+
 ## Focus Validation
 
-Added 2026-06-30.
+Added 2026-06-30. Updated 2026-07-12.
 
 Focus validation should be a separate optics routine that can run before a full
 Geant4 photon simulation.
@@ -175,6 +187,7 @@ Inputs:
 - scintillator back-face size
 - scintillator-to-lens geometry
 - fixed photocathode/image-plane geometry
+- mechanically attainable back-focus bounds, when the assembly is adjustable
 
 Basic metric:
 
@@ -192,6 +205,7 @@ run. If the system is out of focus, change a real degree of freedom:
 
 - scintillator-to-lens distance
 - lens focus state/internal gap, if represented in the prescription
+- lens-to-photocathode back focus, only within documented mechanical bounds
 - selected lens prescription/focus state
 
 Do not move the photocathode in software unless the physical C-mount/adaptor
@@ -228,8 +242,8 @@ Added 2026-06-30.
 
 - Rewrite `src/optics/OpticalTransport.py` around the current Geant4 photon
   output path.
-- Add or update optical Pydantic models for object-plane geometry, fixed
-  photocathode/image-plane geometry, and passive mount-adapter metadata.
+- Add remaining optical configuration needed to bound working-distance and
+  internal-gap travel.
 - Decide how lens mount/flange references map to the imported RayOptics/ZMX
   coordinate system for each catalog lens.
 - Implement the focus-validation routine before bulk photon transport.
