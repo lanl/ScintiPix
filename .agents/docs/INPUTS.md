@@ -187,8 +187,8 @@ metadata:
 
 **Run controls**:
 - `auto_focus_lens`: Enable automatic lens focusing routine to determine optimal working distance (default: `false`)
-  - Runner integration is pending; keep this `false` until
-    `src/runner/runSimulation.py` uses the mutating autofocus contract
+  - When enabled, `src/runner/runSimulation.py` runs autofocus before macro
+    generation
   - The implemented routine tunes only explicitly bounded lens geometry while
     preserving the requested scintillator FOV
   - See `.agents/docs/WORKFLOWS.md` for more details on the lens focusing subroutine
@@ -264,8 +264,8 @@ For the primary lens:
 - The automatic routine uses the lens prescription, requested FOV, and physical
   bounds to determine `position_mm.z_mm` and the lens focus state
 - This is a one-time setup step that should be run before the Geant4 simulation
-- Runner integration is the next implementation step; leave
-  `metadata.RunControls.auto_focus_lens` disabled until it is complete
+- Enable `metadata.RunControls.auto_focus_lens` to run autofocus before macro
+  generation
 - Manual specification is faster if you already know the correct working distance
 
 **Note**: The optics stage is under active development. See `.agents/docs/OPTICS.md` for current status.
