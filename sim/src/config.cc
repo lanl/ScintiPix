@@ -50,8 +50,7 @@ Config::Config()
       fOpticalInterfacePosZ(std::numeric_limits<G4double>::quiet_NaN()),
       fScintMaterial("EJ200"),
       fScintDensity(1.023 * g / cm3),
-      fScintCarbonAtoms(9),
-      fScintHydrogenAtoms(10),
+      fScintElements({{"C", 0.914706, {}}, {"H", 0.085294, {}}}),
       fScintPhotonEnergy({2.00 * eV, 2.40 * eV, 2.76 * eV, 3.10 * eV, 3.50 * eV}),
       fScintRIndex({1.58, 1.58, 1.58, 1.58, 1.58}),
       fScintAbsLength({380.0 * cm, 380.0 * cm, 380.0 * cm, 300.0 * cm, 220.0 * cm}),
@@ -259,31 +258,18 @@ void Config::SetScintDensity(G4double value) {
   ++fScintMaterialVersion;
 }
 
-G4int Config::GetScintCarbonAtoms() const {
+std::vector<ScintillatorElementConfig> Config::GetScintElements() const {
   std::lock_guard<std::mutex> lock(fMutex);
-  return fScintCarbonAtoms;
+  return fScintElements;
 }
 
-void Config::SetScintCarbonAtoms(G4int value) {
-  if (value <= 0) {
+void Config::SetScintElements(
+    const std::vector<ScintillatorElementConfig>& values) {
+  if (values.empty()) {
     return;
   }
   std::lock_guard<std::mutex> lock(fMutex);
-  fScintCarbonAtoms = value;
-  ++fScintMaterialVersion;
-}
-
-G4int Config::GetScintHydrogenAtoms() const {
-  std::lock_guard<std::mutex> lock(fMutex);
-  return fScintHydrogenAtoms;
-}
-
-void Config::SetScintHydrogenAtoms(G4int value) {
-  if (value <= 0) {
-    return;
-  }
-  std::lock_guard<std::mutex> lock(fMutex);
-  fScintHydrogenAtoms = value;
+  fScintElements = values;
   ++fScintMaterialVersion;
 }
 
