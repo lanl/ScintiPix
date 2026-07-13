@@ -39,14 +39,17 @@ The binary output format is described in detail in `.agents/docs/OUTPUT.md`. The
 
 ## Optical transport with RayOptics
 
-The optics stage is defined in `src/optics/OpticalTransport.py`. The main entry point is the `transport_optical_photons` function, which takes the Geant4 optical photon output and transports the photons through a selected lens model to the image intensifier photocathode. The lens model is defined by a Zemax `.zmx` prescription, which is loaded through RayOptics. The optics stage outputs the positions and directions of photons that reach the image intensifier photocathode, which serves as the handoff point to the intensifier stage.
-
-NOTE [07/08/26]: The optics stage is still under active development. The current implementation is a placeholder that does not yet fully utilize RayOptics or the new Geant4 output format. 
+The binary RayOptics transport stage is not implemented yet. Its input will be
+the Geant4 `simulatedPhotons/photons.bin` records, and it will apply the working
+distance, internal focus adjustment, and back focus already stored in the
+`Simulation` model. 
 
 ## Image intensifier
 
-NOTE [07/08/26]: The image intensifier module is under active development. 
+The active runtime is pending the binary RayOptics transport output. The retired
+HDF5 implementation is under `legacy/`.
 
 ## Sensor readout
 
-NOTE [07/08/26]: The sensor readout module is under active development. 
+The active runtime is pending the binary intensifier output. The retired HDF5
+implementation is under `legacy/`.
