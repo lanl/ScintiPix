@@ -1,8 +1,7 @@
 """Shared path utilities for configuration modules.
 
-These helpers are intentionally dependency-light so both `SimConfig` and
-`ConfigIO` can use consistent path behavior without introducing circular
-imports.
+These helpers are intentionally dependency-light so models and configuration
+loaders can share path behavior without circular imports.
 """
 
 from __future__ import annotations

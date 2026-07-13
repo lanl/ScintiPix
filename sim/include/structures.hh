@@ -72,8 +72,7 @@ namespace detail {
 
 constexpr std::size_t kSpeciesLabelSize = 24;
 
-// Native binary row structures (fixed-size, with explicit padding to ensure stable layout)
-// Used for both HDF5 and raw binary output formats
+// Native binary row structures with explicit padding for a stable layout.
 struct BinaryPrimaryRow {
   std::int64_t gun_call_id;
   std::int32_t primary_track_id;

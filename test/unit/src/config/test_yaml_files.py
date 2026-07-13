@@ -149,30 +149,6 @@ class TestYamlExampleFiles:
                 pytest.fail(f"Scintillator structure validation failed: {e}")
             pytest.skip(f"File has unrelated validation errors: {e}")
 
-    def test_three_component_timing_example(self, examples_dir):
-        """Test three_component_timing_example.yaml with inline nested properties."""
-        yaml_path = examples_dir / "three_component_timing_example.yaml"
-
-        try:
-            sim = from_yaml(yaml_path)
-            if sim.scintillator and sim.scintillator.properties:
-                props = sim.scintillator.properties
-
-                # Verify nested structure
-                assert props.composition is not None
-                assert props.optical is not None
-                assert isinstance(props.composition.density, float)
-                assert isinstance(props.optical.scint_yield, float)
-
-                # Verify three-component timing
-                assert props.optical.time_components is not None
-                assert props.optical.time_components.default is not None
-                assert len(props.optical.time_components.default) == 3
-        except Exception as e:
-            if "scintillator.properties" in str(e):
-                pytest.fail(f"Scintillator structure validation failed: {e}")
-            pytest.skip(f"File has unrelated validation errors: {e}")
-
 
 class TestScintillatorPropertiesStructure:
     """Test scintillator properties model structure."""

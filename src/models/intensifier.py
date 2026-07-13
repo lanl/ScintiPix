@@ -197,11 +197,6 @@ class Intensifier(StrictModel):
         )
 
     model: str = Field(min_length=1)
-    write_output_hdf5: bool = Field(
-        default=False,
-        validation_alias=AliasChoices("write_output_hdf5", "writeOutputHdf5"),
-        serialization_alias="write_output_hdf5",
-    )
     input_screen: IntensifierInputScreen = Field(
         validation_alias=AliasChoices("input_screen", "inputScreen"),
         serialization_alias="input_screen",
