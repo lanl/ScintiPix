@@ -1,6 +1,7 @@
 #include "messenger.hh"
 
 #include "config.hh"
+#include "utils.hh"
 
 #include "G4ApplicationState.hh"
 #include "G4RunManager.hh"
@@ -15,11 +16,24 @@
 #include "G4ios.hh"
 
 #include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
+constexpr G4double kCompositionTolerance = 1.0e-6;
+
+bool SetParseError(std::string* error, const std::string& message) {
+  if (error) {
+    *error = message;
+  }
+  return false;
+}
+
 bool TryParseDouble(const std::string& text, G4double* out) {
   if (!out) {
     return false;
@@ -32,6 +46,29 @@ bool TryParseDouble(const std::string& text, G4double* out) {
     return true;
   }
   return false;
+}
+
+bool TryParseInt(const std::string& text, G4int* out) {
+  if (!out) {
+    return false;
+  }
+  std::istringstream stream(text);
+  G4int value = 0;
+  stream >> value;
+  if (!stream.fail() && stream.eof()) {
+    *out = value;
+    return true;
+  }
+  return false;
+}
+
+bool IsValidElementSymbol(const std::string& symbol) {
+  if (symbol.empty() || symbol.size() > 2 ||
+      std::isupper(static_cast<unsigned char>(symbol[0])) == 0) {
+    return false;
+  }
+  return symbol.size() == 1 ||
+         std::islower(static_cast<unsigned char>(symbol[1])) != 0;
 }
 
 bool ParseListWithOptionalUnit(const G4String& rawValue,
@@ -75,6 +112,149 @@ bool ParseListWithOptionalUnit(const G4String& rawValue,
     }
     values->push_back(parsed);
   }
+  return true;
+}
+
+bool ParseElementComposition(
+    const G4String& rawValue,
+    std::vector<ScintillatorElementConfig>* elements,
+    std::string* error) {
+  if (!elements) {
+    return SetParseError(error, "missing element output");
+  }
+
+  const std::string raw = Utils::Trim(rawValue);
+  if (raw.empty() || raw.front() == ',' || raw.back() == ',') {
+    return SetParseError(error, "expected Symbol=massFraction entries");
+  }
+
+  std::vector<ScintillatorElementConfig> parsedElements;
+  std::set<std::string> seenSymbols;
+  G4double total = 0.0;
+  std::istringstream stream(raw);
+  for (std::string entry; std::getline(stream, entry, ',');) {
+    entry = Utils::Trim(entry);
+    const auto equals = entry.find('=');
+    if (equals == std::string::npos || equals != entry.rfind('=')) {
+      return SetParseError(error, "expected Symbol=massFraction entry: '" + entry + "'");
+    }
+
+    const auto symbol = Utils::Trim(entry.substr(0, equals));
+    const auto fractionText = Utils::Trim(entry.substr(equals + 1));
+    if (!IsValidElementSymbol(symbol)) {
+      return SetParseError(error, "invalid element symbol: '" + symbol + "'");
+    }
+    if (!seenSymbols.insert(symbol).second) {
+      return SetParseError(error, "duplicate element symbol: '" + symbol + "'");
+    }
+
+    G4double fraction = 0.0;
+    if (!TryParseDouble(fractionText, &fraction) || !std::isfinite(fraction) ||
+        fraction <= 0.0 || fraction > 1.0) {
+      return SetParseError(error, "invalid mass fraction for " + symbol);
+    }
+    parsedElements.push_back({symbol, fraction, {}});
+    total += fraction;
+  }
+
+  if (parsedElements.empty()) {
+    return SetParseError(error, "at least one element is required");
+  }
+  if (std::abs(total - 1.0) > kCompositionTolerance) {
+    return SetParseError(error, "element mass fractions must sum to 1.0");
+  }
+
+  *elements = std::move(parsedElements);
+  return true;
+}
+
+bool ParseIsotopeComposition(
+    const G4String& rawValue,
+    const std::vector<ScintillatorElementConfig>& currentElements,
+    std::vector<ScintillatorElementConfig>* updatedElements,
+    std::string* error) {
+  if (!updatedElements) {
+    return SetParseError(error, "missing isotope output");
+  }
+
+  const std::string raw = Utils::Trim(rawValue);
+  if (raw.empty() || raw.front() == ';' || raw.back() == ';') {
+    return SetParseError(
+        error, "expected Symbol=massNumber:atomFraction entries");
+  }
+
+  auto parsedElements = currentElements;
+  std::set<std::string> enrichedSymbols;
+  std::istringstream groupStream(raw);
+  for (std::string group; std::getline(groupStream, group, ';');) {
+    group = Utils::Trim(group);
+    const auto equals = group.find('=');
+    if (equals == std::string::npos || equals != group.rfind('=')) {
+      return SetParseError(error, "invalid isotope group: '" + group + "'");
+    }
+
+    const auto symbol = Utils::Trim(group.substr(0, equals));
+    auto isotopeText = Utils::Trim(group.substr(equals + 1));
+    if (!IsValidElementSymbol(symbol)) {
+      return SetParseError(error, "invalid isotope element symbol: '" + symbol + "'");
+    }
+    if (!enrichedSymbols.insert(symbol).second) {
+      return SetParseError(error, "duplicate isotope element: '" + symbol + "'");
+    }
+
+    auto element = std::find_if(
+        parsedElements.begin(), parsedElements.end(),
+        [&](const ScintillatorElementConfig& value) {
+          return value.symbol == symbol;
+        });
+    if (element == parsedElements.end()) {
+      return SetParseError(error, "isotopes provided for missing element: '" + symbol + "'");
+    }
+    if (isotopeText.empty() || isotopeText.front() == ',' ||
+        isotopeText.back() == ',') {
+      return SetParseError(error, "missing isotope values for " + symbol);
+    }
+
+    std::vector<ScintillatorIsotopeConfig> isotopes;
+    std::set<G4int> seenMassNumbers;
+    G4double total = 0.0;
+    std::istringstream isotopeStream(isotopeText);
+    for (std::string isotopeEntry;
+         std::getline(isotopeStream, isotopeEntry, ',');) {
+      isotopeEntry = Utils::Trim(isotopeEntry);
+      const auto colon = isotopeEntry.find(':');
+      if (colon == std::string::npos || colon != isotopeEntry.rfind(':')) {
+        return SetParseError(error, "invalid isotope entry: '" + isotopeEntry + "'");
+      }
+
+      G4int massNumber = 0;
+      G4double atomFraction = 0.0;
+      if (!TryParseInt(Utils::Trim(isotopeEntry.substr(0, colon)), &massNumber) ||
+          massNumber <= 0) {
+        return SetParseError(error, "invalid isotope mass number for " + symbol);
+      }
+      if (!seenMassNumbers.insert(massNumber).second) {
+        return SetParseError(error, "duplicate isotope mass number for " + symbol);
+      }
+      if (!TryParseDouble(Utils::Trim(isotopeEntry.substr(colon + 1)),
+                          &atomFraction) ||
+          !std::isfinite(atomFraction) || atomFraction <= 0.0 ||
+          atomFraction > 1.0) {
+        return SetParseError(error, "invalid isotope atom fraction for " + symbol);
+      }
+
+      isotopes.push_back({massNumber, atomFraction});
+      total += atomFraction;
+    }
+
+    if (std::abs(total - 1.0) > kCompositionTolerance) {
+      return SetParseError(error, "isotope atom fractions for " + symbol +
+                                      " must sum to 1.0");
+    }
+    element->isotopes = std::move(isotopes);
+  }
+
+  *updatedElements = std::move(parsedElements);
   return true;
 }
 }  // namespace
@@ -196,19 +376,19 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fScintDensityCmd->SetRange("density > 0.");
   fScintDensityCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-  fScintCarbonAtomsCmd =
-      new G4UIcmdWithAnInteger("/scintillator/properties/carbonAtoms", this);
-  fScintCarbonAtomsCmd->SetGuidance("Set scintillator carbon atom count");
-  fScintCarbonAtomsCmd->SetParameterName("carbonAtoms", false);
-  fScintCarbonAtomsCmd->SetRange("carbonAtoms > 0");
-  fScintCarbonAtomsCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fScintElementsCmd =
+      new G4UIcmdWithAString("/scintillator/properties/elements", this);
+  fScintElementsCmd->SetGuidance(
+      "Set element mass fractions: C=0.914706,H=0.085294");
+  fScintElementsCmd->SetParameterName("elements", false);
+  fScintElementsCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-  fScintHydrogenAtomsCmd =
-      new G4UIcmdWithAnInteger("/scintillator/properties/hydrogenAtoms", this);
-  fScintHydrogenAtomsCmd->SetGuidance("Set scintillator hydrogen atom count");
-  fScintHydrogenAtomsCmd->SetParameterName("hydrogenAtoms", false);
-  fScintHydrogenAtomsCmd->SetRange("hydrogenAtoms > 0");
-  fScintHydrogenAtomsCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fScintIsotopesCmd =
+      new G4UIcmdWithAString("/scintillator/properties/isotopes", this);
+  fScintIsotopesCmd->SetGuidance(
+      "Set isotope atom fractions: Li=6:0.95,7:0.05;B=10:0.9,11:0.1");
+  fScintIsotopesCmd->SetParameterName("isotopes", false);
+  fScintIsotopesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fScintPhotonEnergyCmd =
       new G4UIcmdWithAString("/scintillator/properties/photonEnergy", this);
@@ -488,8 +668,8 @@ Messenger::~Messenger() {
   delete fScintAbsLengthCmd;
   delete fScintRIndexCmd;
   delete fScintPhotonEnergyCmd;
-  delete fScintHydrogenAtomsCmd;
-  delete fScintCarbonAtomsCmd;
+  delete fScintIsotopesCmd;
+  delete fScintElementsCmd;
   delete fScintDensityCmd;
   delete fResolutionTargetLinePairsCmd;
   delete fResolutionTargetOuterRadiusCmd;
@@ -594,14 +774,27 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     return;
   }
 
-  if (command == fScintCarbonAtomsCmd) {
-    fConfig->SetScintCarbonAtoms(fScintCarbonAtomsCmd->GetNewIntValue(newValue));
+  if (command == fScintElementsCmd) {
+    std::vector<ScintillatorElementConfig> elements;
+    std::string error;
+    if (!ParseElementComposition(newValue, &elements, &error)) {
+      G4cerr << "Invalid scintillator elements command: " << error << G4endl;
+      return;
+    }
+    fConfig->SetScintElements(elements);
     NotifyGeometryChanged();
     return;
   }
 
-  if (command == fScintHydrogenAtomsCmd) {
-    fConfig->SetScintHydrogenAtoms(fScintHydrogenAtomsCmd->GetNewIntValue(newValue));
+  if (command == fScintIsotopesCmd) {
+    std::vector<ScintillatorElementConfig> elements;
+    std::string error;
+    if (!ParseIsotopeComposition(newValue, fConfig->GetScintElements(),
+                                 &elements, &error)) {
+      G4cerr << "Invalid scintillator isotopes command: " << error << G4endl;
+      return;
+    }
+    fConfig->SetScintElements(elements);
     NotifyGeometryChanged();
     return;
   }
