@@ -184,6 +184,7 @@ def transport_photons(config: Simulation) -> Path:
     output_path = (
         Path(environment.transported_photons_directory) / environment.photons_filename
     )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     photons = read_simulated_photons(input_path)
     logger.info(f"[optics] Tracing {len(photons)} simulated photons.")
 
