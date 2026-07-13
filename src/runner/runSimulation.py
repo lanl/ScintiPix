@@ -11,14 +11,18 @@ import sys
 try:
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
+    from src.config.yaml import write_yaml
     from src.models.simulation import Simulation
     from src.optics.focus import auto_focus_lens
+    from src.optics.raytrace import transport_photons
 except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
+    from src.config.yaml import write_yaml
     from src.models.simulation import Simulation
     from src.optics.focus import auto_focus_lens
+    from src.optics.raytrace import transport_photons
 
 
 _SIMULATED_EVENTS_PATTERN = re.compile(r"Simulated\s+(\d+)\s+events\b")
@@ -263,6 +267,20 @@ def run_simulation(
             f"{primary_lens.back_focus_mm} mm"
         )
 
+        # Mark autofocus as completed in the in-memory model
+        config.metadata.run_controls.auto_focus_lens = False
+
+        # Save the autofocused configuration
+        run_environment = config.metadata.run_environment
+        if run_environment.config_directory:
+            focused_yaml_filename = (
+                f"{run_environment.simulation_run_id}_"
+                f"{run_environment.sub_run_number:03d}_focused.yaml"
+            )
+            focused_yaml_path = Path(run_environment.config_directory) / focused_yaml_filename
+            write_yaml(config, focused_yaml_path, overwrite=True)
+            logger.info(f"Saved autofocused configuration to: {focused_yaml_path}")
+
     write_macro(config)
     completed = run(config, dry_run=dry_run, log_filename=log_filename)
     logger = get_logger()
@@ -270,4 +288,12 @@ def run_simulation(
         logger.info("[simulation] Dry run requested; skipping scintipix launch.")
         return None
     logger.info("[simulation] Completed.")
+
+    # Run optical transport if enabled
+    if config.metadata.run_controls.transportation:
+        logger.info("Running optical photon transport...")
+        with log_stage("transportation"):
+            output_path = transport_photons(config)
+        logger.info(f"[transportation] Completed. Output: {output_path}")
+
     return completed
