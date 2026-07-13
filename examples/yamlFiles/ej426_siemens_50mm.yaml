@@ -1,0 +1,160 @@
+# Auto-focus demonstration with EJ-426 scintillator, Siemens star, and Canon EF 50mm f/1.0L
+#
+# This configuration uses EJ-426 enriched lithium scintillator to demonstrate
+# neutron detection capabilities with the automatic lens focusing routine.
+
+scintillator:
+  position_mm:
+    x_mm: 0.0
+    y_mm: 0.0
+    z_mm: 0.0
+  dimension_mm:
+    x_mm: 100.0
+    y_mm: 100.0
+    z_mm: 20.0
+  maskRadius: 0
+  fieldOfView:
+    widthMm: 40.0
+    heightMm: 40.0
+  properties:
+    name: EJ-426
+    composition:
+      density: 2.42
+      elements:
+        - symbol: Li
+          massFraction: 0.0393
+          isotopes:
+            - massNumber: 6
+              atomFraction: 0.95
+            - massNumber: 7
+              atomFraction: 0.05
+        - symbol: F
+          massFraction: 0.1231
+        - symbol: Zn
+          massFraction: 0.4358
+        - symbol: S
+          massFraction: 0.2137
+        - symbol: Si
+          massFraction: 0.0769
+        - symbol: C
+          massFraction: 0.0657
+        - symbol: H
+          massFraction: 0.0017
+        - symbol: O
+          massFraction: 0.0438
+    optical:
+      photonEnergy: [2.8, 3.0, 3.2]
+      rIndex: [1.58, 1.59, 1.60]
+      nKEntries: 3
+      scintYield: 10000.0
+      resolutionScale: 1.0
+      timeComponents:
+        default:
+          - timeConstant: 2.1
+            yieldFraction: 1.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
+          - timeConstant: 0.0
+            yieldFraction: 0.0
+
+source:
+  gps:
+    particle: neutron
+    position:
+      type: Plane
+      shape: Circle
+      centerMm:
+        x_mm: 0.0
+        y_mm: 0.0
+        z_mm: -100.0
+      radiusMm: 50.0
+    angular:
+      type: beam2d
+      rot1: {x: 1.0, y: 0.0, z: 0.0}
+      rot2: {x: 0.0, y: 1.0, z: 0.0}
+      direction: {x: 0.0, y: 0.0, z: 1.0}
+    energy:
+      type: Mono
+      monoMeV: 6.0
+  timing:
+    mode: pulsed
+    start_time_ns: 0.0
+    particle_flux: 31830.98861837907
+    pulse_period_ns: 1000000.0
+    pulse_time_offset_ns: 0.0
+    pulse_time_width_ns: 270.0
+    pulse_shape: uniform
+
+optical:
+  lenses:
+    - catalogId: CanonEF50mmf1.0L
+      primary: true
+      focusAdjustmentBoundsMm: [-3.0, 3.0]
+      backFocusBoundsMm: [48.0, 52.0]
+  interface:
+    diameterMm: 60.55
+    positionMm:
+      x_mm: 0.0
+      y_mm: 0.0
+      z_mm: 210.0
+    workingDistanceBoundsMm: [180.0, 250.0]
+  showTransportProgress: true
+  transportAssumptions:
+    objectPlane: scintillator_back_face
+    opticalInterfaceRepresents: lens_entrance_plane
+
+intensifier:
+  model: Cricket2
+  input_screen:
+    image_circle_diameter_mm: 18.0
+    center_mm: [0.0, 0.0]
+    magnification: 1.0
+    coordinate_frame: intensifier_input_plane
+    notes: Cricket2 nominal image-circle diameter and 1:1 magnification.
+
+sensor:
+  model: Timepix3
+  timepix:
+    pixels_x: 256
+    pixels_y: 256
+    pixel_pitch_mm: 0.055
+    max_tot_ns: 25550.0
+    dead_time_ns: 475.0
+
+geant4runner:
+  numberOfParticles: 50000
+  binary: scintipix
+  showProgress: true
+  verifyOutput: true
+  photonCulling:
+    enabled: true
+    acceptanceAngleDeg: 27.0
+  resolutionTarget:
+    resolutionTargetEnabled: true
+    resolutionTargetOuterRadiusMm: 20.0
+    resolutionTargetLinePairs: 64
+  runtimeControls:
+    controlVerbose: 0
+    runVerbose: 0
+    eventVerbose: 0
+    trackingVerbose: 0
+    printProgress: 5000
+
+metadata:
+  author: Alex Long
+  date: 2026-07-12
+  version: ScintPiX v0.1
+  description: Auto-focus demonstration with EJ-426 enriched lithium scintillator, Siemens star, and Canon EF 50mm f/1.0L lens.
+  RunControls:
+    auto_focus_lens: true
+    geant4_simulation: true
+    transportation: true
+    intensification: false
+    sensor_detection: false
+  RunEnvironment:
+    SimulationRunID: ej426_siemens_50mm
+    WorkingDirectory: data
+    MacroDirectory: macros
+    LogDirectory: logs
+    SimulatedPhotonsDirectory: simulatedPhotons
+    TransportedPhotonsDirectory: transportedPhotons
