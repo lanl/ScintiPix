@@ -9,10 +9,9 @@ This note is for future agents working on ScintiPix optical transport. Keep this
 module focused on ray optics. Photocathode response, MCP/phosphor behavior, and
 sensor readout belong to the intensifier and sensor modules.
 
-The current source of truth is the Geant4 simulation output. The downstream
-Python optics, intensifier, and sensor stages have not yet been fully updated to
-the new Geant4 output path. Do not treat the existing
-`src/optics/OpticalTransport.py` as the desired design.
+The current source of truth is the binary Geant4 simulation output. The retired
+HDF5 optics, intensifier, and sensor stages are preserved under `legacy/` and
+must not be treated as the desired design.
 
 ## What Is This?
 
@@ -80,9 +79,8 @@ The photon output schema is defined in:
 - `sim/include/structures.hh`
 - `sim/src/SimIO.cc`
 
-The transport rewrite should start from the current Geant4 photon output format.
-Avoid carrying over old HDF5 assumptions unless the current output path still
-explicitly needs them.
+The transport implementation must start from the current Geant4 binary photon
+output format rather than carrying over the legacy HDF5 assumptions.
 
 ## How It Should Be Implemented
 
@@ -96,10 +94,9 @@ Use this setup flow:
 4. Set the RayOptics object gap from the scintillator-back-face to first-lens
    surface distance.
 5. Define the fixed image plane as the intensifier photocathode.
-6. Validate focus with synthetic object-plane ray bundles before bulk transport.
-7. Transport real Geant4 photons that were accepted at the optical-interface
+6. Transport real Geant4 photons that were accepted at the optical-interface
    scoring plane.
-8. Write transported photocathode hits with original photon provenance IDs.
+7. Write transported photocathode hits with original photon provenance IDs.
 
 For each accepted photon, build a RayOptics ray from the object plane:
 
@@ -248,8 +245,8 @@ aperture or field, while the Siemens star provides a resolution pattern.
 
 Added 2026-06-30.
 
-- Rewrite `src/optics/OpticalTransport.py` around the current Geant4 photon
-  output path.
+- Implement binary photon transport under `src/optics/` using the current
+  Geant4 photon output path.
 - Decide how lens mount/flange references map to the imported RayOptics/ZMX
   coordinate system for each catalog lens.
 - Reconstruct object-plane rays from scintillator-exit and optical-interface
