@@ -48,6 +48,28 @@ class DetectorConstructionSourceTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, source)
 
+    def test_generic_composition_replaces_carbon_hydrogen_config(self) -> None:
+        """Config and messenger should expose only generic composition controls."""
+
+        root = _repo_root()
+        config_header = (root / "sim" / "include" / "config.hh").read_text(
+            encoding="utf-8"
+        )
+        messenger_source = (root / "sim" / "src" / "messenger.cc").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("struct ScintillatorElementConfig", config_header)
+        self.assertIn("struct ScintillatorIsotopeConfig", config_header)
+        self.assertIn("GetScintElements()", config_header)
+        self.assertIn("SetScintElements(", config_header)
+        self.assertIn('"/scintillator/properties/elements"', messenger_source)
+        self.assertIn('"/scintillator/properties/isotopes"', messenger_source)
+
+        for removed_token in ("carbonAtoms", "hydrogenAtoms"):
+            self.assertNotIn(removed_token, config_header)
+            self.assertNotIn(removed_token, messenger_source)
+
 
 if __name__ == "__main__":
     unittest.main()
