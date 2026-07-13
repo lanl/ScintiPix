@@ -232,26 +232,13 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   auto* worldMaterial = nist->FindOrBuildMaterial("G4_AIR");
 
   // Build configurable scintillator material from composition.
-  G4Material* scintMaterial = nullptr;
-  std::string scintMaterialName = "EJ200";
-  if (fConfig) {
-    scintMaterialName = fConfig->GetScintMaterial();
-  }
-
-  if (scintMaterialName == "EJ200") {
-    scintMaterial = BuildOrGetConfiguredScintillator(nist, fConfig);
-    if (!scintMaterial) {
-      G4cerr << "Failed to construct " << scintMaterialName
-             << ". Check element composition configuration." << G4endl;
-      return nullptr;
-    }
-  } else {
-    scintMaterial = nist->FindOrBuildMaterial(scintMaterialName, false);
-    if (!scintMaterial) {
-      G4cerr << "Material '" << scintMaterialName
-             << "' not found in NIST database and does not match 'EJ200'." << G4endl;
-      return nullptr;
-    }
+  // Always use configured composition when available.
+  G4Material* scintMaterial = BuildOrGetConfiguredScintillator(nist, fConfig);
+  if (!scintMaterial) {
+    std::string scintMaterialName = fConfig ? fConfig->GetScintMaterial() : "EJ200";
+    G4cerr << "Failed to construct scintillator material '" << scintMaterialName
+           << "'. Check element composition configuration." << G4endl;
+    return nullptr;
   }
 
   // Define world optical properties for optical-photon transport.
