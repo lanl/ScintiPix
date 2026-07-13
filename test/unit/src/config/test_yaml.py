@@ -12,6 +12,7 @@ from src.models.source import Source, SourceGps, GpsPosition, GpsEnergy
 from src.models.scintillator import (
     Scintillator,
     ScintillatorComposition,
+    ScintillatorElement,
     ScintillatorOpticalProperties,
     ScintillatorProperties,
     ScintillationTimeComponentsByExcitation,
@@ -46,7 +47,9 @@ scintillator:
     name: TestScint
     composition:
       density: 1.023
-      atoms: {C: 9, H: 10}
+      elements:
+        - {symbol: C, massFraction: 0.914706}
+        - {symbol: H, massFraction: 0.085294}
     optical:
       photonEnergy: [2.0, 3.0, 4.0]
       rIndex: [1.58, 1.58, 1.58]
@@ -147,7 +150,10 @@ class TestWriteYaml:
                     name="TestScint",
                     composition=ScintillatorComposition(
                         density=1.023,
-                        atoms={"C": 9, "H": 10},
+                        elements=[
+                            ScintillatorElement(symbol="C", mass_fraction=0.914706),
+                            ScintillatorElement(symbol="H", mass_fraction=0.085294),
+                        ],
                     ),
                     optical=ScintillatorOpticalProperties(
                         photonEnergy=[2.0, 3.0, 4.0],
@@ -215,7 +221,10 @@ class TestWriteYaml:
                     name="TestScint",
                     composition=ScintillatorComposition(
                         density=1.023,
-                        atoms={"C": 9, "H": 10},
+                        elements=[
+                            ScintillatorElement(symbol="C", mass_fraction=0.914706),
+                            ScintillatorElement(symbol="H", mass_fraction=0.085294),
+                        ],
                     ),
                     optical=ScintillatorOpticalProperties(
                         photonEnergy=[2.0, 3.0, 4.0],
@@ -280,7 +289,10 @@ class TestWriteYaml:
                     name="TestScint",
                     composition=ScintillatorComposition(
                         density=1.023,
-                        atoms={"C": 9, "H": 10},
+                        elements=[
+                            ScintillatorElement(symbol="C", mass_fraction=0.914706),
+                            ScintillatorElement(symbol="H", mass_fraction=0.085294),
+                        ],
                     ),
                     optical=ScintillatorOpticalProperties(
                         photonEnergy=[2.0, 3.0, 4.0],
@@ -343,7 +355,10 @@ class TestWriteYaml:
                     name="TestScint",
                     composition=ScintillatorComposition(
                         density=1.023,
-                        atoms={"C": 9, "H": 10},
+                        elements=[
+                            ScintillatorElement(symbol="C", mass_fraction=0.914706),
+                            ScintillatorElement(symbol="H", mass_fraction=0.085294),
+                        ],
                     ),
                     optical=ScintillatorOpticalProperties(
                         photonEnergy=[2.0, 3.0, 4.0],
@@ -416,7 +431,10 @@ class TestRoundTrip:
                     name="EJ200",
                     composition=ScintillatorComposition(
                         density=1.023,
-                        atoms={"C": 9, "H": 10},
+                        elements=[
+                            ScintillatorElement(symbol="C", mass_fraction=0.914706),
+                            ScintillatorElement(symbol="H", mass_fraction=0.085294),
+                        ],
                     ),
                     optical=ScintillatorOpticalProperties(
                         photonEnergy=[2.0, 3.0, 4.0],

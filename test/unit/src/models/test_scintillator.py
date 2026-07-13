@@ -21,6 +21,9 @@ sys.path.insert(0, str(_repo_root()))
 
 from src.models.scintillator import (
     Scintillator,
+    ScintillatorComposition,
+    ScintillatorElement,
+    ScintillatorIsotope,
     ScintillationTimeComponent,
     ScintillationTimeComponentsByExcitation,
     ScintillatorProperties,
@@ -277,6 +280,143 @@ class TestScintillationTimeComponentsByExcitation:
 
 
 # ============================================================================
+# ScintillatorComposition Tests
+# ============================================================================
+
+
+class TestScintillatorComposition:
+    """Tests for elemental and isotope composition validation."""
+
+    def test_valid_ej200(self) -> None:
+        composition = ScintillatorComposition.model_validate(
+            {
+                "density": 1.023,
+                "elements": [
+                    {"symbol": "C", "massFraction": 0.914706},
+                    {"symbol": "H", "massFraction": 0.085294},
+                ],
+            }
+        )
+        assert composition.elements[0].symbol == "C"
+        assert composition.elements[0].mass_fraction == 0.914706
+
+    def test_valid_gd2o2s(self) -> None:
+        composition = ScintillatorComposition.model_validate(
+            {
+                "density": 7.34,
+                "elements": [
+                    {"symbol": "Gd", "massFraction": 0.747955},
+                    {"symbol": "O", "massFraction": 0.113786},
+                    {"symbol": "S", "massFraction": 0.138259},
+                ],
+            }
+        )
+        assert [element.symbol for element in composition.elements] == ["Gd", "O", "S"]
+
+    def test_valid_doped_crystal(self) -> None:
+        composition = ScintillatorComposition.model_validate(
+            {
+                "density": 4.51,
+                "elements": [
+                    {"symbol": "Cs", "massFraction": 0.511110},
+                    {"symbol": "I", "massFraction": 0.488104},
+                    {"symbol": "Tl", "massFraction": 0.000786},
+                ],
+            }
+        )
+        assert composition.elements[2].symbol == "Tl"
+
+    def test_valid_enriched_lithium(self) -> None:
+        element = ScintillatorElement.model_validate(
+            {
+                "symbol": "Li",
+                "massFraction": 1.0,
+                "isotopes": [
+                    {"massNumber": 6, "atomFraction": 0.95},
+                    {"massNumber": 7, "atomFraction": 0.05},
+                ],
+            }
+        )
+        assert element.isotopes is not None
+        assert element.isotopes[0] == ScintillatorIsotope(
+            mass_number=6,
+            atom_fraction=0.95,
+        )
+        assert element.model_dump(by_alias=True)["isotopes"][0] == {
+            "massNumber": 6,
+            "atomFraction": 0.95,
+        }
+
+    def test_invalid_symbol_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="unknown chemical element symbol"):
+            ScintillatorElement(symbol="Xx", mass_fraction=1.0)
+
+    def test_non_positive_mass_fraction_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="greater than 0"):
+            ScintillatorElement(symbol="C", mass_fraction=0.0)
+
+    def test_non_positive_isotope_values_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="greater than 0"):
+            ScintillatorIsotope(mass_number=0, atom_fraction=0.0)
+
+    def test_duplicate_element_symbol_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="duplicate element symbol"):
+            ScintillatorComposition.model_validate(
+                {
+                    "density": 1.0,
+                    "elements": [
+                        {"symbol": "C", "massFraction": 0.5},
+                        {"symbol": "C", "massFraction": 0.5},
+                    ],
+                }
+            )
+
+    def test_mass_fractions_must_sum_to_one(self) -> None:
+        with pytest.raises(ValidationError, match="mass fractions must sum to 1.0"):
+            ScintillatorComposition.model_validate(
+                {
+                    "density": 1.0,
+                    "elements": [
+                        {"symbol": "C", "massFraction": 0.8},
+                        {"symbol": "H", "massFraction": 0.1},
+                    ],
+                }
+            )
+
+    def test_duplicate_isotope_mass_number_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="duplicate isotope mass number"):
+            ScintillatorElement.model_validate(
+                {
+                    "symbol": "Li",
+                    "massFraction": 1.0,
+                    "isotopes": [
+                        {"massNumber": 6, "atomFraction": 0.95},
+                        {"massNumber": 6, "atomFraction": 0.05},
+                    ],
+                }
+            )
+
+    def test_isotope_fractions_must_sum_to_one(self) -> None:
+        with pytest.raises(ValidationError, match="isotope atom fractions.*sum to 1.0"):
+            ScintillatorElement.model_validate(
+                {
+                    "symbol": "Li",
+                    "massFraction": 1.0,
+                    "isotopes": [
+                        {"massNumber": 6, "atomFraction": 0.8},
+                        {"massNumber": 7, "atomFraction": 0.1},
+                    ],
+                }
+            )
+
+    def test_atoms_field_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="atoms"):
+            ScintillatorComposition.model_validate(
+                {"density": 1.023, "atoms": {"C": 9, "H": 10}}
+            )
+
+
+# ============================================================================
 # ScintillatorProperties Tests
 # ============================================================================
 
@@ -300,7 +440,13 @@ class TestScintillatorProperties:
         props = ScintillatorProperties.model_validate(
             {
                 "name": "TestScint",
-                "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                "composition": {
+                    "density": 1.032,
+                    "elements": [
+                        {"symbol": "C", "massFraction": 0.914706},
+                        {"symbol": "H", "massFraction": 0.085294},
+                    ],
+                },
                 "optical": {
                     "photonEnergy": [2.0, 2.4, 2.8],
                     "rIndex": [1.58, 1.58, 1.58],
@@ -323,7 +469,13 @@ class TestScintillatorProperties:
         props = ScintillatorProperties.model_validate(
             {
                 "name": "TestScint",
-                "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                "composition": {
+                    "density": 1.032,
+                    "elements": [
+                        {"symbol": "C", "massFraction": 0.914706},
+                        {"symbol": "H", "massFraction": 0.085294},
+                    ],
+                },
                 "optical": {
                     "rIndexFile": "curves/test/rindex.csv",
                     "absLengthFile": "curves/test/abs.csv",
@@ -344,7 +496,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4, 2.8],
                         "rIndex": [1.58, 1.58, 1.58],
@@ -361,7 +519,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4, 2.8],
                         "rIndex": [1.58, 1.58, 1.58],
@@ -379,7 +543,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4, 2.8],
                         "rIndex": [1.58, 1.58, 1.58],
@@ -397,7 +567,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {"timeComponents": self._valid_time_components()},
                 }
             )
@@ -408,7 +584,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "rIndex": [1.58, 1.58, 1.58],
                         "nKEntries": 3,
@@ -423,7 +605,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4, 2.8],
                         "rIndex": [1.58, 1.58, 1.58],
@@ -438,7 +626,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4],
                         "rIndex": [1.58, 1.58, 1.58],
@@ -454,7 +648,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4, 2.8],
                         "rIndex": [1.58, 1.58],
@@ -470,7 +670,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4, 2.8],
                         "rIndex": [1.58, 1.58, 1.58],
@@ -487,7 +693,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "photonEnergy": [2.0, 2.4, 2.8],
                         "rIndex": [1.58, 1.58, 1.58],
@@ -504,29 +716,10 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": -1.0, "atoms": {"C": 9, "H": 10}},
-                    "optical": {"rIndexFile": "curves/test/rindex.csv"},
-                }
-            )
-
-    def test_optional_field_carbon_atoms_positive(self) -> None:
-        """carbonAtoms must be > 0 if provided."""
-        with pytest.raises(ValidationError, match="atom counts"):
-            ScintillatorProperties.model_validate(
-                {
-                    "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": -5, "H": 10}},
-                    "optical": {"rIndexFile": "curves/test/rindex.csv"},
-                }
-            )
-
-    def test_optional_field_hydrogen_atoms_positive(self) -> None:
-        """hydrogenAtoms must be > 0 if provided."""
-        with pytest.raises(ValidationError, match="atom counts"):
-            ScintillatorProperties.model_validate(
-                {
-                    "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 0}},
+                    "composition": {
+                        "density": -1.0,
+                        "elements": [{"symbol": "C", "massFraction": 1.0}],
+                    },
                     "optical": {"rIndexFile": "curves/test/rindex.csv"},
                 }
             )
@@ -537,7 +730,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "rIndexFile": "curves/test/rindex.csv",
                         "scintYield": 0.0,
@@ -551,7 +750,13 @@ class TestScintillatorProperties:
             ScintillatorProperties.model_validate(
                 {
                     "name": "TestScint",
-                    "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                    "composition": {
+                        "density": 1.032,
+                        "elements": [
+                            {"symbol": "C", "massFraction": 0.914706},
+                            {"symbol": "H", "massFraction": 0.085294},
+                        ],
+                    },
                     "optical": {
                         "rIndexFile": "curves/test/rindex.csv",
                         "resolutionScale": -0.5,
@@ -564,7 +769,13 @@ class TestScintillatorProperties:
         props = ScintillatorProperties.model_validate(
             {
                 "name": "TestScint",
-                "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+                "composition": {
+                    "density": 1.032,
+                    "elements": [
+                        {"symbol": "C", "massFraction": 0.914706},
+                        {"symbol": "H", "massFraction": 0.085294},
+                    ],
+                },
                 "optical": {
                     "rIndexFile": "curves/test/rindex.csv",
                     "timeComponents": self._valid_time_components(),
@@ -574,7 +785,7 @@ class TestScintillatorProperties:
             }
         )
         assert props.composition.density == 1.032
-        assert props.composition.atoms == {"C": 9, "H": 10}
+        assert [element.symbol for element in props.composition.elements] == ["C", "H"]
         assert props.optical.scint_yield == 10000.0
         assert props.optical.resolution_scale == 1.0
 
@@ -592,7 +803,13 @@ class TestScintillator:
         """Helper for valid inline properties."""
         return {
             "name": "TestScint",
-            "composition": {"density": 1.032, "atoms": {"C": 9, "H": 10}},
+            "composition": {
+                "density": 1.032,
+                "elements": [
+                    {"symbol": "C", "massFraction": 0.914706},
+                    {"symbol": "H", "massFraction": 0.085294},
+                ],
+            },
             "optical": {
                 "photonEnergy": [2.0, 2.4, 2.8],
                 "rIndex": [1.58, 1.58, 1.58],
