@@ -19,7 +19,7 @@ The workflow includes four stages:
 pixi run python examples/autofocus/run_autofocus_with_transport.py
 ```
 
-This will use the default configuration: `examples/yamlFiles/autofocus_siemens_star_50mm.yaml`
+This will use the default configuration: `examples/yamlFiles/EJ200_siemens_50mm.yaml`
 
 ### Custom Configuration
 
@@ -47,7 +47,7 @@ Geant4, or optical transport again.
 
 ## Example Configuration
 
-The default configuration (`autofocus_siemens_star_50mm.yaml`) demonstrates:
+The default configuration (`EJ200_siemens_50mm.yaml`) demonstrates:
 
 - **Scintillator**: EJ200, 100×100×20 mm with 40×40 mm field of view
 - **Lens**: Canon EF 50mm f/1.0L (from catalog)
@@ -131,7 +131,7 @@ The saved `*_focused.yaml` file has `auto_focus_lens: false` to prevent re-runni
 
 ```bash
 pixi run python examples/autofocus/run_autofocus_with_transport.py \
-    data/autofocus_siemens_50mm_000/config/autofocus_siemens_50mm_000_focused.yaml
+    data/EJ200_siemens_50mm_000/config/EJ200_siemens_50mm_000_focused.yaml
 ```
 
 This will skip autofocus and use the pre-optimized lens parameters directly.
