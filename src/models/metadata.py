@@ -105,6 +105,7 @@ class WorkingDirectoryLayout(StrictModel):
         alias="IntensifiedPhotonsDirectory",
     )
     sensor_hits_directory: str | None = Field(default=None, alias="SensorHitsDirectory")
+    config_directory: str | None = Field(default=None, alias="ConfigDirectory")
     primaries_filename: str = Field(
         default="primaries.bin",
         alias="PrimariesFilename",
