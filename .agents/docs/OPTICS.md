@@ -84,9 +84,9 @@ The transport rewrite should start from the current Geant4 photon output format.
 Avoid carrying over old HDF5 assumptions unless the current output path still
 explicitly needs them.
 
-## How It Should Be Implemented
+## Binary Ray Tracing
 
-Added 2026-06-30.
+Added 2026-06-30. Updated 2026-07-13.
 
 Use this setup flow:
 
@@ -123,6 +123,21 @@ The optical-interface record should still be used. It proves the photon reached
 the lens-side collection plane and can help reconstruct or validate the object
 space ray, but it should not replace the scintillator back face as the object
 plane.
+
+This path is implemented in `src/optics/raytrace.py`. It accepts the validated
+`Simulation` after autofocus has updated it, loads the primary ZMX prescription,
+and reapplies the stored working distance, internal focus adjustment, and back
+focus to the RayOptics sequential model. It reads
+`simulatedPhotons/photons.bin` and writes only successful, in-bounds image-plane
+hits to `transportedPhotons/photons.bin`.
+
+The transported binary record contains the source row index, original photon
+provenance IDs, photocathode hit position and time, and wavelength. Failed,
+blocked, non-finite, and out-of-bounds rays are not written.
+
+RayOptics traces each photon at the nearest wavelength sampled by the imported
+prescription, while the transported record preserves the original Geant4
+wavelength.
 
 ## C-Mount Image Plane
 
@@ -245,13 +260,8 @@ aperture or field, while the Siemens star provides a resolution pattern.
 
 ## TODO
 
-Added 2026-06-30.
+Added 2026-06-30. Updated 2026-07-13.
 
-- Rewrite `src/optics/OpticalTransport.py` around the current Geant4 photon
-  output path.
-- Reconstruct object-plane rays from scintillator-exit and optical-interface
-  records.
-- Preserve photon provenance IDs in transported photon output.
-- Add a simple correct transport path first; add batching only after correctness
-  is clear.
-- Add focused tests for photon provenance preservation.
+- Add batching only after the simple record-at-a-time transport path is
+  validated against physical test data.
+- Integrate the binary optics stage into the top-level simulation runner.
