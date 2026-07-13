@@ -26,6 +26,10 @@ class RunControls(StrictModel):
     detection of sensor hits.
     """
 
+    auto_focus_lens: bool = Field(
+        default=False,
+        description="Whether to run the automatic lens focusing routine to determine optimal working distance.",
+    )
     geant4_simulation: bool = Field(
         default=True,
         description="Whether to run the Geant4 simulation stage.",
@@ -101,6 +105,7 @@ class WorkingDirectoryLayout(StrictModel):
         alias="IntensifiedPhotonsDirectory",
     )
     sensor_hits_directory: str | None = Field(default=None, alias="SensorHitsDirectory")
+    config_directory: str | None = Field(default=None, alias="ConfigDirectory")
     primaries_filename: str = Field(
         default="primaries.bin",
         alias="PrimariesFilename",
@@ -138,6 +143,11 @@ class WorkingDirectoryLayout(StrictModel):
     def apply_stage_defaults(self, controls: RunControls) -> None:
         """Fill defaults for stage directories required by enabled run controls."""
 
+        if controls.auto_focus_lens:
+            self.config_directory = _default_if_blank(
+                self.config_directory,
+                "config",
+            )
         if controls.geant4_simulation:
             self.primaries_directory = _default_if_blank(
                 self.primaries_directory,
@@ -176,6 +186,9 @@ class WorkingDirectoryLayout(StrictModel):
                 Path(self.macro_directory) if self.macro_directory else None
             ),
             "log directory": Path(self.log_directory) if self.log_directory else None,
+            "config directory": (
+                Path(self.config_directory) if self.config_directory else None
+            ),
             "primaries directory": (
                 Path(self.primaries_directory)
                 if self.primaries_directory
@@ -226,6 +239,7 @@ class WorkingDirectoryLayout(StrictModel):
         for field_name in (
             "macro_directory",
             "log_directory",
+            "config_directory",
             "primaries_directory",
             "secondaries_directory",
             "simulated_photons_directory",

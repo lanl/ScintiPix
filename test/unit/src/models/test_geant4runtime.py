@@ -24,6 +24,7 @@ from src.models.geant4runtime import (
     Geant4RunTime,
     Geant4RuntimeControls,
     PhotonCullingConfig,
+    ResolutionTarget,
 )
 
 
@@ -377,6 +378,83 @@ class TestGeant4RunTime:
         assert dumped == {
             "enabled": True,
             "acceptanceAngleDeg": 20.0,
+        }
+
+    def test_resolution_target_defaults(self) -> None:
+        """Siemens star resolution target should default to disabled."""
+        runtime = Geant4RunTime(number_of_particles=1000)
+        assert runtime.resolution_target.enabled is False
+        assert runtime.resolution_target.outer_radius_mm == 100.0
+        assert runtime.resolution_target.line_pairs == 64
+
+    def test_resolution_target_alias_handling(self) -> None:
+        """Nested resolutionTarget aliases should map to Python fields."""
+        runtime = Geant4RunTime.model_validate(
+            {
+                "numberOfParticles": 1000,
+                "resolutionTarget": {
+                    "resolutionTargetEnabled": True,
+                    "resolutionTargetOuterRadiusMm": 50.0,
+                    "resolutionTargetLinePairs": 32,
+                },
+            }
+        )
+        assert runtime.resolution_target.enabled is True
+        assert runtime.resolution_target.outer_radius_mm == 50.0
+        assert runtime.resolution_target.line_pairs == 32
+
+    def test_resolution_target_field_name_handling(self) -> None:
+        """Python field names should also validate for resolution target settings."""
+        runtime = Geant4RunTime(
+            number_of_particles=1000,
+            resolution_target={
+                "enabled": True,
+                "outer_radius_mm": 75.0,
+                "line_pairs": 48,
+            },
+        )
+        assert runtime.resolution_target.enabled is True
+        assert runtime.resolution_target.outer_radius_mm == 75.0
+        assert runtime.resolution_target.line_pairs == 48
+
+    def test_resolution_target_bounds(self) -> None:
+        """Resolution target radius and line-pair count must be positive."""
+        with pytest.raises(ValidationError, match="outer_radius_mm"):
+            ResolutionTarget(outer_radius_mm=0.0)
+
+        with pytest.raises(ValidationError, match="line_pairs"):
+            ResolutionTarget(line_pairs=0)
+
+    def test_resolution_target_serialization_uses_aliases(self) -> None:
+        """Serialized resolution target config should use YAML aliases."""
+        dumped = ResolutionTarget(
+            enabled=True,
+            outer_radius_mm=50.0,
+            line_pairs=32,
+        ).model_dump(by_alias=True)
+
+        assert dumped == {
+            "resolutionTargetEnabled": True,
+            "resolutionTargetOuterRadiusMm": 50.0,
+            "resolutionTargetLinePairs": 32,
+        }
+
+    def test_runtime_serialization_includes_resolution_target_alias(self) -> None:
+        """Serialized runtime config should include the nested resolutionTarget block."""
+        runtime = Geant4RunTime(
+            number_of_particles=1000,
+            resolution_target=ResolutionTarget(
+                enabled=True,
+                outer_radius_mm=50.0,
+                line_pairs=32,
+            ),
+        )
+        dumped = runtime.model_dump(by_alias=True)
+
+        assert dumped["resolutionTarget"] == {
+            "resolutionTargetEnabled": True,
+            "resolutionTargetOuterRadiusMm": 50.0,
+            "resolutionTargetLinePairs": 32,
         }
 
     def test_binary_custom_value(self) -> None:

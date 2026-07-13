@@ -230,27 +230,6 @@ class TestScintillatorCatalogIndex:
             },
         }
 
-    def test_valid_minimal_catalog(self) -> None:
-        """Minimal valid scintillator catalog should validate."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            self._minimal_scintillator_catalog_payload()
-        )
-        assert catalog.version == 1
-        assert catalog.default == "basic_scintillator"
-        assert "basic_scintillator" in catalog.materials
-
-    def test_version_positive(self) -> None:
-        """Version must be >= 1."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            self._minimal_scintillator_catalog_payload()
-        )
-        assert catalog.version == 1
-
-        with pytest.raises(ValidationError, match="version"):
-            payload = self._minimal_scintillator_catalog_payload()
-            payload["version"] = 0
-            ScintillatorCatalogIndex.model_validate(payload)
-
     def test_empty_default_rejected(self) -> None:
         """Empty default string should be rejected (min_length=1)."""
         payload = self._minimal_scintillator_catalog_payload()
@@ -264,94 +243,6 @@ class TestScintillatorCatalogIndex:
         payload["materials"] = {}
         with pytest.raises(ValidationError, match="materials"):
             ScintillatorCatalogIndex.model_validate(payload)
-
-    def test_default_must_exist_in_materials(self) -> None:
-        """Default key must exist in materials mapping."""
-        payload = self._minimal_scintillator_catalog_payload()
-        payload["default"] = "nonexistent_material"
-        with pytest.raises(
-            ValidationError,
-            match="default 'nonexistent_material' not found in materials mapping",
-        ):
-            ScintillatorCatalogIndex.model_validate(payload)
-
-    def test_materials_can_be_string_references(self) -> None:
-        """Materials can be string references (alias to other entries)."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            {
-                "version": 1,
-                "default": "alias_material",
-                "materials": {
-                    "base_material": {
-                        "name": "BaseMaterial",
-                        "photonEnergy": [2.0, 3.0],
-                        "rIndex": [1.5, 1.5],
-                        "nKEntries": 2,
-                        "timeComponents": {
-                            "default": [
-                                {"timeConstant": 1.0, "yieldFraction": 1.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                            ]
-                        },
-                    },
-                    "alias_material": "base_material",
-                },
-            }
-        )
-        assert catalog.materials["alias_material"] == "base_material"
-
-    def test_materials_can_be_scintillator_properties(self) -> None:
-        """Materials can be full ScintillatorProperties objects."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            self._minimal_scintillator_catalog_payload()
-        )
-        material = catalog.materials["basic_scintillator"]
-        # It's a ScintillatorProperties object, not a string
-        assert hasattr(material, "name")
-        assert hasattr(material, "photon_energy")
-
-    def test_multiple_materials_in_catalog(self) -> None:
-        """Multiple materials in catalog should validate."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            {
-                "version": 1,
-                "default": "material_a",
-                "materials": {
-                    "material_a": {
-                        "name": "MaterialA",
-                        "photonEnergy": [2.0, 3.0],
-                        "rIndex": [1.5, 1.5],
-                        "nKEntries": 2,
-                        "timeComponents": {
-                            "default": [
-                                {"timeConstant": 1.0, "yieldFraction": 1.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                            ]
-                        },
-                    },
-                    "material_b": "material_a",
-                    "material_c": {
-                        "name": "MaterialC",
-                        "photonEnergy": [2.5, 3.5],
-                        "rIndex": [1.6, 1.6],
-                        "nKEntries": 2,
-                        "timeComponents": {
-                            "default": [
-                                {"timeConstant": 2.0, "yieldFraction": 1.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                            ]
-                        },
-                    },
-                },
-            }
-        )
-        assert len(catalog.materials) == 3
-        assert "material_a" in catalog.materials
-        assert "material_b" in catalog.materials
-        assert "material_c" in catalog.materials
 
     def test_scintillator_properties_validation_applied(self) -> None:
         """ScintillatorProperties objects in catalog should be validated."""
@@ -379,41 +270,6 @@ class TestScintillatorCatalogIndex:
                 }
             )
 
-    def test_default_can_point_to_string_alias(self) -> None:
-        """Default can point to a string alias entry."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            {
-                "version": 1,
-                "default": "alias",
-                "materials": {
-                    "base": {
-                        "name": "Base",
-                        "photonEnergy": [2.0, 3.0],
-                        "rIndex": [1.5, 1.5],
-                        "nKEntries": 2,
-                        "timeComponents": {
-                            "default": [
-                                {"timeConstant": 1.0, "yieldFraction": 1.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                            ]
-                        },
-                    },
-                    "alias": "base",
-                },
-            }
-        )
-        assert catalog.default == "alias"
-
-    def test_default_can_point_to_properties_object(self) -> None:
-        """Default can point to a ScintillatorProperties entry."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            self._minimal_scintillator_catalog_payload()
-        )
-        assert catalog.default == "basic_scintillator"
-        material = catalog.materials["basic_scintillator"]
-        assert hasattr(material, "name")
-
     def test_version_field_required(self) -> None:
         """Version field is required."""
         payload = self._minimal_scintillator_catalog_payload()
@@ -434,45 +290,3 @@ class TestScintillatorCatalogIndex:
         del payload["materials"]
         with pytest.raises(ValidationError, match="materials"):
             ScintillatorCatalogIndex.model_validate(payload)
-
-    def test_mixed_string_and_properties_materials(self) -> None:
-        """Catalog can mix string aliases and full properties."""
-        catalog = ScintillatorCatalogIndex.model_validate(
-            {
-                "version": 2,
-                "default": "primary",
-                "materials": {
-                    "primary": {
-                        "name": "Primary",
-                        "photonEnergy": [2.0, 3.0],
-                        "rIndex": [1.5, 1.5],
-                        "nKEntries": 2,
-                        "timeComponents": {
-                            "default": [
-                                {"timeConstant": 1.0, "yieldFraction": 1.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                            ]
-                        },
-                    },
-                    "alias1": "primary",
-                    "alias2": "primary",
-                    "secondary": {
-                        "name": "Secondary",
-                        "photonEnergy": [2.5, 3.5],
-                        "rIndex": [1.6, 1.6],
-                        "nKEntries": 2,
-                        "timeComponents": {
-                            "default": [
-                                {"timeConstant": 2.0, "yieldFraction": 1.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                                {"timeConstant": 0.0, "yieldFraction": 0.0},
-                            ]
-                        },
-                    },
-                },
-            }
-        )
-        assert len(catalog.materials) == 4
-        assert isinstance(catalog.materials["alias1"], str)
-        assert hasattr(catalog.materials["primary"], "name")

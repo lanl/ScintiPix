@@ -39,7 +39,7 @@ def _create_minimal_simulation(temp_dir: Path):
     )
     from src.models.base import Vec3Mm, Size3Mm, Vec3
     from src.models.source import Source, SourceGps, GpsPosition, GpsAngular, GpsEnergy
-    from src.models.optics import Optics, Lens, OpticalGeometry, SensitiveDetector
+    from src.models.optics import Optics, Lens, OpticalInterface
     from src.models.geant4runtime import Geant4RunTime, Geant4RuntimeControls
     from src.models.metadata import Metadata, WorkingDirectoryLayout
 
@@ -99,14 +99,9 @@ def _create_minimal_simulation(temp_dir: Path):
     # Create optical config
     optical = Optics(
         lenses=[Lens(name="TestLens", primary=True, zmx_file="test.zmx")],
-        geometry=OpticalGeometry(
-            entrance_diameter=60.55,
-            sensor_max_width=36.0
-        ),
-        sensitive_detector_config=SensitiveDetector(
-            position_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=210.05),
-            shape="circle",
-            diameter_rule="min(entranceDiameter,sensorMaxWidth)"
+        interface=OpticalInterface(
+            diameter_mm=60.55,
+            position_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=210.05)
         )
     )
 
@@ -271,6 +266,61 @@ class MacroWriteTests(unittest.TestCase):
             self.assertTrue(any(cmd.startswith("/output/primariesFile ") for cmd in commands))
             self.assertFalse(any(cmd.startswith("/output/secondariesFile ") for cmd in commands))
             self.assertFalse(any(cmd.startswith("/output/photonsFile ") for cmd in commands))
+
+    def test_write_macro_omits_resolution_target_by_default(self) -> None:
+        """write_macro should omit resolution-target commands unless enabled."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            self.assertFalse(
+                any(
+                    cmd.startswith("/scintillator/geom/resolutionTarget")
+                    for cmd in commands
+                )
+            )
+
+    def test_write_macro_emits_enabled_resolution_target_commands(self) -> None:
+        """write_macro should emit Siemens star controls when enabled."""
+
+        from src.models.geant4runtime import ResolutionTarget
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+            simulation.geant4runner.resolution_target = ResolutionTarget(
+                enabled=True,
+                outer_radius_mm=50.0,
+                line_pairs=32,
+            )
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            self.assertIn("/scintillator/geom/resolutionTargetEnabled 1", commands)
+            self.assertIn(
+                "/scintillator/geom/resolutionTargetOuterRadius 50 mm",
+                commands,
+            )
+            self.assertIn("/scintillator/geom/resolutionTargetLinePairs 32", commands)
 
     def test_write_macro_without_run_initialize(self) -> None:
         """write_macro with include_run_initialize=False should omit /run/initialize."""

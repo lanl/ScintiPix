@@ -11,12 +11,18 @@ import sys
 try:
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
+    from src.config.yaml import write_yaml
     from src.models.simulation import Simulation
+    from src.optics.focus import auto_focus_lens
+    from src.optics.raytrace import transport_photons
 except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
     from src.config.macro import write_macro
+    from src.config.yaml import write_yaml
     from src.models.simulation import Simulation
+    from src.optics.focus import auto_focus_lens
+    from src.optics.raytrace import transport_photons
 
 
 _SIMULATED_EVENTS_PATTERN = re.compile(r"Simulated\s+(\d+)\s+events\b")
@@ -228,6 +234,56 @@ def run_simulation(
 ) -> subprocess.CompletedProcess[str] | None:
     """Prepare and launch one simulation from validated config."""
 
+    if not config.metadata.run_controls.geant4_simulation:
+        return None
+
+    # Run auto-focus routine if enabled
+    if config.metadata.run_controls.auto_focus_lens:
+        if config.optical is None or not config.optical.lenses:
+            raise ValueError("Autofocus requires an optical lens configuration.")
+
+        logger = get_logger()
+        logger.info("Running automatic lens focusing routine...")
+        primary_lens = next(lens for lens in config.optical.lenses if lens.primary)
+        original_z_mm = config.optical.interface.position_mm.z_mm
+        original_focus_mm = primary_lens.focus_adjustment_mm
+        original_back_focus_mm = primary_lens.back_focus_mm
+
+        auto_focus_lens(config)
+
+        scintillator_back_z_mm = (
+            config.scintillator.position_mm.z_mm
+            + config.scintillator.dimension_mm.z_mm / 2.0
+        )
+        working_distance_mm = (
+            config.optical.interface.position_mm.z_mm - scintillator_back_z_mm
+        )
+
+        logger.info(
+            "Auto-focus updated "
+            f"interface z: {original_z_mm:.3f} -> "
+            f"{config.optical.interface.position_mm.z_mm:.3f} mm; "
+            f"working distance: {working_distance_mm:.3f} mm; "
+            f"focus adjustment: {original_focus_mm} -> "
+            f"{primary_lens.focus_adjustment_mm} mm; "
+            f"back focus: {original_back_focus_mm} -> "
+            f"{primary_lens.back_focus_mm} mm"
+        )
+
+        # Mark autofocus as completed in the in-memory model
+        config.metadata.run_controls.auto_focus_lens = False
+
+        # Save the autofocused configuration
+        run_environment = config.metadata.run_environment
+        if run_environment.config_directory:
+            focused_yaml_filename = (
+                f"{run_environment.simulation_run_id}_"
+                f"{run_environment.sub_run_number:03d}_focused.yaml"
+            )
+            focused_yaml_path = Path(run_environment.config_directory) / focused_yaml_filename
+            write_yaml(config, focused_yaml_path, overwrite=True)
+            logger.info(f"Saved autofocused configuration to: {focused_yaml_path}")
+
     write_macro(config)
     completed = run(config, dry_run=dry_run, log_filename=log_filename)
     logger = get_logger()
@@ -235,4 +291,12 @@ def run_simulation(
         logger.info("[simulation] Dry run requested; skipping scintipix launch.")
         return None
     logger.info("[simulation] Completed.")
+
+    # Run optical transport if enabled
+    if config.metadata.run_controls.transportation:
+        logger.info("[transport] Running optical photon transport...")
+        with log_stage("transport"):
+            output_path = transport_photons(config)
+        logger.info(f"[transport] Completed. Output: {output_path}")
+
     return completed

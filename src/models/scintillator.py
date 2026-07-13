@@ -57,6 +57,14 @@ class ScintillationTimeComponent(StrictModel):
     time_constant: ValueWithUnit | float = Field(alias="timeConstant")
     yield_fraction: float = Field(alias="yieldFraction", ge=0)
 
+    @model_validator(mode="after")
+    def validate_time_constant(self) -> "ScintillationTimeComponent":
+        """Require a non-negative decay time."""
+
+        if extract_numeric_value(self.time_constant, converter=convert_time_to_ns) < 0:
+            raise ValueError("time_constant must be >= 0")
+        return self
+
     @property
     def time_constant_ns(self) -> float:
         """Get time constant in nanoseconds."""
@@ -177,6 +185,20 @@ class ScintillatorComposition(StrictModel):
     density: ValueWithUnit | float
     atoms: dict[str, int] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def validate_composition(self) -> "ScintillatorComposition":
+        """Require positive density and atom counts."""
+
+        density = extract_numeric_value(
+            self.density,
+            converter=convert_density_to_g_cm3,
+        )
+        if density <= 0:
+            raise ValueError("density must be > 0")
+        if any(count <= 0 for count in self.atoms.values()):
+            raise ValueError("atom counts must be > 0")
+        return self
+
 
 class ScintillatorOpticalProperties(StrictModel):
     """Optical properties of scintillator material.
@@ -215,6 +237,10 @@ class ScintillatorOpticalProperties(StrictModel):
             or self.r_index is not None
             or self.r_index_file is not None
         )
+        has_catalog_format = self.curves is not None or self.constants is not None
+
+        if not has_catalog_format and self.r_index is None and self.r_index_file is None:
+            raise ValueError("rIndex or rIndexFile must be provided")
 
         # Validate positive values
         if self.resolution_scale is not None and self.resolution_scale <= 0:
@@ -280,6 +306,17 @@ class ScintillatorProperties(StrictModel):
     composition: ScintillatorComposition
     optical: ScintillatorOpticalProperties
 
+class ScintillatorFieldOfView(StrictModel):
+    """Defines the field of view (FOV) of the scintillator in millimeters.
+
+    This is used to determine the required magnification and lens selection
+    to image the scintillator onto the intensifier active area. 
+    
+    The default is the dimension of the scintillator itself, but users can specify a smaller FOV to only image a portion of the scintillator, or a larger FOV to include some surrounding area. The optics stage will use this FOV along with the lens prescription and intensifier active area to calculate the optimal working distance and element spacing for the desired magnification.  
+       
+    """
+    width_mm: float = Field(alias="widthMm", gt=0)
+    height_mm: float = Field(alias="heightMm", gt=0)
 
 class Scintillator(StrictModel):
     """Scintillator geometry + material properties block."""
@@ -294,7 +331,11 @@ class Scintillator(StrictModel):
         ge=0,
     )
     properties: ScintillatorProperties | None = None
-
+    field_of_view: ScintillatorFieldOfView | None = Field(
+        default=None,
+        alias="fieldOfView",
+    )   
+    
     @model_validator(mode="after")
     def require_properties_or_catalog(self) -> "Scintillator":
         """Require either explicit properties or a catalog reference."""
@@ -302,5 +343,16 @@ class Scintillator(StrictModel):
         if self.catalog_id is None and self.properties is None:
             raise ValueError(
                 "`scintillator` must provide `properties` and/or `catalogId`."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def default_field_of_view(self) -> "Scintillator":
+        """Default field of view to scintillator dimensions if not specified."""
+
+        if self.field_of_view is None:
+            self.field_of_view = ScintillatorFieldOfView(
+                width_mm=self.dimension_mm.x_mm,
+                height_mm=self.dimension_mm.y_mm,
             )
         return self

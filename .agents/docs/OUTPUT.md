@@ -22,17 +22,22 @@ run_id/
     secondaries.bin
   simulatedPhotons/
     photons.bin
+  transportedPhotons/
+    photons.bin
 ```
 
 ## Output Stages
 
-ScintiPix writes simulation outputs at three stages of the simulation process:
+ScintiPix currently defines these binary output datasets:
 
 - **`primaries/`**: Primary particles generated in the simulation
 - **`secondaries/`**: Secondary particles produced from interactions of primaries
 - **`simulatedPhotons/`**: Optical photons generated and detected at the optical interface
+- **`transportedPhotons/`**: Optical photons transported to the intensifier photocathode
 
-All three stages use the same binary file format (described below).
+All output stages use the same binary file format (described below).
+
+The Python optics stage uses the same 64-byte header for transported photons.
 
 ---
 
@@ -61,6 +66,7 @@ struct BinaryHeader {
 - **Primary particles**: 96 bytes per record
 - **Secondary particles**: 96 bytes per record
 - **Photons**: 168 bytes per record
+- **Transported photons**: 72 bytes per record
 
 Each struct uses C-style alignment (natural padding after `int32` fields to maintain 8-byte alignment for `double`/`int64`).
 
@@ -162,6 +168,28 @@ The `simulatedPhotons/` dataset contains information about optical photons gener
 - If no hit position was recorded at the optical interface, the `optical_interface_hit_*` fields will be `NaN`
 - The `optical_interface_hit_*` fields capture position, time, direction, polarization, energy, and wavelength at the optical-interface crossing
 - Timing information in `photon_creation_time_ns` and `optical_interface_hit_time_ns` share the same GEANT4 event-local global-time basis, allowing for time-of-flight analysis
+
+### transportedPhotons (72 bytes per record)
+
+The `transportedPhotons/` dataset contains only photons that RayOptics traced
+successfully to the active photocathode area.
+
+| Field                               | Type   | Offset | Size |
+|-------------------------------------|--------|--------|------|
+| source_photon_index                 | int64  | 0      | 8    |
+| gun_call_id                         | int64  | 8      | 8    |
+| primary_track_id                    | int32  | 16     | 4    |
+| secondary_track_id                  | int32  | 20     | 4    |
+| photon_track_id                     | int32  | 24     | 4    |
+| _padding_                           | -      | 28     | 4    |
+| photocathode_hit_x_mm               | double | 32     | 8    |
+| photocathode_hit_y_mm               | double | 40     | 8    |
+| photocathode_hit_z_mm               | double | 48     | 8    |
+| photocathode_hit_time_ns            | double | 56     | 8    |
+| photocathode_hit_wavelength_nm      | double | 64     | 8    |
+
+Blocked, missed, invalid, and out-of-bounds rays are omitted rather than stored
+as transported photons.
 
 ---
 

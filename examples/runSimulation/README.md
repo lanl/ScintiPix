@@ -2,10 +2,8 @@
 
 This folder contains scripts that generate macros from YAML and launch `scintipix`.
 
-Entry points:
-- `run_simulation_from_yaml.py`: one YAML -> one macro -> one run
-- `run_simulation_in_batch_mode.py`: one YAML -> sequential sub-runs with
-  per-sub-run macro generation
+The `run_simulation_from_yaml.py` entry point performs one YAML -> one macro ->
+one run.
 
 Run from repo root:
 
@@ -13,6 +11,3 @@ Run from repo root:
 pixi run python examples/runSimulation/run_simulation_from_yaml.py \
   examples/yamlFiles/CanonEF50mmf1p0L_example.yaml
 ```
-
-For the full pipeline including optical transport, see
-[`examples/endToEnd/README.md`](../endToEnd/README.md).

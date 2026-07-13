@@ -6,8 +6,27 @@ lenses:
     description: Canon EF 50 mm f/1.0L sequential prescription.
     zmxFile: CanonEF50mmf1.0L.zmx
     smxFile: CanonEF50mmf1.0L.smx
+    focusGaps:
+      - gapIndex: 10
+        defaultThickness: 10.229
+        scalingFactor: 1.0
   Nikkor80-200mmf2.8D:
     name: Nikkor80-200mmf2.8D
     description: Nikkor 80-200 mm f/2.8D sequential prescription.
     zmxFile: Nikkor80-200mmf2.8D.zmx
     smxFile: Nikkor80-200mmf2.8D.smx
+    focusGaps:
+      - gapIndex: 24
+        defaultThickness: 0.2
+        scalingFactor: 1.0
+      - gapIndex: 31
+        defaultThickness: 0.2
+        scalingFactor: -1.0
+  NikkorZ58mmf0.95:
+    name: NikkorZ58mmf0.95
+    description: Nikkor Z 58mm f/0.95 S from G4LumaCam - configured for finite conjugates (DISZ 320mm)
+    zmxFile: NikkorZ58mmf0.95.zmx
+    focusGaps:
+      - gapIndex: 22
+        defaultThickness: 21.29
+        scalingFactor: 1.0

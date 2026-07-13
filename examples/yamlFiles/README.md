@@ -1,9 +1,9 @@
 # Example YAML Files
 
-This folder contains shared `SimConfig` YAML inputs used by the scripts under
-`examples/`. The authoritative schema is defined in
-`src/config/SimConfig.py`; this README is the user-facing field guide for the
-same structure.
+This folder contains shared `Simulation` YAML inputs used by the scripts under
+`examples/`. The authoritative schema is defined under `src/models/`, with the
+top-level model in `src/models/simulation.py`. YAML loading is implemented by
+`src.config.yaml.from_yaml(...)`.
 
 Current files:
 - `CanonEF50mmf1p0L_example.yaml`: primary end-to-end example configuration
@@ -15,12 +15,11 @@ Current files:
 - `pulsed_neutron_source_timing.yaml`: lightweight pulsed source timing example
   for Geant4 `/primaries` timing. Uses `particle_flux`, `pulse_period_ns`,
   `pulse_time_offset_ns`, and `pulse_time_width_ns`.
-- `three_component_timing_example.yaml`: explicit scintillation timing example
 
-All example YAMLs include:
+Simulation example YAMLs include:
 - a `source.timing` block for source-time macro generation
-- an `intensifier` block for post-transport staged intensifier response
-- a `sensor.timepix` block for downstream centered single-chip Timepix3 readout
+- an `intensifier` block defining the future photocathode image plane
+- a `sensor.timepix` block defining the future sensor model
 
 `source.timing` is emitted by the Python configuration layer as
 `/source/timing/*` macro commands and consumed by the Geant4 runtime when
@@ -29,14 +28,13 @@ generating primary vertices.
 The source-neutron timing examples are consumed by
 [`examples/sourceTiming/README.md`](../sourceTiming/README.md). They are
 Geant4-only inspection inputs; downstream optical, intensifier, and sensor
-blocks are present for schema and geometry completeness.
+blocks are present for schema and geometry completeness; their runtime stages
+are not active yet.
 
 ## Schema Rules
 
-`SimConfig` rejects unknown keys inside recognized config blocks. Use the field
-names below, or the listed aliases where provided. Extra top-level keys are
-ignored by `ConfigIO.from_yaml(...)` so script-specific payloads can coexist
-with the strict simulation config.
+`Simulation` rejects unknown keys. Use the field names below or the listed
+aliases where provided.
 
 Relative paths in run-environment settings are resolved by the configuration
 helpers before macro writing and pipeline execution.
@@ -46,14 +44,13 @@ helpers before macro writing and pipeline execution.
 Required:
 - `scintillator`: scintillator geometry and material/optical properties
 - `source`: Geant4 GPS source settings and optional source timing
-- `optical`: lens and optical-interface geometry assumptions
-- `Metadata`: run metadata and output directory layout
+- `metadata`: run metadata, stage controls, and output directory layout
+- `geant4runner`: Geant4 run controls, output selection, and particle count
 
 Optional:
+- `optical`: lens and optical-interface geometry assumptions
 - `intensifier`: image-intensifier model and response parameters
 - `sensor`: Timepix sensor/readout parameters
-- `simulation`: Geant4 run controls and beam count
-- `runner`: Python launcher settings
 
 ## `scintillator`
 
@@ -61,7 +58,7 @@ Defines scintillator size, position, mask, and material properties.
 
 Fields:
 - `catalogId`: optional scintillator catalog identifier. When present,
-  `ConfigIO.from_yaml(...)` hydrates missing `properties` fields from the
+  `src.config.yaml.from_yaml(...)` hydrates missing `properties` fields from the
   bundled scintillator catalog.
 - `position_mm`: required scintillator center position.
   - `x_mm`
@@ -83,24 +80,34 @@ Defines the optical/material table emitted into Geant4 macros.
 
 Required when not provided by a catalog:
 - `name`: material name used by the Geant4 scintillator material command
+- `composition`: material density and atom counts
+- `optical`: optical tables and scintillation response
+
+### `scintillator.properties.composition`
+
+- `density`: density in g/cm3; must be greater than zero
+- `atoms`: mapping of element symbols to positive atom counts
+
+### `scintillator.properties.optical`
+
+Required for inline optical tables:
+
 - `photonEnergy`: photon-energy table in eV; length must match `nKEntries`
 - `rIndex`: refractive-index table; length must match `nKEntries`
 - `nKEntries`: number of optical table entries; must be greater than zero
-- `timeComponents`: scintillation decay profiles
 
-Optional:
+Optional optical fields:
+
 - `absLength`: absorption-length table in cm; if present, length must match
   `nKEntries`
 - `scintSpectrum`: emission-spectrum table; if present, length must match
   `nKEntries`
-- `density`: density in g/cm3; must be greater than zero
-- `carbonAtoms`: stoichiometric carbon atom count; must be greater than zero
-- `hydrogenAtoms`: stoichiometric hydrogen atom count; must be greater than zero
+- `timeComponents`: scintillation decay profiles
 - `scintYield`: scintillation yield in photons/MeV; must be greater than zero
 - `resolutionScale`: Geant4 scintillation resolution scale; must be greater
   than zero
 
-### `scintillator.properties.timeComponents`
+### `scintillator.properties.optical.timeComponents`
 
 Particle-keyed scintillation timing profiles. At least one profile is required.
 Supported profile keys:
@@ -250,8 +257,8 @@ input to downstream optical transport.
 Fields:
 - `lenses`: required list of lens descriptors. Exactly one lens must have
   `primary: true`.
-- `geometry`: required optical envelope values.
-- `sensitiveDetectorConfig`: required optical-interface detector placement.
+- `interface`: required optical-interface aperture, position, and optional
+  working-distance bounds.
 - `showTransportProgress`: optional transport progress display flag. Defaults
   to `true`. Alias: `show_transport_progress`.
 - `transportAssumptions`: optional physical assumptions used by downstream
@@ -266,26 +273,28 @@ Fields:
   the `zmxFile` stem.
 - `primary`: required boolean. Exactly one lens in the list must be primary.
 - `catalogId`: optional lens catalog identifier. Catalog-backed configs are
-  hydrated by `ConfigIO.from_yaml(...)`.
+  hydrated by `src.config.yaml.from_yaml(...)`.
 - `zmxFile`: optional Zemax lens file path or catalog-resolved filename.
 - `smxFile`: optional rayoptics sidecar file path or catalog-resolved filename.
+- `focusGaps`: internal prescription gaps moved by autofocus.
+- `focusAdjustmentMm`: current internal focus adjustment.
+- `focusAdjustmentBoundsMm`: optional permitted internal focus travel.
+- `backFocusMm`: last modeled optical surface to photocathode distance.
+- `backFocusBoundsMm`: optional permitted back-focus interval.
 
-### `optical.geometry`
+### `optical.interface`
 
 Fields:
-- `entranceDiameter`: lens entrance diameter in mm; must be greater than zero.
-- `sensorMaxWidth`: sensor maximum width in mm; must be greater than zero.
-
-### `optical.sensitiveDetectorConfig`
-
-Fields:
-- `position_mm`: optical-interface center position in mm.
+- `diameterMm`: lens-entrance/scoring-plane diameter; must be greater than zero.
+- `positionMm`: absolute optical-interface center position in mm.
   - `x_mm`
   - `y_mm`
   - `z_mm`
-- `shape`: detector shape string.
-- `diameterRule`: expression-like sizing rule used by command-generation code,
-  for example `min(entranceDiameter,sensorMaxWidth)`.
+- `workingDistanceBoundsMm`: required autofocus search interval measured from
+  the scintillator back face to the lens entrance.
+
+Autofocus bounds in tests and examples are illustrative unless the associated
+lens, mount, adapter, and intensifier assembly has been mechanically validated.
 
 ### `optical.transportAssumptions`
 
@@ -299,8 +308,6 @@ Optional image-intensifier model used by the staged sensor pipeline.
 
 Fields:
 - `model`: required intensifier model label.
-- `write_output_hdf5`: optional boolean controlling standalone intensifier HDF5
-  writing. Defaults to `false`. Alias: `writeOutputHdf5`.
 - `input_screen`: required active input-screen definition. Alias:
   `inputScreen`.
 - `photocathode`: optional photocathode response parameters.
@@ -385,17 +392,29 @@ Fields:
 - `dead_time_ns`: per-pixel dead time in ns. Defaults to `475.0` and must be
   non-negative. Alias: `deadTimeNs`.
 
-## `simulation`
+## `geant4runner`
 
-Optional Geant4 run-control block. If present, it must include
+Geant4 run-control and Python launch settings. If present, it must include
 `numberOfParticles` and/or `runtimeControls`.
 
 Fields:
 - `numberOfParticles`: optional `/run/beamOn` particle count. Must be greater
   than zero.
 - `runtimeControls`: optional macro preamble controls.
+- `binary`: scintipix executable command. Defaults to `scintipix` and must not
+  be blank.
+- `eventsPerOutput`: Geant4 events buffered by each worker before writing one
+  Parquet part file. Defaults to `1000`.
+- `output`: selects which Geant4 Parquet tables are assembled and written.
+  Defaults to all tables enabled. At least one of `primaries`, `secondaries`,
+  or `photons` must be `true`.
+- `photonCulling`: optional photon culling optimization settings.
+- `resolutionTarget`: optional Geant4-side Siemens star resolution target.
+- `showProgress`: Python runner progress display flag. Defaults to `false`.
+- `verifyOutput`: check for expected simulation Parquet part files after
+  simulation. Defaults to `true`.
 
-### `simulation.runtimeControls`
+### `geant4runner.runtimeControls`
 
 If present, at least one field must be set.
 
@@ -407,22 +426,30 @@ Fields:
 - `printProgress`: `/run/printProgress`; must be greater than zero.
 - `storeTrajectory`: `/tracking/storeTrajectory`; boolean.
 
-## `runner`
+### `geant4runner.resolutionTarget`
 
-Optional Python-side process-launch settings. These do not map directly to
-Geant4 macros.
+Optional Siemens star absorber target placed on the scintillator `+Z` face.
+Defaults to disabled. When enabled, the clear and opaque sectors are controlled
+by the line-pair count; the inner radius and thickness are fixed in the Geant4
+geometry.
 
 Fields:
-- `binary`: scintipix executable command. Defaults to `scintipix` and must not
-  be blank.
-- `eventsPerOutput`: Geant4 events buffered by each worker before writing one
-  Parquet part file. Defaults to `1000`.
-- `output`: selects which Geant4 Parquet tables are assembled and written.
-  Defaults to all tables enabled. At least one of `primaries`, `secondaries`,
-  or `photons` must be `true`.
-- `showProgress`: Python runner progress display flag. Defaults to `false`.
-- `verifyOutput`: check for expected simulation Parquet part files after
-  simulation. Defaults to `true`.
+- `resolutionTargetEnabled`: boolean. Defaults to `false`.
+- `resolutionTargetOuterRadiusMm`: outer radius in mm. Defaults to `100.0` and
+  must be greater than zero.
+- `resolutionTargetLinePairs`: number of opaque/clear line pairs. Defaults to
+  `64` and must be greater than zero.
+
+Example:
+
+```yaml
+geant4runner:
+  numberOfParticles: 5000
+  resolutionTarget:
+    resolutionTargetEnabled: true
+    resolutionTargetOuterRadiusMm: 50.0
+    resolutionTargetLinePairs: 64
+```
 
 ## `Metadata`
 
@@ -447,7 +474,7 @@ Fields:
 - `MacroDirectory`: macro output directory under the run root. Defaults to
   `macros`.
 - `LogDirectory`: log output directory under the run root. Defaults to `logs`.
-- `OutputInfo`: stage output directory names and transport chunking controls.
+- Stage directory and filename fields control the selected binary outputs.
 
 Resolved layout:
 
@@ -455,42 +482,34 @@ Resolved layout:
 <WorkingDirectory>/<SimulationRunID>/
   <MacroDirectory>/
   <LogDirectory>/
-  <OutputInfo.SimulatedPhotonsDirectory>/
-  <OutputInfo.TransportedPhotonsDirectory>/
+  <SimulatedPhotonsDirectory>/
+  <TransportedPhotonsDirectory>/
 ```
 
-### `Metadata.RunEnvironment.OutputInfo`
+### `Metadata.RunEnvironment` output fields
 
 Fields:
-- `SimulatedPhotonsDirectory`: simulation-stage HDF5 directory. Defaults to
-  `simulatedPhotons`. Accepted aliases include `simulated_photons_dir` and
-  `simulatedPhotonsDir`.
-- `TransportedPhotonsDirectory`: optical-transport HDF5 directory. Defaults to
-  `transportedPhotons`. Accepted aliases include `transported_photons_dir` and
-  `transportedPhotonsDir`.
-- `TransportChunkRows`: optical-transport chunk row control. Defaults to
-  `auto`; may be `auto` or a positive integer.
-- `TransportChunkTargetMiB`: target memory budget in MiB for automatic
-  optical-transport chunk sizing. Defaults to `32.0` and must be greater than
-  zero.
+- `SimulatedPhotonsDirectory`: Geant4 binary photon directory. Defaults to
+  `simulatedPhotons` when the Geant4 stage is enabled.
+- `TransportedPhotonsDirectory`: reserved binary RayOptics output directory.
+  Defaults to `transportedPhotons` when transportation is enabled.
+- `PhotonsFilename`: binary photon filename. Defaults to `photons.bin`.
 
 ## Going from YAML to Macro Generation
 
 The YAML configuration is processed into a sequence of Geant4 macro commands
 that initialize the simulation environment, geometry, source, and beam setup.
-`ConfigIO.macro_commands(...)` emits commands in this order:
+`src.config.macro.write_macro(...)` writes commands assembled in this order:
 
-1. `simulation.runtimeControls`: runtime parameters and verbosity settings
+1. `geant4runner.runtimeControls`: runtime parameters and verbosity settings
 2. `/output/*` commands from `Metadata.RunEnvironment`: output directory setup
 3. scintillator and optical-interface geometry/material commands: physics models
 4. `/run/initialize`: initialize the Geant4 run
 5. `/gps/*` source commands: General Particle Source configuration
 6. `/source/timing/*` commands when `source.timing` is present: time structure
-7. `/run/beamOn <N>` when `simulation.numberOfParticles` is set: execute beam
+7. `/run/beamOn <N>` when `geant4runner.numberOfParticles` is set: execute beam
 
 These YAMLs are consumed by scripts in:
-- [`SimulationSetup/`](../SimulationSetup/README.md)
+- [`configurations/`](../configurations/)
 - [`runSimulation/`](../runSimulation/README.md)
-- [`photonTransportation/`](../photonTransportation/README.md)
-- [`endToEnd/`](../endToEnd/README.md)
-- [`scintillatorCataloging/`](../scintillatorCataloging/README.md)
+- [`sourceTiming/`](../sourceTiming/README.md)

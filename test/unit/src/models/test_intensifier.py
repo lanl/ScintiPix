@@ -612,7 +612,6 @@ class TestIntensifier:
         intensifier = Intensifier.model_validate(self._minimal_intensifier_payload())
         assert intensifier.model == "Cricket2"
         assert intensifier.input_screen.image_circle_diameter_mm == 18.0
-        assert intensifier.write_output_hdf5 is False
 
     def test_default_stage_factories(self) -> None:
         """Photocathode, MCP, and phosphor should use default factories."""
@@ -627,18 +626,6 @@ class TestIntensifier:
         payload["inputScreen"] = payload.pop("input_screen")
         intensifier = Intensifier.model_validate(payload)
         assert intensifier.input_screen.image_circle_diameter_mm == 18.0
-
-    def test_write_output_hdf5_alias_handling(self) -> None:
-        """camelCase writeOutputHdf5 alias should map to write_output_hdf5."""
-        payload = self._minimal_intensifier_payload()
-        payload["writeOutputHdf5"] = True
-        intensifier = Intensifier.model_validate(payload)
-        assert intensifier.write_output_hdf5 is True
-
-    def test_write_output_hdf5_default_false(self) -> None:
-        """write_output_hdf5 should default to False."""
-        intensifier = Intensifier.model_validate(self._minimal_intensifier_payload())
-        assert intensifier.write_output_hdf5 is False
 
     def test_empty_model_name_rejected(self) -> None:
         """Empty model name should be rejected (min_length=1)."""
@@ -690,7 +677,6 @@ class TestIntensifier:
         intensifier = Intensifier.model_validate(
             {
                 "model": "Custom-Gen3",
-                "write_output_hdf5": True,
                 "input_screen": {
                     "image_circle_diameter_mm": 25.0,
                     "center_mm": [2.0, 3.0],
@@ -723,7 +709,6 @@ class TestIntensifier:
             }
         )
         assert intensifier.model == "Custom-Gen3"
-        assert intensifier.write_output_hdf5 is True
         assert intensifier.input_screen.magnification == 1.2
         assert intensifier.photocathode.collection_efficiency == 0.95
         assert intensifier.mcp.gain_ref == 1500.0
@@ -733,5 +718,4 @@ class TestIntensifier:
         """Serialized output should use snake_case aliases."""
         intensifier = Intensifier.model_validate(self._minimal_intensifier_payload())
         dumped = intensifier.model_dump(by_alias=True)
-        assert "write_output_hdf5" in dumped
         assert "input_screen" in dumped

@@ -4,7 +4,7 @@ These examples are intentionally limited to running the Geant4 simulation with
 source/neutron timing configured from YAML. They do not run optical transport,
 the intensifier model, or Timepix.
 
-The script accepts one optional input: a SimConfig YAML path. The default input
+The script accepts one optional input: a `Simulation` YAML path. The default input
 is `examples/yamlFiles/pulsed_neutron_source_timing.yaml`.
 
 ## Timing Signal

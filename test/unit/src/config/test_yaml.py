@@ -11,6 +11,8 @@ from src.models.simulation import Simulation
 from src.models.source import Source, SourceGps, GpsPosition, GpsEnergy
 from src.models.scintillator import (
     Scintillator,
+    ScintillatorComposition,
+    ScintillatorOpticalProperties,
     ScintillatorProperties,
     ScintillationTimeComponentsByExcitation,
     ScintillationTimeComponent,
@@ -42,18 +44,26 @@ scintillator:
   dimension_mm: {x_mm: 100.0, y_mm: 100.0, z_mm: 20.0}
   properties:
     name: TestScint
-    photonEnergy: [2.0, 3.0, 4.0]
-    rIndex: [1.58, 1.58, 1.58]
-    nKEntries: 3
-    timeComponents:
-      default:
-        - {timeConstant: 2.4, yieldFraction: 1.0}
-        - {timeConstant: 0.0, yieldFraction: 0.0}
-        - {timeConstant: 0.0, yieldFraction: 0.0}
+    composition:
+      density: 1.023
+      atoms: {C: 9, H: 10}
+    optical:
+      photonEnergy: [2.0, 3.0, 4.0]
+      rIndex: [1.58, 1.58, 1.58]
+      nKEntries: 3
+      timeComponents:
+        default:
+          - {timeConstant: 2.4, yieldFraction: 1.0}
+          - {timeConstant: 0.0, yieldFraction: 0.0}
+          - {timeConstant: 0.0, yieldFraction: 0.0}
 
 geant4runner:
   numberOfParticles: 1000
   binary: scintipix
+  resolutionTarget:
+    resolutionTargetEnabled: true
+    resolutionTargetOuterRadiusMm: 50.0
+    resolutionTargetLinePairs: 32
 
 metadata:
   author: Test Author
@@ -71,6 +81,9 @@ metadata:
         assert simulation.source.gps.particle == "neutron"
         assert simulation.scintillator.properties.name == "TestScint"
         assert simulation.geant4runner.number_of_particles == 1000
+        assert simulation.geant4runner.resolution_target.enabled is True
+        assert simulation.geant4runner.resolution_target.outer_radius_mm == 50.0
+        assert simulation.geant4runner.resolution_target.line_pairs == 32
         assert simulation.metadata.author == "Test Author"
 
     def test_load_nonexistent_file(self):
@@ -132,21 +145,27 @@ class TestWriteYaml:
                 dimension_mm=Size3Mm(x_mm=100.0, y_mm=100.0, z_mm=20.0),
                 properties=ScintillatorProperties(
                     name="TestScint",
-                    photonEnergy=[2.0, 3.0, 4.0],
-                    rIndex=[1.58, 1.58, 1.58],
-                    nKEntries=3,
-                    timeComponents=ScintillationTimeComponentsByExcitation(
-                        default=[
-                            ScintillationTimeComponent(
-                                timeConstant=2.4, yieldFraction=1.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                        ]
+                    composition=ScintillatorComposition(
+                        density=1.023,
+                        atoms={"C": 9, "H": 10},
+                    ),
+                    optical=ScintillatorOpticalProperties(
+                        photonEnergy=[2.0, 3.0, 4.0],
+                        rIndex=[1.58, 1.58, 1.58],
+                        nKEntries=3,
+                        timeComponents=ScintillationTimeComponentsByExcitation(
+                            default=[
+                                ScintillationTimeComponent(
+                                    timeConstant=2.4, yieldFraction=1.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                            ]
+                        ),
                     ),
                 ),
             ),
@@ -194,21 +213,27 @@ class TestWriteYaml:
                 dimension_mm=Size3Mm(x_mm=100.0, y_mm=100.0, z_mm=20.0),
                 properties=ScintillatorProperties(
                     name="TestScint",
-                    photonEnergy=[2.0, 3.0, 4.0],
-                    rIndex=[1.58, 1.58, 1.58],
-                    nKEntries=3,
-                    timeComponents=ScintillationTimeComponentsByExcitation(
-                        default=[
-                            ScintillationTimeComponent(
-                                timeConstant=2.4, yieldFraction=1.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                        ]
+                    composition=ScintillatorComposition(
+                        density=1.023,
+                        atoms={"C": 9, "H": 10},
+                    ),
+                    optical=ScintillatorOpticalProperties(
+                        photonEnergy=[2.0, 3.0, 4.0],
+                        rIndex=[1.58, 1.58, 1.58],
+                        nKEntries=3,
+                        timeComponents=ScintillationTimeComponentsByExcitation(
+                            default=[
+                                ScintillationTimeComponent(
+                                    timeConstant=2.4, yieldFraction=1.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                            ]
+                        ),
                     ),
                 ),
             ),
@@ -253,21 +278,27 @@ class TestWriteYaml:
                 dimension_mm=Size3Mm(x_mm=100.0, y_mm=100.0, z_mm=20.0),
                 properties=ScintillatorProperties(
                     name="TestScint",
-                    photonEnergy=[2.0, 3.0, 4.0],
-                    rIndex=[1.58, 1.58, 1.58],
-                    nKEntries=3,
-                    timeComponents=ScintillationTimeComponentsByExcitation(
-                        default=[
-                            ScintillationTimeComponent(
-                                timeConstant=2.4, yieldFraction=1.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                        ]
+                    composition=ScintillatorComposition(
+                        density=1.023,
+                        atoms={"C": 9, "H": 10},
+                    ),
+                    optical=ScintillatorOpticalProperties(
+                        photonEnergy=[2.0, 3.0, 4.0],
+                        rIndex=[1.58, 1.58, 1.58],
+                        nKEntries=3,
+                        timeComponents=ScintillationTimeComponentsByExcitation(
+                            default=[
+                                ScintillationTimeComponent(
+                                    timeConstant=2.4, yieldFraction=1.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                            ]
+                        ),
                     ),
                 ),
             ),
@@ -310,21 +341,27 @@ class TestWriteYaml:
                 dimension_mm=Size3Mm(x_mm=100.0, y_mm=100.0, z_mm=20.0),
                 properties=ScintillatorProperties(
                     name="TestScint",
-                    photonEnergy=[2.0, 3.0, 4.0],
-                    rIndex=[1.58, 1.58, 1.58],
-                    nKEntries=3,
-                    timeComponents=ScintillationTimeComponentsByExcitation(
-                        default=[
-                            ScintillationTimeComponent(
-                                timeConstant=2.4, yieldFraction=1.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                        ]
+                    composition=ScintillatorComposition(
+                        density=1.023,
+                        atoms={"C": 9, "H": 10},
+                    ),
+                    optical=ScintillatorOpticalProperties(
+                        photonEnergy=[2.0, 3.0, 4.0],
+                        rIndex=[1.58, 1.58, 1.58],
+                        nKEntries=3,
+                        timeComponents=ScintillationTimeComponentsByExcitation(
+                            default=[
+                                ScintillationTimeComponent(
+                                    timeConstant=2.4, yieldFraction=1.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                            ]
+                        ),
                     ),
                 ),
             ),
@@ -377,23 +414,28 @@ class TestRoundTrip:
                 maskRadius=5.0,
                 properties=ScintillatorProperties(
                     name="EJ200",
-                    photonEnergy=[2.0, 3.0, 4.0],
-                    rIndex=[1.58, 1.58, 1.58],
-                    nKEntries=3,
-                    density=1.023,
-                    scintYield=10000.0,
-                    timeComponents=ScintillationTimeComponentsByExcitation(
-                        default=[
-                            ScintillationTimeComponent(
-                                timeConstant=2.1, yieldFraction=1.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                            ScintillationTimeComponent(
-                                timeConstant=0.0, yieldFraction=0.0
-                            ),
-                        ]
+                    composition=ScintillatorComposition(
+                        density=1.023,
+                        atoms={"C": 9, "H": 10},
+                    ),
+                    optical=ScintillatorOpticalProperties(
+                        photonEnergy=[2.0, 3.0, 4.0],
+                        rIndex=[1.58, 1.58, 1.58],
+                        nKEntries=3,
+                        scintYield=10000.0,
+                        timeComponents=ScintillationTimeComponentsByExcitation(
+                            default=[
+                                ScintillationTimeComponent(
+                                    timeConstant=2.1, yieldFraction=1.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                                ScintillationTimeComponent(
+                                    timeConstant=0.0, yieldFraction=0.0
+                                ),
+                            ]
+                        ),
                     ),
                 ),
             ),
@@ -433,7 +475,7 @@ class TestRoundTrip:
         assert final.source.gps.energy.mono_mev == 4.5
         assert final.scintillator.catalog_id == "EJ200"
         assert final.scintillator.mask_radius_mm == 5.0
-        assert final.scintillator.properties.density == 1.023
+        assert final.scintillator.properties.composition.density == 1.023
         assert final.geant4runner.number_of_particles == 5000
         assert final.geant4runner.runtime_controls.control_verbose == 1
         assert final.metadata.author == "Round Trip Test"

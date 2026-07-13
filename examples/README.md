@@ -2,14 +2,10 @@
 
 This directory contains runnable workflow examples and shared example YAMLs.
 
-Use this index to jump to the example area you care about:
+Current example areas:
 
-- [SimulationSetup/README.md](SimulationSetup/README.md): generate example macros from YAML
-- [runSimulation/README.md](runSimulation/README.md): generate and run simulations from YAML
-- [sourceTiming/README.md](sourceTiming/README.md): run pulsed or continuous Geant4 source timing examples and inspect neutron interaction timing
-- [photonTransportation/README.md](photonTransportation/README.md): transport optical-interface hits through the configured lens
-- [endToEnd/README.md](endToEnd/README.md): run the full YAML -> simulation -> transport -> intensifier -> Timepix pipeline
-- [analysisLite/README.md](analysisLite/README.md): generate lightweight analysis plots from HDF5 output
-- [scintillatorCataloging/README.md](scintillatorCataloging/README.md): catalog-driven scintillator configuration examples
-- [yamlFiles/README.md](yamlFiles/README.md): shared example SimConfig YAML files
-- [timingAnalysis/README.md](timingAnalysis/README.md): timing-oriented example map
+- [configurations/](configurations/): load YAML and write Geant4 macros
+- [runSimulation/README.md](runSimulation/README.md): run one validated YAML
+- [sourceTiming/README.md](sourceTiming/README.md): inspect Geant4 source timing
+- [yamlFiles/README.md](yamlFiles/README.md): shared `Simulation` YAML files
+

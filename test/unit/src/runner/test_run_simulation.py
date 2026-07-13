@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 
 def _repo_root() -> Path:
@@ -65,7 +65,7 @@ class RunSimulationTests(unittest.TestCase):
 
     def _config_for_tmp(self, tmp_path: Path):
         config = self.from_yaml(
-            _repo_root() / "examples" / "yamlFiles" / "pulsed_neutron_source_timing.yaml"
+            _repo_root() / "examples" / "yamlFiles" / "CanonEF50mmf1p0L_example.yaml"
         )
         run_environment = config.metadata.run_environment
         run_environment.working_directory = tmp_path.as_posix()
@@ -87,62 +87,46 @@ class RunSimulationTests(unittest.TestCase):
     def _log_file(self, config) -> Path:
         return Path(config.metadata.run_environment.log_directory) / "runLog.txt"
 
-    def _primaries_parquet_file(self, config) -> Path:
+    def _primaries_output_file(self, config) -> Path:
         return (
             Path(config.metadata.run_environment.primaries_directory)
             / config.metadata.run_environment.primaries_filename
         )
 
-    def _primaries_parquet_part(self, config, index: int = 0) -> Path:
-        base = self._primaries_parquet_file(config)
-        return base.parent / f"{base.stem}_part-{index:06d}{base.suffix}"
-
-    def _parquet_file(self, directory: str | Path, filename: str) -> Path:
+    def _output_file(self, directory: str | Path, filename: str) -> Path:
         return Path(directory) / filename
 
-    def _parquet_part(self, base: Path, index: int = 0) -> Path:
-        return base.parent / f"{base.stem}_part-{index:06d}{base.suffix}"
-
-    def _enabled_parquet_parts(self, config, index: int = 0) -> list[Path]:
+    def _enabled_output_files(self, config) -> list[Path]:
         env = config.metadata.run_environment
         output = config.geant4runner.output
-        parts: list[Path] = []
+        files: list[Path] = []
         if output.primaries:
-            parts.append(
-                self._parquet_part(
-                    self._parquet_file(
-                        env.primaries_directory,
-                        env.primaries_filename,
-                    ),
-                    index,
+            files.append(
+                self._output_file(
+                    env.primaries_directory,
+                    env.primaries_filename,
                 )
             )
         if output.secondaries:
-            parts.append(
-                self._parquet_part(
-                    self._parquet_file(
-                        env.secondaries_directory,
-                        env.secondaries_filename,
-                    ),
-                    index,
+            files.append(
+                self._output_file(
+                    env.secondaries_directory,
+                    env.secondaries_filename,
                 )
             )
         if output.photons:
-            parts.append(
-                self._parquet_part(
-                    self._parquet_file(
-                        env.simulated_photons_directory,
-                        env.photons_filename,
-                    ),
-                    index,
+            files.append(
+                self._output_file(
+                    env.simulated_photons_directory,
+                    env.photons_filename,
                 )
             )
-        return parts
+        return files
 
-    def _write_enabled_parquet_parts(self, config) -> None:
-        for output_parquet in self._enabled_parquet_parts(config):
-            output_parquet.parent.mkdir(parents=True, exist_ok=True)
-            output_parquet.write_text("ok\n", encoding="utf-8")
+    def _write_enabled_outputs(self, config) -> None:
+        for output_file in self._enabled_output_files(config):
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            output_file.write_text("ok\n", encoding="utf-8")
 
     def test_parse_simulated_events_extracts_aggregate_count(self) -> None:
         self.assertEqual(
@@ -174,7 +158,7 @@ class RunSimulationTests(unittest.TestCase):
             config.geant4runner.binary = "pixi run scintipix"
             self.write_macro(config)
             expected_log_path = self._log_file(config)
-            self._write_enabled_parquet_parts(config)
+            self._write_enabled_outputs(config)
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -207,7 +191,7 @@ class RunSimulationTests(unittest.TestCase):
             config = self._config_for_tmp(tmp_path)
             config.geant4runner.show_progress = False
             self.write_macro(config)
-            self._write_enabled_parquet_parts(config)
+            self._write_enabled_outputs(config)
 
             with patch(
                 "src.runner.runSimulation.subprocess.Popen",
@@ -287,13 +271,75 @@ class RunSimulationTests(unittest.TestCase):
             self.assertIsNone(result)
             self.assertTrue(self._macro_file(config).exists())
 
+    def test_run_simulation_skips_disabled_geant4_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = self._config_for_tmp(Path(tmp_dir))
+            config.metadata.run_controls.geant4_simulation = False
+            config.metadata.run_controls.transportation = False
+            config.metadata.run_controls.intensification = False
+            config.metadata.run_controls.sensor_detection = False
+            config.metadata.run_environment.primaries_directory = None
+            config.metadata.run_environment.secondaries_directory = None
+            config.metadata.run_environment.simulated_photons_directory = None
+
+            with patch("src.runner.runSimulation.write_macro") as write_macro_mock, patch(
+                "src.runner.runSimulation.run"
+            ) as run_mock:
+                result = self.run_simulation(config)
+
+            self.assertIsNone(result)
+            write_macro_mock.assert_not_called()
+            run_mock.assert_not_called()
+
+    def test_run_simulation_uses_mutating_autofocus_contract(self) -> None:
+        """Autofocus should mutate config before macro generation."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = self._config_for_tmp(Path(tmp_dir))
+            config.metadata.run_controls.auto_focus_lens = True
+            primary_lens = config.optical.lenses[0]
+            primary_lens.focus_adjustment_mm = 1.0
+            primary_lens.back_focus_mm = 40.0
+            original_z_mm = config.optical.interface.position_mm.z_mm
+
+            with patch(
+                "src.runner.runSimulation.auto_focus_lens",
+                side_effect=lambda focused_config: setattr(
+                    focused_config.optical.interface.position_mm,
+                    "z_mm",
+                    321.0,
+                ),
+            ) as autofocus_mock, patch(
+                "src.runner.runSimulation.write_macro",
+            ) as write_macro_mock, patch(
+                "src.runner.runSimulation.run",
+                return_value=None,
+            ) as run_mock:
+                ordered_calls = Mock()
+                ordered_calls.attach_mock(autofocus_mock, "autofocus")
+                ordered_calls.attach_mock(write_macro_mock, "write_macro")
+
+                result = self.run_simulation(config, dry_run=True)
+
+            self.assertIsNone(result)
+            self.assertEqual(
+                ordered_calls.mock_calls[:2],
+                [call.autofocus(config), call.write_macro(config)],
+            )
+            self.assertNotEqual(config.optical.interface.position_mm.z_mm, original_z_mm)
+            self.assertEqual(config.optical.interface.position_mm.z_mm, 321.0)
+            run_mock.assert_called_once_with(
+                config,
+                dry_run=True,
+                log_filename=None,
+            )
+
     def test_run_simulation_prepares_then_executes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             config = self._config_for_tmp(tmp_path)
 
             def _popen_side_effect(*args, **kwargs):
-                self._write_enabled_parquet_parts(config)
+                self._write_enabled_outputs(config)
                 return self._FakeProcess(
                     ["G4WT10 > Simulated 10000 events\n"],
                     returncode=0,
@@ -320,11 +366,11 @@ class RunSimulationTests(unittest.TestCase):
             config.geant4runner.output.photons = False
 
             def _popen_side_effect(*args, **kwargs):
-                self._primaries_parquet_part(config).parent.mkdir(
+                self._primaries_output_file(config).parent.mkdir(
                     parents=True,
                     exist_ok=True,
                 )
-                self._primaries_parquet_part(config).write_text(
+                self._primaries_output_file(config).write_text(
                     "ok\n",
                     encoding="utf-8",
                 )

@@ -8,7 +8,7 @@ This directory is divided into several modules: Documentation, Instructions, and
 
 - All python `__init__.py` files should be empty. 
 - Please do not add extra helper functions, CLI commands, or other "bridge" code to make the simulation work.
-- `SimConfig` is the main spine of the code from which all modules are controlled. 
+- `Simulation` is the main spine of the code from which all modules are controlled.
 
 ## Documentation
 The documentation module contains detailed information on the architecture, design, and implementation of key modules of the ScintiPix. It can be divided into the following sections:

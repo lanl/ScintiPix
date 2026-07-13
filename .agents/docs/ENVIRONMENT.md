@@ -31,7 +31,9 @@ data/
     primaries/
     secondaries/
     simulatedPhotons/
+      photons.bin
     transportedPhotons/
+      photons.bin
     intensifiedPhotons/
     sensorHits/
     macros/

@@ -10,6 +10,26 @@ from pydantic import AliasChoices, Field, model_validator
 from .base import StrictModel, Vec3Mm
 
 
+class FocusGap(StrictModel):
+    """Definition of a lens gap that moves during focusing.
+
+    Each focus gap has a default thickness and responds to the focus
+    adjustment (zfine) with a specific scaling factor.
+    """
+
+    gap_index: int = Field(alias="gapIndex", ge=0, description="Index of the gap in the lens sequential model")
+    default_thickness_mm: float = Field(
+        alias="defaultThickness",
+        ge=0.0,
+        description="Default thickness in mm when lens is at reference focus position",
+    )
+    scaling_factor: float = Field(
+        default=1.0,
+        alias="scalingFactor",
+        description="How much this gap moves per unit of focus adjustment (can be negative for compensating groups)",
+    )
+
+
 class Lens(StrictModel):
     """Individual optical lens descriptor.
 
@@ -25,10 +45,42 @@ class Lens(StrictModel):
     catalog_id: str | None = Field(default=None, alias="catalogId", min_length=1)
     zmx_file: str | None = Field(default=None, alias="zmxFile", min_length=1)
     smx_file: str | None = Field(default=None, alias="smxFile", min_length=1)
+    focus_gaps: list[FocusGap] | None = Field(
+        default=None,
+        alias="focusGaps",
+        description="Definition of which gaps move during focusing (loaded from catalog or user-provided)",
+    )
+    focus_adjustment_mm: float | None = Field(
+        default=None,
+        alias="focusAdjustmentMm",
+        description="Internal lens focus adjustment (zfine) applied to achieve focus at image plane",
+    )
+    focus_adjustment_bounds_mm: tuple[float, float] | None = Field(
+        default=None,
+        alias="focusAdjustmentBoundsMm",
+        description="Physically attainable interval for internal lens focus adjustment",
+    )
+    back_focus_mm: float | None = Field(
+        default=None,
+        alias="backFocusMm",
+        gt=0.0,
+        description=(
+            "Distance from the last modeled optical surface to the "
+            "intensifier photocathode image plane"
+        ),
+    )
+    back_focus_bounds_mm: tuple[float, float] | None = Field(
+        default=None,
+        alias="backFocusBoundsMm",
+        description=(
+            "Physically attainable back-focus interval imposed by the lens "
+            "mount, adapter, and intensifier interface"
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_lens_reference(self) -> "Lens":
-        """Require lens reference and fill a fallback display name."""
+        """Validate the lens reference, name, and mechanical back focus."""
 
         if self.catalog_id is None and self.zmx_file is None:
             raise ValueError(
@@ -41,27 +93,68 @@ class Lens(StrictModel):
                 self.name = Path(self.zmx_file).stem
             else:
                 self.name = "Lens"
+
+        if self.back_focus_bounds_mm is not None:
+            lower_mm, upper_mm = self.back_focus_bounds_mm
+            if lower_mm <= 0.0 or upper_mm <= 0.0:
+                raise ValueError("`backFocusBoundsMm` values must be positive.")
+            if lower_mm > upper_mm:
+                raise ValueError(
+                    "`backFocusBoundsMm` minimum must not exceed its maximum."
+                )
+            if self.back_focus_mm is not None and not (
+                lower_mm <= self.back_focus_mm <= upper_mm
+            ):
+                raise ValueError(
+                    "`backFocusMm` must lie within `backFocusBoundsMm`."
+                )
+
+        if self.focus_adjustment_bounds_mm is not None:
+            lower_mm, upper_mm = self.focus_adjustment_bounds_mm
+            if lower_mm > upper_mm:
+                raise ValueError(
+                    "`focusAdjustmentBoundsMm` minimum must not exceed its maximum."
+                )
+            if self.focus_adjustment_mm is not None and not (
+                lower_mm <= self.focus_adjustment_mm <= upper_mm
+            ):
+                raise ValueError(
+                    "`focusAdjustmentMm` must lie within `focusAdjustmentBoundsMm`."
+                )
         return self
 
 
-class OpticalGeometry(StrictModel):
-    """Optical envelope dimensions in millimeters."""
+class OpticalInterface(StrictModel):
+    """Optical interface (scoring plane) configuration.
 
-    entrance_diameter: float = Field(alias="entranceDiameter", gt=0)
-    sensor_max_width: float = Field(alias="sensorMaxWidth", gt=0)
-
-
-class SensitiveDetector(StrictModel):
-    """Sensitive detector placement and sizing strategy.
-
-    `diameterRule` is intentionally stored as a constrained expression-like
-    string so command-generation code can resolve detector diameter
-    deterministically from optical geometry values.
+    The optical interface is a circular scoring plane in Geant4 positioned
+    between the scintillator and the lens/PMT system. It records photons
+    that exit the scintillator and are accepted by the optical system.
     """
 
-    position_mm: Vec3Mm
-    shape: str = Field(min_length=1)
-    diameter_rule: str = Field(alias="diameterRule", min_length=1)
+    diameter_mm: float = Field(alias="diameterMm", gt=0)
+    position_mm: Vec3Mm = Field(alias="positionMm")
+    working_distance_bounds_mm: tuple[float, float] | None = Field(
+        default=None,
+        alias="workingDistanceBoundsMm",
+        description=(
+            "Physically attainable scintillator-back-face to lens-entrance interval"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_working_distance_bounds(self) -> "OpticalInterface":
+        """Require positive, ordered working-distance bounds."""
+
+        if self.working_distance_bounds_mm is not None:
+            lower_mm, upper_mm = self.working_distance_bounds_mm
+            if lower_mm <= 0.0 or upper_mm <= 0.0:
+                raise ValueError("`workingDistanceBoundsMm` values must be positive.")
+            if lower_mm > upper_mm:
+                raise ValueError(
+                    "`workingDistanceBoundsMm` minimum must not exceed its maximum."
+                )
+        return self
 
 
 class OpticalTransportAssumptions(StrictModel):
@@ -92,21 +185,13 @@ class Optics(StrictModel):
     """Optical subsystem definition.
 
     Includes:
-    - lens list metadata
-    - lens-derived envelope geometry
-    - sensitive detector placement/rule configuration
+    - lens list metadata (optional for PMT-only setups)
+    - optical interface (scoring plane) configuration
+    - transport progress reporting
     """
 
-    lenses: list[Lens] = Field(min_length=1)
-    geometry: OpticalGeometry
-    sensitive_detector_config: SensitiveDetector = Field(
-        validation_alias=AliasChoices(
-            "sensitiveDetectorConfig",
-            "sensitiveDetector",
-            "sensitive_detector_config",
-        ),
-        serialization_alias="sensitiveDetectorConfig",
-    )
+    lenses: list[Lens] | None = None
+    interface: OpticalInterface
     show_transport_progress: bool = Field(
         default=True,
         validation_alias=AliasChoices(
@@ -122,12 +207,14 @@ class Optics(StrictModel):
 
     @model_validator(mode="after")
     def validate_primary_lens_count(self) -> "Optics":
-        """Require exactly one primary lens designation.
+        """Require exactly one primary lens if lenses are specified.
 
         A single primary lens simplifies downstream assumptions in macro
         generation and geometry bookkeeping.
         """
 
+        if self.lenses is None or len(self.lenses) == 0:
+            return self
         primary_count = sum(1 for lens in self.lenses if lens.primary)
         if primary_count != 1:
             raise ValueError("`optical.lenses` must contain exactly one primary lens.")

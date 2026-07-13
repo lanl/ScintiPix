@@ -48,6 +48,12 @@ class Config {
   G4double GetScintPosZ() const;
   /// Circular mask pass-through radius at scintillator +Z face (0 disables mask).
   G4double GetMaskRadius() const;
+  /// Return true when the Siemens star resolution target is enabled.
+  G4bool GetResolutionTargetEnabled() const;
+  /// Siemens star outer radius at scintillator +Z face.
+  G4double GetResolutionTargetOuterRadius() const;
+  /// Siemens star opaque/clear line-pair count.
+  G4int GetResolutionTargetLinePairs() const;
 
   /// Optical-interface X length (0 means inherit scintillator X).
   G4double GetOpticalInterfaceX() const;
@@ -81,6 +87,12 @@ class Config {
   void SetScintPosZ(G4double value);
   /// Set circular mask pass-through radius at scintillator +Z face (0 disables mask).
   void SetMaskRadius(G4double value);
+  /// Enable or disable the Siemens star resolution target.
+  void SetResolutionTargetEnabled(G4bool value);
+  /// Set Siemens star outer radius at scintillator +Z face.
+  void SetResolutionTargetOuterRadius(G4double value);
+  /// Set Siemens star opaque/clear line-pair count.
+  void SetResolutionTargetLinePairs(G4int value);
 
   /// Set optical-interface X length.
   void SetOpticalInterfaceX(G4double value);
@@ -237,6 +249,10 @@ class Config {
   G4double fScintPosZ = 0.0;
   /// Circular pass-through radius for mask at scintillator +Z face.
   G4double fMaskRadius = 0.0;
+  /// Siemens star resolution target settings.
+  G4bool fResolutionTargetEnabled = false;
+  G4double fResolutionTargetOuterRadius = 0.0;
+  G4int fResolutionTargetLinePairs = 64;
 
   /// Optical-interface dimensions in Geant4 internal units.
   /// `fOpticalInterfaceX`/`fOpticalInterfaceY` may be zero to indicate "inherit scintillator size".

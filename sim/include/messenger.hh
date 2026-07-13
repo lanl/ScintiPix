@@ -50,6 +50,9 @@ class Messenger : public G4UImessenger {
   G4UIcmdWithADoubleAndUnit* fGeomScintPosYCmd = nullptr;
   G4UIcmdWithADoubleAndUnit* fGeomScintPosZCmd = nullptr;
   G4UIcmdWithADoubleAndUnit* fGeomMaskRadiusCmd = nullptr;
+  G4UIcmdWithAnInteger* fResolutionTargetEnabledCmd = nullptr;
+  G4UIcmdWithADoubleAndUnit* fResolutionTargetOuterRadiusCmd = nullptr;
+  G4UIcmdWithAnInteger* fResolutionTargetLinePairsCmd = nullptr;
   G4UIcmdWithADoubleAndUnit* fScintDensityCmd = nullptr;
   G4UIcmdWithAnInteger* fScintCarbonAtomsCmd = nullptr;
   G4UIcmdWithAnInteger* fScintHydrogenAtomsCmd = nullptr;

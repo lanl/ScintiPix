@@ -21,10 +21,9 @@ sys.path.insert(0, str(_repo_root()))
 
 from src.models.optics import (
     Lens,
-    OpticalGeometry,
+    OpticalInterface,
     OpticalTransportAssumptions,
     Optics,
-    SensitiveDetector,
 )
 
 
@@ -140,168 +139,171 @@ class TestLens:
             catalog_id="TestLens",
             zmx_file="test.zmx",
             smx_file="test.smx",
+            focus_adjustment_mm=0.5,
+            focus_adjustment_bounds_mm=(-1.0, 1.0),
+            back_focus_mm=24.3,
+            back_focus_bounds_mm=(23.8, 24.8),
         )
         dumped = lens.model_dump(by_alias=True)
         assert "catalogId" in dumped
         assert "zmxFile" in dumped
         assert "smxFile" in dumped
+        assert dumped["focusAdjustmentMm"] == 0.5
+        assert dumped["focusAdjustmentBoundsMm"] == (-1.0, 1.0)
+        assert dumped["backFocusMm"] == 24.3
+        assert dumped["backFocusBoundsMm"] == (23.8, 24.8)
 
-
-# ============================================================================
-# OpticalGeometry Tests
-# ============================================================================
-
-
-class TestOpticalGeometry:
-    """Tests for optical envelope dimensions."""
-
-    def test_valid_geometry_creation(self) -> None:
-        """Valid geometry with positive dimensions should validate."""
-        geometry = OpticalGeometry(
-            entrance_diameter=60.5,
-            sensor_max_width=36.0,
+    def test_back_focus_aliases_validate(self) -> None:
+        """Back-focus values should accept their YAML aliases."""
+        lens = Lens.model_validate(
+            {
+                "catalogId": "TestLens",
+                "backFocusMm": 24.3,
+                "backFocusBoundsMm": [23.8, 24.8],
+            }
         )
-        assert geometry.entrance_diameter == 60.5
-        assert geometry.sensor_max_width == 36.0
+        assert lens.back_focus_mm == 24.3
+        assert lens.back_focus_bounds_mm == (23.8, 24.8)
+
+    def test_back_focus_can_be_fixed(self) -> None:
+        """A back-focus value without bounds represents fixed geometry."""
+        lens = Lens(catalog_id="TestLens", back_focus_mm=24.3)
+        assert lens.back_focus_mm == 24.3
+        assert lens.back_focus_bounds_mm is None
+
+    def test_back_focus_bounds_can_define_search_space(self) -> None:
+        """Mechanical bounds may be supplied without an initial value."""
+        lens = Lens(
+            catalog_id="TestLens",
+            back_focus_bounds_mm=(23.8, 24.8),
+        )
+        assert lens.back_focus_mm is None
+        assert lens.back_focus_bounds_mm == (23.8, 24.8)
+
+    @pytest.mark.parametrize(
+        "bounds",
+        [(-1.0, 20.0), (20.0, 0.0), (25.0, 20.0)],
+    )
+    def test_invalid_back_focus_bounds_rejected(
+        self,
+        bounds: tuple[float, float],
+    ) -> None:
+        """Back-focus bounds must be positive and ordered."""
+        with pytest.raises(ValidationError, match="backFocusBoundsMm"):
+            Lens(catalog_id="TestLens", back_focus_bounds_mm=bounds)
+
+    def test_back_focus_outside_bounds_rejected(self) -> None:
+        """The configured back focus must be mechanically attainable."""
+        with pytest.raises(ValidationError, match="backFocusMm"):
+            Lens(
+                catalog_id="TestLens",
+                back_focus_mm=25.0,
+                back_focus_bounds_mm=(23.8, 24.8),
+            )
+
+    def test_focus_adjustment_bounds_validate(self) -> None:
+        """Internal focus travel should accept an ordered signed interval."""
+        lens = Lens.model_validate(
+            {
+                "catalogId": "TestLens",
+                "focusAdjustmentMm": 0.5,
+                "focusAdjustmentBoundsMm": [-1.0, 1.0],
+            }
+        )
+        assert lens.focus_adjustment_mm == 0.5
+        assert lens.focus_adjustment_bounds_mm == (-1.0, 1.0)
+
+    def test_invalid_focus_adjustment_rejected(self) -> None:
+        """Internal focus must remain inside its mechanical travel."""
+        with pytest.raises(ValidationError, match="focusAdjustmentMm"):
+            Lens(
+                catalog_id="TestLens",
+                focus_adjustment_mm=2.0,
+                focus_adjustment_bounds_mm=(-1.0, 1.0),
+            )
+
+
+# ============================================================================
+# OpticalInterface Tests
+# ============================================================================
+
+
+class TestOpticalInterface:
+    """Tests for optical interface (scoring plane) configuration."""
+
+    def test_valid_interface_creation(self) -> None:
+        """Valid interface with positive diameter and position should validate."""
+        interface = OpticalInterface(
+            diameter_mm=60.5,
+            position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
+        )
+        assert interface.diameter_mm == 60.5
+        assert interface.position_mm.x_mm == 0.0
+        assert interface.position_mm.y_mm == 0.0
+        assert interface.position_mm.z_mm == 210.0
 
     def test_alias_handling(self) -> None:
         """camelCase aliases should map to snake_case fields."""
-        geometry = OpticalGeometry.model_validate(
+        interface = OpticalInterface.model_validate(
             {
-                "entranceDiameter": 50.0,
-                "sensorMaxWidth": 24.0,
+                "diameterMm": 50.0,
+                "positionMm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 200.0},
             }
         )
-        assert geometry.entrance_diameter == 50.0
-        assert geometry.sensor_max_width == 24.0
+        assert interface.diameter_mm == 50.0
+        assert interface.position_mm.z_mm == 200.0
 
-    def test_zero_entrance_diameter_rejected(self) -> None:
-        """Zero entrance_diameter should be rejected (gt=0 constraint)."""
-        with pytest.raises(ValidationError, match="entrance_diameter"):
-            OpticalGeometry(entrance_diameter=0.0, sensor_max_width=36.0)
+    def test_zero_diameter_rejected(self) -> None:
+        """Zero diameter_mm should be rejected (gt=0 constraint)."""
+        with pytest.raises(ValidationError, match="diameter_mm"):
+            OpticalInterface(
+                diameter_mm=0.0,
+                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
+            )
 
-    def test_negative_entrance_diameter_rejected(self) -> None:
-        """Negative entrance_diameter should be rejected."""
-        with pytest.raises(ValidationError, match="entrance_diameter"):
-            OpticalGeometry(entrance_diameter=-10.0, sensor_max_width=36.0)
+    def test_negative_diameter_rejected(self) -> None:
+        """Negative diameter_mm should be rejected."""
+        with pytest.raises(ValidationError, match="diameter_mm"):
+            OpticalInterface(
+                diameter_mm=-10.0,
+                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
+            )
 
-    def test_zero_sensor_max_width_rejected(self) -> None:
-        """Zero sensor_max_width should be rejected (gt=0 constraint)."""
-        with pytest.raises(ValidationError, match="sensor_max_width"):
-            OpticalGeometry(entrance_diameter=60.0, sensor_max_width=0.0)
-
-    def test_negative_sensor_max_width_rejected(self) -> None:
-        """Negative sensor_max_width should be rejected."""
-        with pytest.raises(ValidationError, match="sensor_max_width"):
-            OpticalGeometry(entrance_diameter=60.0, sensor_max_width=-5.0)
-
-    def test_very_small_positive_values_accepted(self) -> None:
-        """Very small but positive values should be accepted."""
-        geometry = OpticalGeometry(
-            entrance_diameter=0.001,
-            sensor_max_width=0.001,
+    def test_very_small_positive_diameter_accepted(self) -> None:
+        """Very small but positive diameter should be accepted."""
+        interface = OpticalInterface(
+            diameter_mm=0.001,
+            position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
         )
-        assert geometry.entrance_diameter == 0.001
-        assert geometry.sensor_max_width == 0.001
+        assert interface.diameter_mm == 0.001
 
     def test_serialization_uses_aliases(self) -> None:
         """Serialized output should use camelCase aliases."""
-        geometry = OpticalGeometry(
-            entrance_diameter=60.5,
-            sensor_max_width=36.0,
-        )
-        dumped = geometry.model_dump(by_alias=True)
-        assert "entranceDiameter" in dumped
-        assert "sensorMaxWidth" in dumped
-
-
-# ============================================================================
-# SensitiveDetector Tests
-# ============================================================================
-
-
-class TestSensitiveDetector:
-    """Tests for sensitive detector configuration."""
-
-    def test_valid_detector_creation(self) -> None:
-        """Valid detector with all required fields should validate."""
-        detector = SensitiveDetector(
+        interface = OpticalInterface(
+            diameter_mm=60.5,
             position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
-            shape="circle",
-            diameter_rule="min(entranceDiameter,sensorMaxWidth)",
+            working_distance_bounds_mm=(180.0, 240.0),
         )
-        assert detector.position_mm.x_mm == 0.0
-        assert detector.position_mm.y_mm == 0.0
-        assert detector.position_mm.z_mm == 210.0
-        assert detector.shape == "circle"
-        assert detector.diameter_rule == "min(entranceDiameter,sensorMaxWidth)"
+        dumped = interface.model_dump(by_alias=True)
+        assert "diameterMm" in dumped
+        assert "positionMm" in dumped
+        assert dumped["workingDistanceBoundsMm"] == (180.0, 240.0)
 
-    def test_diameter_rule_alias_handling(self) -> None:
-        """camelCase diameterRule alias should map to diameter_rule."""
-        detector = SensitiveDetector.model_validate(
-            {
-                "position_mm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 200.0},
-                "shape": "square",
-                "diameterRule": "entranceDiameter * 0.9",
-            }
-        )
-        assert detector.diameter_rule == "entranceDiameter * 0.9"
-
-    def test_empty_shape_rejected(self) -> None:
-        """Empty shape string should be rejected (min_length=1)."""
-        with pytest.raises(ValidationError, match="shape"):
-            SensitiveDetector(
-                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 200.0},
-                shape="",
-                diameter_rule="test",
+    @pytest.mark.parametrize(
+        "bounds",
+        [(-1.0, 200.0), (200.0, 0.0), (240.0, 180.0)],
+    )
+    def test_invalid_working_distance_bounds_rejected(
+        self,
+        bounds: tuple[float, float],
+    ) -> None:
+        """Working-distance bounds must be positive and ordered."""
+        with pytest.raises(ValidationError, match="workingDistanceBoundsMm"):
+            OpticalInterface(
+                diameter_mm=60.5,
+                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
+                working_distance_bounds_mm=bounds,
             )
-
-    def test_empty_diameter_rule_rejected(self) -> None:
-        """Empty diameter_rule should be rejected (min_length=1)."""
-        with pytest.raises(ValidationError, match="diameter_rule"):
-            SensitiveDetector(
-                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 200.0},
-                shape="circle",
-                diameter_rule="",
-            )
-
-    def test_various_shape_strings_accepted(self) -> None:
-        """Various shape strings should be accepted."""
-        shapes = ["circle", "square", "rectangle", "custom_shape"]
-        for shape in shapes:
-            detector = SensitiveDetector(
-                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 200.0},
-                shape=shape,
-                diameter_rule="test",
-            )
-            assert detector.shape == shape
-
-    def test_complex_diameter_rules_accepted(self) -> None:
-        """Complex diameter rule expressions should be accepted."""
-        rules = [
-            "entranceDiameter",
-            "sensorMaxWidth",
-            "min(entranceDiameter,sensorMaxWidth)",
-            "entranceDiameter * 0.95",
-            "sqrt(2) * sensorMaxWidth",
-        ]
-        for rule in rules:
-            detector = SensitiveDetector(
-                position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 200.0},
-                shape="circle",
-                diameter_rule=rule,
-            )
-            assert detector.diameter_rule == rule
-
-    def test_serialization_uses_aliases(self) -> None:
-        """Serialized output should use camelCase alias for diameter_rule."""
-        detector = SensitiveDetector(
-            position_mm={"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
-            shape="circle",
-            diameter_rule="test",
-        )
-        dumped = detector.model_dump(by_alias=True)
-        assert "diameterRule" in dumped
 
 
 # ============================================================================
@@ -377,11 +379,9 @@ class TestOptics:
         """Helper to create minimal valid optics payload."""
         return {
             "lenses": [{"catalogId": "CanonEF50mmf1.0L", "primary": True}],
-            "geometry": {"entranceDiameter": 60.5, "sensorMaxWidth": 36.0},
-            "sensitiveDetectorConfig": {
-                "position_mm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
-                "shape": "circle",
-                "diameterRule": "min(entranceDiameter,sensorMaxWidth)",
+            "interface": {
+                "diameterMm": 60.5,
+                "positionMm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.0},
             },
         }
 
@@ -390,28 +390,20 @@ class TestOptics:
         optics = Optics.model_validate(self._minimal_optics_payload())
         assert len(optics.lenses) == 1
         assert optics.lenses[0].primary is True
-        assert optics.geometry.entrance_diameter == 60.5
-        assert optics.sensitive_detector_config.shape == "circle"
+        assert optics.interface.diameter_mm == 60.5
+        assert optics.interface.position_mm.z_mm == 210.0
 
-    def test_sensitive_detector_config_alias_variations(self) -> None:
-        """All sensitive detector config aliases should be accepted."""
-        base = self._minimal_optics_payload()
-
-        # Test sensitiveDetectorConfig
-        optics1 = Optics.model_validate(base)
-        assert optics1.sensitive_detector_config.shape == "circle"
-
-        # Test sensitiveDetector
-        payload2 = base.copy()
-        payload2["sensitiveDetector"] = payload2.pop("sensitiveDetectorConfig")
-        optics2 = Optics.model_validate(payload2)
-        assert optics2.sensitive_detector_config.shape == "circle"
-
-        # Test sensitive_detector_config
-        payload3 = base.copy()
-        payload3["sensitive_detector_config"] = payload3.pop("sensitiveDetectorConfig")
-        optics3 = Optics.model_validate(payload3)
-        assert optics3.sensitive_detector_config.shape == "circle"
+    def test_optics_without_lenses_validates(self) -> None:
+        """Optics without lenses (e.g., PMT-only setup) should validate."""
+        payload = {
+            "interface": {
+                "diameterMm": 50.0,
+                "positionMm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 100.0},
+            },
+        }
+        optics = Optics.model_validate(payload)
+        assert optics.lenses is None
+        assert optics.interface.diameter_mm == 50.0
 
     def test_show_transport_progress_default(self) -> None:
         """show_transport_progress should default to True."""
@@ -483,12 +475,13 @@ class TestOptics:
         assert optics.lenses[0].zmx_file == "custom.zmx"
         assert optics.lenses[0].smx_file == "custom.smx"
 
-    def test_empty_lenses_list_rejected(self) -> None:
-        """Empty lenses list should be rejected (min_length=1)."""
+    def test_empty_lenses_list_treated_as_none(self) -> None:
+        """Empty lenses list should be treated as None (no lenses)."""
         payload = self._minimal_optics_payload()
         payload["lenses"] = []
-        with pytest.raises(ValidationError, match="lenses"):
-            Optics.model_validate(payload)
+        optics = Optics.model_validate(payload)
+        # Empty list is allowed now for PMT-only setups
+        assert optics.lenses == []
 
     def test_no_primary_lens_rejected(self) -> None:
         """Configuration without primary lens should be rejected."""
@@ -514,7 +507,7 @@ class TestOptics:
         """Serialized output should use camelCase aliases."""
         optics = Optics.model_validate(self._minimal_optics_payload())
         dumped = optics.model_dump(by_alias=True)
-        assert "sensitiveDetectorConfig" in dumped
+        assert "interface" in dumped
         assert "showTransportProgress" in dumped
         assert "transportAssumptions" in dumped
 
@@ -536,14 +529,9 @@ class TestOptics:
                     "primary": False,
                 },
             ],
-            "geometry": {
-                "entranceDiameter": 60.5,
-                "sensorMaxWidth": 36.0,
-            },
-            "sensitiveDetectorConfig": {
-                "position_mm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.05},
-                "shape": "circle",
-                "diameterRule": "min(entranceDiameter,sensorMaxWidth)",
+            "interface": {
+                "diameterMm": 60.5,
+                "positionMm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.05},
             },
             "showTransportProgress": True,
             "transportAssumptions": {
@@ -555,9 +543,9 @@ class TestOptics:
         assert len(optics.lenses) == 2
         assert optics.lenses[0].name == "Primary Lens"
         assert optics.lenses[1].zmx_file == "flattener.zmx"
-        assert optics.geometry.entrance_diameter == 60.5
-        assert optics.sensitive_detector_config.position_mm.x_mm == 0.0
-        assert optics.sensitive_detector_config.position_mm.y_mm == 0.0
-        assert optics.sensitive_detector_config.position_mm.z_mm == 210.05
+        assert optics.interface.diameter_mm == 60.5
+        assert optics.interface.position_mm.x_mm == 0.0
+        assert optics.interface.position_mm.y_mm == 0.0
+        assert optics.interface.position_mm.z_mm == 210.05
         assert optics.show_transport_progress is True
         assert optics.transport_assumptions.object_plane == "scintillator_back_face"

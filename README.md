@@ -1,68 +1,48 @@
+# ScintiPix
 
-`ScintiPix` is a Geant4-based simulation for scintillator and neutron-GPS workflows
-with optical-photon recording at an optical-interface plane.
+ScintiPix is a Geant4-based simulation for scintillator and neutron-GPS
+workflows with optical-photon recording at an optical-interface plane.
 
-This repository also includes a Python configuration layer for YAML-driven run
-setup, optical transport helpers, and lightweight analysis examples.
-
-## Quick Start
-
-The recommended setup path is `pixi`.
+## Quick start
 
 ```bash
 pixi install
 pixi run build-sim
+pixi run python examples/runSimulation/run_simulation_from_yaml.py \
+  examples/yamlFiles/CanonEF50mmf1p0L_example.yaml
 ```
 
-Run a macro-driven simulation:
+The YAML is validated as the top-level `Simulation` model. The runner writes a
+Geant4 macro, optionally runs autofocus, launches `scintipix`, and writes the
+selected fixed-record binary outputs.
 
-```bash
-pixi run run-neutron-gps
-```
+## Current workflows
 
-Run a YAML-driven example:
+- Generate and run from YAML: `examples/runSimulation/`
+- Inspect source timing: `examples/sourceTiming/`
+- Load or write configuration files: `examples/configurations/`
+- Plot primary timing: `analysis/plotting/`
+- Read the binary output contract: `.agents/docs/OUTPUT.md`
+- Read the autofocus and optics design: `.agents/docs/AUTOFOCUS.md` and
+  `.agents/docs/OPTICS.md`
 
-```bash
-pixi run python examples/SimulationSetup/CanonEF50mmf1p0L_example.py
-pixi run scintipix data/CanonEF50mmf1p0L_run/macros/CanonEF50mmf1p0L_run.mac
-```
+The RayOptics transport, intensifier, and sensor runtime stages are being
+rebuilt around the binary photon output. Their retired HDF5 implementations and
+deleted-model callers are preserved under `legacy/` and are not active code.
 
-## Core Workflows
+## Repository layout
 
-- Run Geant4 directly from a macro: `pixi run run-neutron-gps`
-- Generate and run from YAML: `pixi run python examples/runSimulation/run_simulation_from_yaml.py examples/yamlFiles/CanonEF50mmf1p0L_example.yaml`
-- Inspect Geant4 source/neutron timing: `pixi run python examples/sourceTiming/geant4_source_neutron_timing_example.py examples/yamlFiles/pulsed_neutron_source_timing.yaml`
-- Transport optical-interface hits to the intensifier plane: `pixi run python examples/photonTransportation/optical_transport_example.py examples/yamlFiles/CanonEF50mmf1p0L_example.yaml`
-- Run the full simulation -> transport -> intensifier -> Timepix pipeline: `pixi run python examples/endToEnd/end_to_end_example.py examples/yamlFiles/CanonEF50mmf1p0L_example.yaml`
-- Generate lightweight analysis outputs: `pixi run python examples/analysisLite/hdf5_lite_analyzer_example.py data/CanonEF50mmf1p0L_run/simulatedPhotons/photon_optical_interface_hits.h5`
+- `sim/`: Geant4 application
+- `src/models/`: Pydantic simulation models
+- `src/config/`: YAML, catalog, and macro configuration
+- `src/optics/`: autofocus and current optics work
+- `catalogs/`: lens and scintillator catalogs
+- `examples/`: current runnable examples
+- `analysis/`: current lightweight analysis
+- `test/`: active tests
+- `legacy/`: retired HDF5 and old-model code
 
-For the full YAML -> simulation -> transport -> intensifier -> Timepix pipeline, see
-[examples/endToEnd/README.md](examples/endToEnd/README.md).
+## License
 
-For analysis examples and module-level guidance, see
-[analysis/README.md](analysis/README.md).
-
-## Repository Layout
-
-- `sim/`: Geant4 application code, headers, and macro files
-- `src/config/`: YAML models, validation, and macro-generation utilities
-- `src/optics/`: optical transport and lens tooling
-- `catalogs/`: bundled lens and scintillator catalogs
-- `examples/`: runnable workflow examples
-- `analysis/`: lightweight analysis helpers for generated HDF5 outputs
-- `test/`: unit tests and test documentation
-
-## Further Documentation
-
-- Examples index: [examples/README.md](examples/README.md)
-- Analysis helpers: [analysis/README.md](analysis/README.md)
-- HDF5 schema reference: [docs/hdf5_schema.md](docs/hdf5_schema.md)
-- Intensifier module: [docs/intensifier.md](docs/intensifier.md)
-- End-to-end workflow: [examples/endToEnd/README.md](examples/endToEnd/README.md)
-- Tests: [test/README.md](test/README.md)
-- Catalog overview: [catalogs/README.md](catalogs/README.md)
-- Lens catalog notes: [catalogs/lenses/README.md](catalogs/lenses/README.md)
-- Scintillator catalog notes: [catalogs/scintillators/README.md](catalogs/scintillators/README.md)
-
-## License ## 
-ScintiPix is distributed as open-source software under a GPLv3 License, with LANL open source approval (reference O5110). Please see LICENSE for more details. 
+ScintiPix is distributed under GPLv3 with LANL open-source approval O5110.
+See `LICENSE` for details.
