@@ -39,10 +39,17 @@ The binary output format is described in detail in `.agents/docs/OUTPUT.md`. The
 
 ## Optical transport with RayOptics
 
-The binary RayOptics transport stage is not implemented yet. Its input will be
-the Geant4 `simulatedPhotons/photons.bin` records, and it will apply the working
-distance, internal focus adjustment, and back focus already stored in the
-`Simulation` model. 
+Updated 2026-07-13.
+
+The binary RayOptics transport stage is implemented in
+`src/optics/raytrace.py`. Call `transport_photons(config)` with the same
+`Simulation` object used for Geant4 so the autofocus-adjusted working distance,
+internal focus adjustment, and back focus are preserved.
+
+The stage reads `simulatedPhotons/photons.bin`, traces from the scintillator
+back face through the adjusted primary lens, and writes only photons that reach
+the active photocathode area to `transportedPhotons/photons.bin`. It is not yet
+called automatically by `src/runner/runSimulation.py`.
 
 ## Image intensifier
 
