@@ -232,7 +232,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   auto resolutionTargetOuterRadius = 100.0 * mm;
   auto resolutionTargetLinePairs = 64;
   const auto resolutionTargetInnerRadius = 1.0 * um;
-  const auto resolutionTargetThickness = 1.0 * um;
+  const auto resolutionTargetThickness = 0.1 * mm;  // 100 μm thick for effective blocking
   const auto resolutionTargetClearance = 1.0 * um;
 
   if (fConfig) {
