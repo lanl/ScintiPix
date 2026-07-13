@@ -234,6 +234,9 @@ def run_simulation(
 ) -> subprocess.CompletedProcess[str] | None:
     """Prepare and launch one simulation from validated config."""
 
+    if not config.metadata.run_controls.geant4_simulation:
+        return None
+
     # Run auto-focus routine if enabled
     if config.metadata.run_controls.auto_focus_lens:
         if config.optical is None or not config.optical.lenses:

@@ -271,6 +271,26 @@ class RunSimulationTests(unittest.TestCase):
             self.assertIsNone(result)
             self.assertTrue(self._macro_file(config).exists())
 
+    def test_run_simulation_skips_disabled_geant4_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = self._config_for_tmp(Path(tmp_dir))
+            config.metadata.run_controls.geant4_simulation = False
+            config.metadata.run_controls.transportation = False
+            config.metadata.run_controls.intensification = False
+            config.metadata.run_controls.sensor_detection = False
+            config.metadata.run_environment.primaries_directory = None
+            config.metadata.run_environment.secondaries_directory = None
+            config.metadata.run_environment.simulated_photons_directory = None
+
+            with patch("src.runner.runSimulation.write_macro") as write_macro_mock, patch(
+                "src.runner.runSimulation.run"
+            ) as run_mock:
+                result = self.run_simulation(config)
+
+            self.assertIsNone(result)
+            write_macro_mock.assert_not_called()
+            run_mock.assert_not_called()
+
     def test_run_simulation_uses_mutating_autofocus_contract(self) -> None:
         """Autofocus should mutate config before macro generation."""
         with tempfile.TemporaryDirectory() as tmp_dir:
