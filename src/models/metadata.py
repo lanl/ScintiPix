@@ -239,6 +239,7 @@ class WorkingDirectoryLayout(StrictModel):
         for field_name in (
             "macro_directory",
             "log_directory",
+            "config_directory",
             "primaries_directory",
             "secondaries_directory",
             "simulated_photons_directory",
