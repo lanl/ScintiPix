@@ -9,9 +9,10 @@ This note is for future agents working on ScintiPix optical transport. Keep this
 module focused on ray optics. Photocathode response, MCP/phosphor behavior, and
 sensor readout belong to the intensifier and sensor modules.
 
-The current source of truth is the binary Geant4 simulation output. The retired
-HDF5 optics, intensifier, and sensor stages are preserved under `legacy/` and
-must not be treated as the desired design.
+The current source of truth is the Geant4 simulation output. The downstream
+Python optics, intensifier, and sensor stages have not yet been fully updated to
+the new Geant4 output path. Do not treat the existing
+`src/optics/OpticalTransport.py` as the desired design.
 
 ## What Is This?
 
@@ -79,8 +80,9 @@ The photon output schema is defined in:
 - `sim/include/structures.hh`
 - `sim/src/SimIO.cc`
 
-The transport implementation must start from the current Geant4 binary photon
-output format rather than carrying over the legacy HDF5 assumptions.
+The transport rewrite should start from the current Geant4 photon output format.
+Avoid carrying over old HDF5 assumptions unless the current output path still
+explicitly needs them.
 
 ## How It Should Be Implemented
 
@@ -245,14 +247,11 @@ aperture or field, while the Siemens star provides a resolution pattern.
 
 Added 2026-06-30.
 
-- Implement binary photon transport under `src/optics/` using the current
-  Geant4 photon output path.
-- Decide how lens mount/flange references map to the imported RayOptics/ZMX
-  coordinate system for each catalog lens.
+- Rewrite `src/optics/OpticalTransport.py` around the current Geant4 photon
+  output path.
 - Reconstruct object-plane rays from scintillator-exit and optical-interface
   records.
 - Preserve photon provenance IDs in transported photon output.
-- Mark trace failures, aperture misses, and active-area misses explicitly.
 - Add a simple correct transport path first; add batching only after correctness
   is clear.
 - Add focused tests for photon provenance preservation.
