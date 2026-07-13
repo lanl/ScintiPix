@@ -48,8 +48,9 @@ internal focus adjustment, and back focus are preserved.
 
 The stage reads `simulatedPhotons/photons.bin`, traces from the scintillator
 back face through the adjusted primary lens, and writes only photons that reach
-the active photocathode area to `transportedPhotons/photons.bin`. It is not yet
-called automatically by `src/runner/runSimulation.py`.
+the active photocathode area to `transportedPhotons/photons.bin`. It is called
+automatically by `src/runner/runSimulation.py` when `RunControls.transportation`
+is enabled.
 
 ## Image intensifier
 
