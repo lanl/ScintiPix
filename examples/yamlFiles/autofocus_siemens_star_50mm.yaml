@@ -14,7 +14,7 @@ scintillator:
     x_mm: 100.0
     y_mm: 100.0
     z_mm: 20.0
-  maskRadius: 18.0
+  maskRadius: 0
   fieldOfView:
     widthMm: 40.0
     heightMm: 40.0
@@ -50,7 +50,7 @@ source:
         x_mm: 0.0
         y_mm: 0.0
         z_mm: -100.0
-      radiusMm: 10.0
+      radiusMm: 50.0
     angular:
       type: beam2d
       rot1: {x: 1.0, y: 0.0, z: 0.0}
@@ -105,23 +105,23 @@ sensor:
     dead_time_ns: 475.0
 
 geant4runner:
-  numberOfParticles: 5000
+  numberOfParticles: 50000
   binary: scintipix
   showProgress: true
   verifyOutput: true
   photonCulling:
-    enabled: false
+    enabled: true
     acceptanceAngleDeg: 27.0
   resolutionTarget:
     resolutionTargetEnabled: true
-    resolutionTargetOuterRadiusMm: 15.0
-    resolutionTargetLinePairs: 32
+    resolutionTargetOuterRadiusMm: 20.0
+    resolutionTargetLinePairs: 64
   runtimeControls:
     controlVerbose: 0
     runVerbose: 0
     eventVerbose: 0
     trackingVerbose: 0
-    printProgress: 500
+    printProgress: 5000
 
 metadata:
   author: Alex Long

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 try:
     from src.optics.io import read_transported_photons, read_simulated_photons
 except ImportError:
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
+    sys.path.append(str(Path(__file__).resolve().parents[3]))
     from src.optics.io import read_transported_photons, read_simulated_photons
 
 
@@ -26,7 +26,7 @@ def image_transported_photons(
     *,
     bins: int = 100,
     extent_mm: float | None = None,
-    cmap: str = "hot",
+    cmap: str = "viridis",
     output_path: str | Path | None = None,
     show: bool = True,
     title: str | None = None,
@@ -39,7 +39,7 @@ def image_transported_photons(
         bins: Number of bins per axis for the 2D histogram (default: 100)
         extent_mm: Symmetric extent in mm (e.g., 10 for [-10, 10] range).
                    If None, uses data extent with 5% padding.
-        cmap: Matplotlib colormap name (default: "hot")
+        cmap: Matplotlib colormap name (default: "viridis")
         output_path: If provided, save figure to this path
         show: If True, display the plot (default: True)
         title: Custom title for the plot. If None, auto-generates from data.
@@ -49,7 +49,7 @@ def image_transported_photons(
         (fig, ax): Matplotlib figure and axes objects
 
     Example:
-        >>> from analysis.imaging.plotter import image_transported_photons
+        >>> from examples.analysis.imaging.plotter import image_transported_photons
         >>> fig, ax = image_transported_photons(
         ...     "data/run_000/transportedPhotons/photons.bin",
         ...     bins=200,
@@ -141,7 +141,7 @@ def image_scintillator_photons(
     *,
     bins: int = 100,
     extent_mm: float | None = None,
-    cmap: str = "hot",
+    cmap: str = "viridis",
     output_path: str | Path | None = None,
     show: bool = True,
     title: str | None = None,
@@ -154,7 +154,7 @@ def image_scintillator_photons(
         bins: Number of bins per axis for the 2D histogram (default: 100)
         extent_mm: Symmetric extent in mm (e.g., 20 for [-20, 20] range).
                    If None, uses data extent with 5% padding.
-        cmap: Matplotlib colormap name (default: "hot")
+        cmap: Matplotlib colormap name (default: "viridis")
         output_path: If provided, save figure to this path
         show: If True, display the plot (default: True)
         title: Custom title for the plot. If None, auto-generates from data.
@@ -164,7 +164,7 @@ def image_scintillator_photons(
         (fig, ax): Matplotlib figure and axes objects
 
     Example:
-        >>> from analysis.imaging.plotter import image_scintillator_photons
+        >>> from examples.analysis.imaging.plotter import image_scintillator_photons
         >>> fig, ax = image_scintillator_photons(
         ...     "data/run_000/simulatedPhotons/photons.bin",
         ...     bins=200,
@@ -255,8 +255,8 @@ def image_scintillator_exit(
     simulated_photons_bin: str | Path,
     *,
     bins: int = 100,
-    extent_mm: float | None = None,
-    cmap: str = "hot",
+    dimensions_mm: tuple[float, float] | None = None,
+    cmap: str = "viridis",
     output_path: str | Path | None = None,
     show: bool = True,
     title: str | None = None,
@@ -270,9 +270,9 @@ def image_scintillator_exit(
     Args:
         simulated_photons_bin: Path to simulatedPhotons/photons.bin file
         bins: Number of bins per axis for the 2D histogram (default: 100)
-        extent_mm: Symmetric extent in mm (e.g., 20 for [-20, 20] range).
-                   If None, uses data extent with 5% padding.
-        cmap: Matplotlib colormap name (default: "hot")
+        dimensions_mm: Plot width and height in mm. If None, uses data extent
+                       with 5% padding.
+        cmap: Matplotlib colormap name (default: "viridis")
         output_path: If provided, save figure to this path
         show: If True, display the plot (default: True)
         title: Custom title for the plot. If None, auto-generates from data.
@@ -282,11 +282,11 @@ def image_scintillator_exit(
         (fig, ax): Matplotlib figure and axes objects
 
     Example:
-        >>> from analysis.imaging.plotter import image_scintillator_exit
+        >>> from examples.analysis.imaging.plotter import image_scintillator_exit
         >>> fig, ax = image_scintillator_exit(
         ...     "data/run_000/simulatedPhotons/photons.bin",
         ...     bins=200,
-        ...     extent_mm=20,
+        ...     dimensions_mm=(40, 40),
         ...     output_path="scintillator_exit.png"
         ... )
     """
@@ -300,9 +300,11 @@ def image_scintillator_exit(
     y = photons["photon_scint_exit_y_mm"]
 
     # Determine extent
-    if extent_mm is not None:
-        extent = (-extent_mm, extent_mm, -extent_mm, extent_mm)
-        range_xy = [[-extent_mm, extent_mm], [-extent_mm, extent_mm]]
+    if dimensions_mm is not None:
+        half_width = dimensions_mm[0] / 2
+        half_height = dimensions_mm[1] / 2
+        extent = (-half_width, half_width, -half_height, half_height)
+        range_xy = [[-half_width, half_width], [-half_height, half_height]]
     else:
         # Use data extent with 5% padding
         x_min, x_max = x.min(), x.max()
