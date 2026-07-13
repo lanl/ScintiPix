@@ -15,12 +15,11 @@ Current files:
 - `pulsed_neutron_source_timing.yaml`: lightweight pulsed source timing example
   for Geant4 `/primaries` timing. Uses `particle_flux`, `pulse_period_ns`,
   `pulse_time_offset_ns`, and `pulse_time_width_ns`.
-- `three_component_timing_example.yaml`: explicit scintillation timing example
 
-All example YAMLs include:
+Simulation example YAMLs include:
 - a `source.timing` block for source-time macro generation
-- an `intensifier` block for post-transport staged intensifier response
-- a `sensor.timepix` block for downstream centered single-chip Timepix3 readout
+- an `intensifier` block defining the future photocathode image plane
+- a `sensor.timepix` block defining the future sensor model
 
 `source.timing` is emitted by the Python configuration layer as
 `/source/timing/*` macro commands and consumed by the Geant4 runtime when
@@ -29,7 +28,8 @@ generating primary vertices.
 The source-neutron timing examples are consumed by
 [`examples/sourceTiming/README.md`](../sourceTiming/README.md). They are
 Geant4-only inspection inputs; downstream optical, intensifier, and sensor
-blocks are present for schema and geometry completeness.
+blocks are present for schema and geometry completeness; their runtime stages
+are not active yet.
 
 ## Schema Rules
 
@@ -308,8 +308,6 @@ Optional image-intensifier model used by the staged sensor pipeline.
 
 Fields:
 - `model`: required intensifier model label.
-- `write_output_hdf5`: optional boolean controlling standalone intensifier HDF5
-  writing. Defaults to `false`. Alias: `writeOutputHdf5`.
 - `input_screen`: required active input-screen definition. Alias:
   `inputScreen`.
 - `photocathode`: optional photocathode response parameters.
@@ -476,7 +474,7 @@ Fields:
 - `MacroDirectory`: macro output directory under the run root. Defaults to
   `macros`.
 - `LogDirectory`: log output directory under the run root. Defaults to `logs`.
-- `OutputInfo`: stage output directory names and transport chunking controls.
+- Stage directory and filename fields control the selected binary outputs.
 
 Resolved layout:
 
@@ -484,24 +482,18 @@ Resolved layout:
 <WorkingDirectory>/<SimulationRunID>/
   <MacroDirectory>/
   <LogDirectory>/
-  <OutputInfo.SimulatedPhotonsDirectory>/
-  <OutputInfo.TransportedPhotonsDirectory>/
+  <SimulatedPhotonsDirectory>/
+  <TransportedPhotonsDirectory>/
 ```
 
-### `Metadata.RunEnvironment.OutputInfo`
+### `Metadata.RunEnvironment` output fields
 
 Fields:
-- `SimulatedPhotonsDirectory`: simulation-stage HDF5 directory. Defaults to
-  `simulatedPhotons`. Accepted aliases include `simulated_photons_dir` and
-  `simulatedPhotonsDir`.
-- `TransportedPhotonsDirectory`: optical-transport HDF5 directory. Defaults to
-  `transportedPhotons`. Accepted aliases include `transported_photons_dir` and
-  `transportedPhotonsDir`.
-- `TransportChunkRows`: optical-transport chunk row control. Defaults to
-  `auto`; may be `auto` or a positive integer.
-- `TransportChunkTargetMiB`: target memory budget in MiB for automatic
-  optical-transport chunk sizing. Defaults to `32.0` and must be greater than
-  zero.
+- `SimulatedPhotonsDirectory`: Geant4 binary photon directory. Defaults to
+  `simulatedPhotons` when the Geant4 stage is enabled.
+- `TransportedPhotonsDirectory`: reserved binary RayOptics output directory.
+  Defaults to `transportedPhotons` when transportation is enabled.
+- `PhotonsFilename`: binary photon filename. Defaults to `photons.bin`.
 
 ## Going from YAML to Macro Generation
 
@@ -518,8 +510,6 @@ that initialize the simulation environment, geometry, source, and beam setup.
 7. `/run/beamOn <N>` when `geant4runner.numberOfParticles` is set: execute beam
 
 These YAMLs are consumed by scripts in:
-- [`SimulationSetup/`](../SimulationSetup/README.md)
+- [`configurations/`](../configurations/)
 - [`runSimulation/`](../runSimulation/README.md)
-- [`photonTransportation/`](../photonTransportation/README.md)
-- [`endToEnd/`](../endToEnd/README.md)
-- [`scintillatorCataloging/`](../scintillatorCataloging/README.md)
+- [`sourceTiming/`](../sourceTiming/README.md)
