@@ -12,10 +12,13 @@ composition:
   density:
     value: 4.51
     unit: g/cm3
-  atoms:
-    Cs: 5110
-    I: 4880
-    Na: 1
+  elements:
+    - symbol: Cs
+      massFraction: 0.511460
+    - symbol: I
+      massFraction: 0.488440
+    - symbol: Na
+      massFraction: 0.000100
 
 optical:
   curves:

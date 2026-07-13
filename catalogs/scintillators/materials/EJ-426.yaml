@@ -12,15 +12,28 @@ composition:
   density:
     value: 2.42
     unit: g/cm3
-  atoms:
-    Li: 393
-    F: 1231
-    Zn: 4358
-    S: 2137
-    Si: 769
-    C: 657
-    H: 17
-    O: 438
+  elements:
+    - symbol: Li
+      massFraction: 0.0393
+      isotopes:
+        - massNumber: 6
+          atomFraction: 0.95
+        - massNumber: 7
+          atomFraction: 0.05
+    - symbol: F
+      massFraction: 0.1231
+    - symbol: Zn
+      massFraction: 0.4358
+    - symbol: S
+      massFraction: 0.2137
+    - symbol: Si
+      massFraction: 0.0769
+    - symbol: C
+      massFraction: 0.0657
+    - symbol: H
+      massFraction: 0.0017
+    - symbol: O
+      massFraction: 0.0438
 
 optical:
   curves:

@@ -12,9 +12,11 @@ composition:
   density:
     value: 1.0638431389
     unit: g/cm3
-  atoms:
-    C: 4944
-    H: 4647
+  elements:
+    - symbol: C
+      massFraction: 0.926886
+    - symbol: H
+      massFraction: 0.073114
 
 optical:
   curves:

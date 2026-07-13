@@ -12,10 +12,13 @@ composition:
   density:
     value: 3.67
     unit: g/cm3
-  atoms:
-    Na: 1520
-    I: 8380
-    Tl: 100
+  elements:
+    - symbol: Na
+      massFraction: 0.152000
+    - symbol: I
+      massFraction: 0.838000
+    - symbol: Tl
+      massFraction: 0.010000
 
 optical:
   curves:

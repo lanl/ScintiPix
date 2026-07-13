@@ -12,10 +12,13 @@ composition:
   density:
     value: 4.51
     unit: g/cm3
-  atoms:
-    Cs: 5110
-    I: 4880
-    Tl: 8
+  elements:
+    - symbol: Cs
+      massFraction: 0.511110
+    - symbol: I
+      massFraction: 0.488104
+    - symbol: Tl
+      massFraction: 0.000786
 
 optical:
   curves:
