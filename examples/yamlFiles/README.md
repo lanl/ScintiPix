@@ -80,13 +80,16 @@ Defines the optical/material table emitted into Geant4 macros.
 
 Required when not provided by a catalog:
 - `name`: material name used by the Geant4 scintillator material command
-- `composition`: material density and atom counts
+- `composition`: material density and elemental mass fractions
 - `optical`: optical tables and scintillation response
 
 ### `scintillator.properties.composition`
 
 - `density`: density in g/cm3; must be greater than zero
-- `atoms`: mapping of element symbols to positive atom counts
+- `elements`: list of chemical elements with positive `massFraction` values
+  that sum to 1.0
+- `isotopes`: optional list on an element containing positive `massNumber` and
+  `atomFraction` values that sum to 1.0
 
 ### `scintillator.properties.optical`
 
