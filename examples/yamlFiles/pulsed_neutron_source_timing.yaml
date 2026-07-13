@@ -2,7 +2,7 @@
 #
 # The downstream optical/intensifier/sensor blocks are present only because the
 # shared Simulation schema and Geant4 geometry expect them. This example
-# writes the enabled Geant4 Parquet outputs.
+# writes the enabled Geant4 binary outputs.
 
 scintillator:
   position_mm:
@@ -66,21 +66,16 @@ optical:
   lenses:
     - catalogId: CanonEF50mmf1.0L
       primary: true
-  geometry:
-    entranceDiameter: 60.55
-    sensorMaxWidth: 36.0
-  sensitiveDetectorConfig:
-    position_mm:
+  interface:
+    diameterMm: 60.55
+    positionMm:
       x_mm: 0.0
       y_mm: 0.0
       z_mm: 210.05
-    shape: circle
-    diameterRule: min(entranceDiameter,sensorMaxWidth)
   showTransportProgress: true
 
 intensifier:
   model: Cricket2
-  write_output_hdf5: false
   input_screen:
     image_circle_diameter_mm: 18.0
     center_mm: [0.0, 0.0]

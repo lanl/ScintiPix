@@ -1,6 +1,6 @@
 # Canon EF 50 mm f/1.0L YAML-driven example configuration.
 #
-# This file contains strict SimConfig fields consumed by ConfigIO.from_yaml.
+# This file is validated as the current top-level Simulation model.
 
 scintillator:
   position_mm:
