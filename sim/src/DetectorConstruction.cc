@@ -37,8 +37,6 @@ G4double PositiveOrDefault(G4double value, G4double fallback) {
 
 struct ScintillatorMaterialConfig {
   G4double density = 1.023 * g / cm3;
-  G4int carbonAtoms = 9;
-  G4int hydrogenAtoms = 10;
   std::vector<G4double> photonEnergy = {
       2.00 * eV, 2.40 * eV, 2.76 * eV, 3.10 * eV, 3.50 * eV};
   std::vector<G4double> rIndex = {1.58, 1.58, 1.58, 1.58, 1.58};
@@ -65,8 +63,6 @@ ScintillatorMaterialConfig ResolveScintillatorMaterialConfig(const Config* confi
   }
 
   out.density = config->GetScintDensity();
-  out.carbonAtoms = config->GetScintCarbonAtoms();
-  out.hydrogenAtoms = config->GetScintHydrogenAtoms();
   out.photonEnergy = config->GetScintPhotonEnergy();
   out.rIndex = config->GetScintRIndex();
   out.absLength = config->GetScintAbsLength();
@@ -82,8 +78,6 @@ ScintillatorMaterialConfig ResolveScintillatorMaterialConfig(const Config* confi
 
   const auto defaults = DefaultScintillatorMaterialConfig();
   out.density = PositiveOrDefault(out.density, defaults.density);
-  out.carbonAtoms = (out.carbonAtoms > 0) ? out.carbonAtoms : defaults.carbonAtoms;
-  out.hydrogenAtoms = (out.hydrogenAtoms > 0) ? out.hydrogenAtoms : defaults.hydrogenAtoms;
   out.scintYieldPerMeV = PositiveOrDefault(out.scintYieldPerMeV, defaults.scintYieldPerMeV);
   out.resolutionScale = PositiveOrDefault(out.resolutionScale, defaults.resolutionScale);
   for (std::size_t i = 0; i < kScintillationComponentCount; ++i) {
@@ -120,8 +114,8 @@ G4Material* BuildOrGetEJ200(G4NistManager* nist, const Config* config) {
   auto* hydrogen = nist->FindOrBuildElement("H");
 
   auto* scintMaterial = new G4Material(runtimeName, settings.density, 2);
-  scintMaterial->AddElement(carbon, settings.carbonAtoms);
-  scintMaterial->AddElement(hydrogen, settings.hydrogenAtoms);
+  scintMaterial->AddElement(carbon, 9);
+  scintMaterial->AddElement(hydrogen, 10);
 
   auto* mpt = new G4MaterialPropertiesTable();
   mpt->AddProperty("RINDEX", settings.photonEnergy, settings.rIndex);
