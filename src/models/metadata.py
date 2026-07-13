@@ -186,6 +186,9 @@ class WorkingDirectoryLayout(StrictModel):
                 Path(self.macro_directory) if self.macro_directory else None
             ),
             "log directory": Path(self.log_directory) if self.log_directory else None,
+            "config directory": (
+                Path(self.config_directory) if self.config_directory else None
+            ),
             "primaries directory": (
                 Path(self.primaries_directory)
                 if self.primaries_directory
