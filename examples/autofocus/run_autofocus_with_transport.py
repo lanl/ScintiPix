@@ -24,7 +24,7 @@ from examples.analysis.imaging.plotter import (  # noqa: E402
 )
 
 DEFAULT_YAML_PATH = (
-    REPO_ROOT / "examples" / "yamlFiles" / "autofocus_siemens_star_50mm.yaml"
+    REPO_ROOT / "examples" / "yamlFiles" / "EJ200_siemens_50mm.yaml"
 )
 
 
