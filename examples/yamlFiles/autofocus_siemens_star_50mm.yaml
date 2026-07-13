@@ -131,7 +131,7 @@ metadata:
   RunControls:
     auto_focus_lens: true
     geant4_simulation: true
-    transportation: false
+    transportation: true
     intensification: false
     sensor_detection: false
   RunEnvironment:
