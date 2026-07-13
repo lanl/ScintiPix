@@ -294,9 +294,9 @@ def run_simulation(
 
     # Run optical transport if enabled
     if config.metadata.run_controls.transportation:
-        logger.info("Running optical photon transport...")
-        with log_stage("transportation"):
+        logger.info("[transport] Running optical photon transport...")
+        with log_stage("transport"):
             output_path = transport_photons(config)
-        logger.info(f"[transportation] Completed. Output: {output_path}")
+        logger.info(f"[transport] Completed. Output: {output_path}")
 
     return completed
