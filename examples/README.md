@@ -9,4 +9,3 @@ Current example areas:
 - [sourceTiming/README.md](sourceTiming/README.md): inspect Geant4 source timing
 - [yamlFiles/README.md](yamlFiles/README.md): shared `Simulation` YAML files
 
-Retired HDF5 and deleted-model examples are preserved under `legacy/examples/`.
