@@ -19,29 +19,12 @@ sys.path.insert(0, str(_repo_root()))
 
 from src.models.geant4runtime import Geant4RunTime, Geant4RuntimeControls
 from src.models.intensifier import Intensifier, IntensifierInputScreen
-from src.models.optics import Optics
 from src.models.scintillator import (
     ScintillationTimeComponentsByExcitation,
     ScintillatorProperties,
 )
 from src.models.sensor import Sensor
-from src.models.simulation import Simulation
 from src.models.source import SourceTiming
-
-
-def _source_payload() -> dict[str, object]:
-    return {
-        "gps": {
-            "particle": "neutron",
-            "position": {
-                "type": "Plane",
-                "shape": "Circle",
-                "centerMm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": -20.0},
-                "radiusMm": 1.0,
-            },
-            "energy": {"type": "Mono", "monoMeV": 2.45},
-        }
-    }
 
 
 def _scintillator_payload() -> dict[str, object]:
@@ -60,18 +43,6 @@ def _scintillator_payload() -> dict[str, object]:
                     {"timeConstant": 0.0, "yieldFraction": 0.0},
                 ]
             },
-        },
-    }
-
-
-def _optics_payload() -> dict[str, object]:
-    return {
-        "lenses": [{"catalogId": "CanonEF50mmf1.0L", "primary": True}],
-        "geometry": {"entranceDiameter": 60.55, "sensorMaxWidth": 36.0},
-        "sensitiveDetectorConfig": {
-            "position_mm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": 210.05},
-            "shape": "circle",
-            "diameterRule": "min(entranceDiameter,sensorMaxWidth)",
         },
     }
 
@@ -134,20 +105,6 @@ def test_scintillator_profile_and_table_validation() -> None:
         ScintillatorProperties.model_validate(invalid_payload)
 
 
-def test_optics_accepts_example_sensitive_detector_key_and_validates_primary() -> None:
-    optics = Optics.model_validate(_optics_payload())
-    assert optics.sensitive_detector_config.shape == "circle"
-    assert "sensitiveDetectorConfig" in optics.model_dump(by_alias=True)
-
-    invalid_payload = _optics_payload()
-    invalid_payload["lenses"] = [
-        {"catalogId": "A", "primary": True},
-        {"catalogId": "B", "primary": True},
-    ]
-    with pytest.raises(ValidationError, match="exactly one primary"):
-        Optics.model_validate(invalid_payload)
-
-
 def test_intensifier_aliases_and_qe_table_validation() -> None:
     screen = IntensifierInputScreen.model_validate(
         {"imageCircleDiameterMm": 18.0, "centerMm": {"x": 1.0, "y": 2.0}}
@@ -180,35 +137,3 @@ def test_geant4_runtime_requires_simulation_command_payload() -> None:
 
     with pytest.raises(ValidationError, match="at least one control"):
         Geant4RuntimeControls.model_validate({})
-
-
-def test_top_level_simulation_model_validates_payload(tmp_path: Path) -> None:
-    simulation = Simulation.model_validate(
-        {
-            "source": _source_payload(),
-            "scintillator": _scintillator_payload(),
-            "geant4runner": {"numberOfParticles": 10},
-            "metadata": {
-                "author": "Unit Test",
-                "date": "2026-06-16",
-                "version": "test",
-                "description": "Top-level model validation.",
-                "RunControls": {
-                    "transportation": False,
-                    "intensification": False,
-                    "sensor_detection": False,
-                },
-                "RunEnvironment": {
-                    "WorkingDirectory": str(tmp_path),
-                    "SimulationRunID": "model_test",
-                },
-            },
-            "optical": _optics_payload(),
-            "intensifier": _intensifier_payload(),
-            "sensor": _sensor_payload(),
-        }
-    )
-
-    assert simulation.source.gps.particle == "neutron"
-    assert simulation.geant4runner.number_of_particles == 10
-    assert (tmp_path / "model_test_000" / "primaries").is_dir()

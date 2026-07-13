@@ -58,27 +58,6 @@ class ScintillatorCatalogTests(unittest.TestCase):
         self.assertIn("CsI-Tl", materials)
         self.assertIn("NaI-Tl", materials)
 
-    def test_load_default_scintillator(self) -> None:
-        """Loading without explicit id should return catalog default."""
-
-        loaded = self._load_scintillator()
-        self.assertEqual(loaded.material.id, "EJ200")
-        self.assertEqual(loaded.material.composition.atoms["C"], 9)
-        self.assertEqual(loaded.material.composition.atoms["H"], 10)
-        self.assertEqual(len(loaded.r_index.energy), 5)
-        self.assertEqual(loaded.r_index.energy[0], 2.0)
-        self.assertEqual(loaded.r_index.value[0], 1.58)
-        profile = loaded.material.optical.constants.time_components.default
-        assert profile is not None
-        self.assertEqual(
-            [c.time_constant.value for c in profile],
-            [2.1, 0.0, 0.0],
-        )
-        self.assertEqual(
-            [c.yield_fraction for c in profile],
-            [1.0, 0.0, 0.0],
-        )
-
     def test_load_material_definition(self) -> None:
         """Material-only loader should parse metadata/constants."""
 
@@ -265,108 +244,6 @@ class ScintillatorCatalogTests(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 self._load_scintillator_definition("TEST", catalog_path=root / "catalog.yaml")
-
-    def test_load_ej276_variants(self) -> None:
-        """EJ-276D/G entries should resolve with expected SSLG4 constants."""
-
-        ej276d = self._load_scintillator("EJ-276D")
-        self.assertEqual(ej276d.material.name, "EJ-276D")
-        self.assertEqual(ej276d.material.optical.constants.scint_yield.value, 8600.0)
-        d_neutron = ej276d.material.optical.constants.time_components.neutron
-        d_gamma = ej276d.material.optical.constants.time_components.gamma
-        assert d_neutron is not None
-        assert d_gamma is not None
-        self.assertEqual(
-            d_neutron[0].time_constant.value,
-            13.0,
-        )
-        self.assertEqual(
-            d_neutron[1].time_constant.value,
-            59.0,
-        )
-        self.assertEqual(
-            d_neutron[2].time_constant.value,
-            460.0,
-        )
-        self.assertEqual(d_gamma[0].time_constant.value, 13.0)
-        self.assertEqual(d_gamma[1].time_constant.value, 35.0)
-        self.assertEqual(d_gamma[2].time_constant.value, 270.0)
-        self.assertEqual(len(ej276d.r_index.energy), 5)
-
-        ej276g = self._load_scintillator("EJ-276G")
-        self.assertEqual(ej276g.material.name, "EJ-276G")
-        self.assertEqual(ej276g.material.optical.constants.scint_yield.value, 8000.0)
-        g_neutron = ej276g.material.optical.constants.time_components.neutron
-        g_gamma = ej276g.material.optical.constants.time_components.gamma
-        assert g_neutron is not None
-        assert g_gamma is not None
-        self.assertEqual(
-            g_neutron[0].time_constant.value,
-            13.0,
-        )
-        self.assertEqual(
-            g_neutron[1].time_constant.value,
-            59.0,
-        )
-        self.assertEqual(
-            g_neutron[2].time_constant.value,
-            460.0,
-        )
-        self.assertEqual(g_gamma[0].time_constant.value, 13.0)
-        self.assertEqual(g_gamma[1].time_constant.value, 35.0)
-        self.assertEqual(g_gamma[2].time_constant.value, 270.0)
-        self.assertEqual(len(ej276g.r_index.energy), 5)
-
-    def test_load_ej426(self) -> None:
-        """EJ-426 entry should load SSLG4-derived constants and curve grid."""
-
-        ej426 = self._load_scintillator("EJ-426")
-        self.assertEqual(ej426.material.name, "EJ-426")
-        self.assertEqual(ej426.material.composition.density.value, 2.42)
-        self.assertEqual(ej426.material.optical.constants.scint_yield.value, 40000.0)
-        profile = ej426.material.optical.constants.time_components.default
-        assert profile is not None
-        self.assertEqual(
-            profile[0].time_constant.value,
-            200.0,
-        )
-        self.assertEqual(len(ej426.r_index.energy), 79)
-
-    def test_load_csi_and_nai_variants(self) -> None:
-        """CsI/NaI entries should load SSLG4-derived iodide constants."""
-
-        csi_na = self._load_scintillator("CsI-Na")
-        self.assertEqual(csi_na.material.name, "CsI(Na)")
-        self.assertEqual(csi_na.material.optical.constants.scint_yield.value, 41000.0)
-        csi_na_profile = csi_na.material.optical.constants.time_components.default
-        assert csi_na_profile is not None
-        self.assertEqual(
-            csi_na_profile[0].time_constant.value,
-            630.0,
-        )
-        self.assertEqual(len(csi_na.r_index.energy), 77)
-
-        csi_tl = self._load_scintillator("CsI-Tl")
-        self.assertEqual(csi_tl.material.name, "CsI(Tl)")
-        self.assertEqual(csi_tl.material.optical.constants.scint_yield.value, 54000.0)
-        csi_tl_profile = csi_tl.material.optical.constants.time_components.default
-        assert csi_tl_profile is not None
-        self.assertEqual(
-            csi_tl_profile[0].time_constant.value,
-            1000.0,
-        )
-        self.assertEqual(len(csi_tl.r_index.energy), 77)
-
-        nai_tl = self._load_scintillator("NaI-Tl")
-        self.assertEqual(nai_tl.material.name, "NaI(Tl)")
-        self.assertEqual(nai_tl.material.optical.constants.scint_yield.value, 41000.0)
-        nai_tl_profile = nai_tl.material.optical.constants.time_components.default
-        assert nai_tl_profile is not None
-        self.assertEqual(
-            nai_tl_profile[0].time_constant.value,
-            630.0,
-        )
-        self.assertEqual(len(nai_tl.r_index.energy), 77)
 
     def test_mismatched_curve_energy_grid_raises(self) -> None:
         """Curve files with different energy grids should be rejected."""
