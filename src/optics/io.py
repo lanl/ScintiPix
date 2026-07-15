@@ -2,6 +2,7 @@
 
 import struct
 from pathlib import Path
+from typing import BinaryIO
 
 import numpy as np
 
@@ -104,6 +105,21 @@ def read_simulated_photons(file_path: str | Path) -> np.ndarray:
     )
 
 
+def memory_map_simulated_photons(file_path: str | Path) -> np.ndarray:
+    """Memory-map ``simulatedPhotons/photons.bin`` without copying its payload."""
+
+    record_count = validate_binary_header(file_path, SIMULATED_PHOTON_DTYPE)
+    if record_count == 0:
+        return np.empty(0, dtype=SIMULATED_PHOTON_DTYPE)
+    return np.memmap(
+        file_path,
+        dtype=SIMULATED_PHOTON_DTYPE,
+        mode="r",
+        offset=HEADER_SIZE,
+        shape=(record_count,),
+    )
+
+
 def read_transported_photons(file_path: str | Path) -> np.ndarray:
     """Read transported photocathode hits into a structured array."""
 
@@ -116,6 +132,38 @@ def read_transported_photons(file_path: str | Path) -> np.ndarray:
     )
 
 
+def write_transported_photon_header(
+    handle: BinaryIO,
+    record_count: int,
+) -> None:
+    """Write or update the transported-photon header on an open binary file."""
+
+    if record_count < 0:
+        raise ValueError("record_count must be nonnegative")
+    handle.seek(0)
+    handle.write(
+        HEADER_STRUCT.pack(
+            HEADER_MAGIC,
+            HEADER_VERSION,
+            TRANSPORTED_PHOTON_DTYPE.itemsize,
+            record_count,
+            bytes(40),
+        )
+    )
+
+
+def append_transported_photons(
+    handle: BinaryIO,
+    photons: np.ndarray,
+) -> None:
+    """Append one transported-photon chunk to an open binary file."""
+
+    if photons.ndim != 1 or photons.dtype != TRANSPORTED_PHOTON_DTYPE:
+        raise TypeError("photons must use TRANSPORTED_PHOTON_DTYPE")
+    handle.seek(0, 2)
+    photons.tofile(handle)
+
+
 def write_transported_photons(
     file_path: str | Path,
     photons: np.ndarray,
@@ -126,13 +174,6 @@ def write_transported_photons(
         raise TypeError("photons must use TRANSPORTED_PHOTON_DTYPE")
 
     path = Path(file_path)
-    header = HEADER_STRUCT.pack(
-        HEADER_MAGIC,
-        HEADER_VERSION,
-        TRANSPORTED_PHOTON_DTYPE.itemsize,
-        len(photons),
-        bytes(40),
-    )
     with path.open("wb") as handle:
-        handle.write(header)
-        photons.tofile(handle)
+        write_transported_photon_header(handle, len(photons))
+        append_transported_photons(handle, photons)
