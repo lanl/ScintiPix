@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
+from collections import deque
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, Iterator
 
 import numpy as np
 from loguru import logger
@@ -13,9 +16,12 @@ from rayoptics.zemax import zmxread
 
 from src.optics.focus import _apply_geometry, _primary_lens
 from src.optics.io import (
+    SIMULATED_PHOTON_DTYPE,
     TRANSPORTED_PHOTON_DTYPE,
-    read_simulated_photons,
-    write_transported_photons,
+    append_transported_photons,
+    memory_map_simulated_photons,
+    validate_binary_header,
+    write_transported_photon_header,
 )
 
 if TYPE_CHECKING:
@@ -24,6 +30,10 @@ if TYPE_CHECKING:
 
 
 _SPEED_OF_LIGHT_MM_PER_NS = 299.792458
+_PHOTONS_PER_CHUNK = 50_000
+_worker_config: Simulation | None = None
+_worker_opt_model: OpticalModel | None = None
+_worker_photons: np.ndarray | None = None
 
 
 def load_lens_model(config: Simulation) -> OpticalModel:
@@ -171,6 +181,58 @@ def trace_photons(
     return np.asarray(transported, dtype=TRANSPORTED_PHOTON_DTYPE)
 
 
+def _initialize_worker(config: Simulation, input_path: Path) -> None:
+    """Open worker-local input and lens state once for all assigned ranges."""
+
+    global _worker_config, _worker_opt_model, _worker_photons
+    _worker_config = config
+    _worker_photons = memory_map_simulated_photons(input_path)
+    _worker_opt_model = load_lens_model(config)
+
+
+def _trace_photon_range(photon_range: tuple[int, int]) -> np.ndarray:
+    """Trace one contiguous range using state initialized in this worker."""
+
+    if _worker_config is None or _worker_opt_model is None or _worker_photons is None:
+        raise RuntimeError("Photon transport worker is not initialized.")
+    start, stop = photon_range
+    return trace_photons(
+        _worker_config,
+        _worker_opt_model,
+        _worker_photons[start:stop],
+        source_index_start=start,
+    )
+
+
+def _trace_ranges_parallel(
+    config: Simulation,
+    input_path: Path,
+    photon_ranges: Iterable[tuple[int, int]],
+    worker_count: int,
+) -> Iterator[np.ndarray]:
+    """Yield bounded process results in the same order as the input ranges."""
+
+    ranges = iter(photon_ranges)
+    with ProcessPoolExecutor(
+        max_workers=worker_count,
+        initializer=_initialize_worker,
+        initargs=(config, input_path),
+    ) as executor:
+        pending = deque()
+        for photon_range in ranges:
+            pending.append(executor.submit(_trace_photon_range, photon_range))
+            if len(pending) == worker_count:
+                break
+
+        while pending:
+            yield pending.popleft().result()
+            try:
+                photon_range = next(ranges)
+            except StopIteration:
+                continue
+            pending.append(executor.submit(_trace_photon_range, photon_range))
+
+
 def transport_photons(config: Simulation) -> Path:
     """Read, trace, and write photons using paths from ``config``."""
 
@@ -187,13 +249,47 @@ def transport_photons(config: Simulation) -> Path:
         Path(environment.transported_photons_directory) / environment.photons_filename
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    photons = read_simulated_photons(input_path)
-    logger.info(f"[optics] Tracing {len(photons)} simulated photons.")
+    record_count = validate_binary_header(input_path, SIMULATED_PHOTON_DTYPE)
+    photon_ranges = [
+        (start, min(start + _PHOTONS_PER_CHUNK, record_count))
+        for start in range(0, record_count, _PHOTONS_PER_CHUNK)
+    ]
+    worker_count = min(os.cpu_count() or 1, len(photon_ranges))
+    worker_count = max(1, worker_count)
+    logger.info(
+        f"[optics] Tracing {record_count} simulated photons with "
+        f"{worker_count} worker process(es)."
+    )
 
-    opt_model = load_lens_model(config)
-    transported = trace_photons(config, opt_model, photons)
-    write_transported_photons(output_path, transported)
+    transported_count = 0
+    with output_path.open("wb") as handle:
+        write_transported_photon_header(handle, 0)
+        if worker_count == 1 and photon_ranges:
+            photons = memory_map_simulated_photons(input_path)
+            opt_model = load_lens_model(config)
+            transported_chunks = (
+                trace_photons(
+                    config,
+                    opt_model,
+                    photons[start:stop],
+                    source_index_start=start,
+                )
+                for start, stop in photon_ranges
+            )
+        else:
+            transported_chunks = _trace_ranges_parallel(
+                config,
+                input_path,
+                photon_ranges,
+                worker_count,
+            )
+
+        for transported in transported_chunks:
+            append_transported_photons(handle, transported)
+            transported_count += len(transported)
+        write_transported_photon_header(handle, transported_count)
+
     logger.success(
-        f"[optics] Wrote {len(transported)} photocathode hits to {output_path}."
+        f"[optics] Wrote {transported_count} photocathode hits to {output_path}."
     )
     return output_path
