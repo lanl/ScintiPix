@@ -70,6 +70,22 @@ class DetectorConstructionSourceTests(unittest.TestCase):
             self.assertNotIn(removed_token, config_header)
             self.assertNotIn(removed_token, messenger_source)
 
+    def test_enriched_isotopes_are_validated_before_construction(self) -> None:
+        """Geant4 isotope records should be checked before they are constructed."""
+
+        source = (_repo_root() / "sim" / "src" / "DetectorConstruction.cc").read_text(
+            encoding="utf-8"
+        )
+
+        resolve_z = source.index("nist->GetZ(elementConfig.symbol)")
+        validate_mass = source.index(
+            "nist->GetIsotopeMass(atomicNumber, isotopeConfig.massNumber)"
+        )
+        construct_isotope = source.index("new G4Isotope")
+
+        self.assertLess(resolve_z, validate_mass)
+        self.assertLess(validate_mass, construct_isotope)
+
 
 if __name__ == "__main__":
     unittest.main()
