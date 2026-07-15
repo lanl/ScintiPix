@@ -57,6 +57,34 @@ def test_trace_photons_keeps_only_photocathode_hits(monkeypatch) -> None:
     assert result["photocathode_hit_wavelength_nm"].tolist() == [500.0]
 
 
+def test_trace_photons_preserves_global_source_index(monkeypatch) -> None:
+    config = from_yaml("examples/yamlFiles/EJ200_siemens_50mm.yaml")
+    photons = np.zeros(2, dtype=SIMULATED_PHOTON_DTYPE)
+    photons["optical_interface_hit_dir_z"] = 1.0
+    photons["optical_interface_hit_wavelength_nm"] = 500.0
+
+    monkeypatch.setattr(
+        raytrace.trace,
+        "trace",
+        lambda *args, **kwargs: SimpleNamespace(ray=[([0.0, 0.0, 0.0],)], op=250.0),
+    )
+    opt_model = {
+        "seq_model": SimpleNamespace(
+            gaps=[SimpleNamespace(thi=200.0)],
+            wvlns=[486.0],
+        )
+    }
+
+    result = raytrace.trace_photons(
+        config,
+        opt_model,
+        photons,
+        source_index_start=20,
+    )
+
+    assert result["source_photon_index"].tolist() == [20, 21]
+
+
 def test_transport_photons_uses_simulation_paths(tmp_path, monkeypatch) -> None:
     config = from_yaml("examples/yamlFiles/EJ200_siemens_50mm.yaml")
     environment = config.metadata.run_environment

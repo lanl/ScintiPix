@@ -10,9 +10,12 @@ from src.optics.io import (
     HEADER_VERSION,
     SIMULATED_PHOTON_DTYPE,
     TRANSPORTED_PHOTON_DTYPE,
+    append_transported_photons,
+    memory_map_simulated_photons,
     read_simulated_photons,
     read_transported_photons,
     validate_binary_header,
+    write_transported_photon_header,
     write_transported_photons,
 )
 
@@ -54,6 +57,28 @@ def test_read_simulated_photons(tmp_path) -> None:
     assert result["gun_call_id"].tolist() == [12]
     assert result["photon_track_id"].tolist() == [34]
     assert result["optical_interface_hit_wavelength_nm"].tolist() == [450.0]
+
+
+def test_memory_map_simulated_photons(tmp_path) -> None:
+    path = tmp_path / "photons.bin"
+    photons = np.zeros(2, dtype=SIMULATED_PHOTON_DTYPE)
+    photons["photon_track_id"] = [34, 35]
+    path.write_bytes(
+        HEADER_STRUCT.pack(
+            HEADER_MAGIC,
+            HEADER_VERSION,
+            SIMULATED_PHOTON_DTYPE.itemsize,
+            2,
+            bytes(40),
+        )
+        + photons.tobytes()
+    )
+
+    result = memory_map_simulated_photons(path)
+
+    assert isinstance(result, np.memmap)
+    assert result.dtype == SIMULATED_PHOTON_DTYPE
+    assert result["photon_track_id"].tolist() == [34, 35]
 
 
 @pytest.mark.parametrize(
@@ -166,3 +191,23 @@ def test_transported_photon_binary_round_trip(tmp_path) -> None:
     )
     assert record_size == 72
     assert record_count == 2
+
+
+def test_incremental_transported_photon_write(tmp_path) -> None:
+    path = tmp_path / "photons.bin"
+    first_chunk = np.zeros(2, dtype=TRANSPORTED_PHOTON_DTYPE)
+    first_chunk["source_photon_index"] = [2, 4]
+    second_chunk = np.zeros(1, dtype=TRANSPORTED_PHOTON_DTYPE)
+    second_chunk["source_photon_index"] = 8
+
+    with path.open("wb") as handle:
+        write_transported_photon_header(handle, 0)
+        append_transported_photons(handle, first_chunk)
+        append_transported_photons(handle, second_chunk)
+        write_transported_photon_header(handle, 3)
+
+    result = read_transported_photons(path)
+
+    assert result["source_photon_index"].tolist() == [2, 4, 8]
+    _, _, _, record_count, _ = HEADER_STRUCT.unpack(path.read_bytes()[:HEADER_SIZE])
+    assert record_count == 3
