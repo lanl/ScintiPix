@@ -115,13 +115,77 @@ def test_transport_photons_uses_simulation_paths(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(
         raytrace,
         "trace_photons",
-        lambda config, opt_model, photons: expected,
+        lambda config, opt_model, photons, source_index_start=0: expected,
     )
 
     output_path = raytrace.transport_photons(config)
 
     assert output_path == tmp_path / "transportedPhotons" / "photons.bin"
     assert read_transported_photons(output_path)["photon_track_id"].tolist() == [99]
+
+
+def test_transport_photons_submits_contiguous_ranges_in_order(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    config = from_yaml("examples/yamlFiles/EJ200_siemens_50mm.yaml")
+    environment = config.metadata.run_environment
+    environment.simulated_photons_directory = str(tmp_path / "simulatedPhotons")
+    environment.transported_photons_directory = str(tmp_path / "transportedPhotons")
+    Path(environment.simulated_photons_directory).mkdir()
+
+    photons = np.zeros(2, dtype=SIMULATED_PHOTON_DTYPE)
+    input_path = Path(environment.simulated_photons_directory) / "photons.bin"
+    input_path.write_bytes(
+        HEADER_STRUCT.pack(
+            HEADER_MAGIC,
+            HEADER_VERSION,
+            SIMULATED_PHOTON_DTYPE.itemsize,
+            2,
+            bytes(40),
+        )
+        + photons.tobytes()
+    )
+    submitted_ranges = []
+    executor_arguments = {}
+
+    class FakeFuture:
+        def __init__(self, result) -> None:
+            self._result = result
+
+        def result(self):
+            return self._result
+
+    class FakeExecutor:
+        def __init__(self, **kwargs) -> None:
+            executor_arguments.update(kwargs)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback) -> None:
+            pass
+
+        def submit(self, function, photon_range):
+            submitted_ranges.append(photon_range)
+            result = np.zeros(1, dtype=raytrace.TRANSPORTED_PHOTON_DTYPE)
+            result["source_photon_index"] = photon_range[0]
+            return FakeFuture(result)
+
+    monkeypatch.setattr(raytrace, "_PHOTONS_PER_CHUNK", 1)
+    monkeypatch.setattr(raytrace.os, "cpu_count", lambda: 2)
+    monkeypatch.setattr(raytrace, "ProcessPoolExecutor", FakeExecutor)
+
+    output_path = raytrace.transport_photons(config)
+
+    assert executor_arguments == {
+        "max_workers": 2,
+        "initializer": raytrace._initialize_worker,
+        "initargs": (config, input_path),
+    }
+    assert submitted_ranges == [(0, 1), (1, 2)]
+    result = read_transported_photons(output_path)
+    assert result["source_photon_index"].tolist() == [0, 1]
 
 
 def test_load_lens_model_requires_focused_back_focus() -> None:
