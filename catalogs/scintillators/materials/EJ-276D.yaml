@@ -3,15 +3,20 @@ name: EJ-276D
 description: >
   Eljen EJ-276D plastic PSD scintillator entry sourced from SSLG4
   (OrganicScintillatorLib::AddEJ276D). Optical curves follow the same
-  energy nodes and analytical profiles used there.
+  energy nodes and analytical profiles used there. Composition is a C/H-only
+  approximation derived from Eljen's published atom densities. This catalog
+  keeps its existing 1.0638431389 g/cm3 density even though Eljen publishes a
+  total material density of 1.099 g/cm3.
 
 composition:
   density:
     value: 1.0638431389
     unit: g/cm3
-  atoms:
-    C: 4944
-    H: 4647
+  elements:
+    - symbol: C
+      massFraction: 0.926886
+    - symbol: H
+      massFraction: 0.073114
 
 optical:
   curves:

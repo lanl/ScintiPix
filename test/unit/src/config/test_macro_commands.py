@@ -33,6 +33,7 @@ def _create_minimal_simulation(temp_dir: Path):
         Scintillator,
         ScintillatorProperties,
         ScintillatorComposition,
+        ScintillatorElement,
         ScintillatorOpticalProperties,
         ScintillationTimeComponent,
         ScintillationTimeComponentsByExcitation,
@@ -61,7 +62,10 @@ def _create_minimal_simulation(temp_dir: Path):
             name="EJ200",
             composition=ScintillatorComposition(
                 density=1.023,
-                atoms={"C": 9, "H": 10}
+                elements=[
+                    ScintillatorElement(symbol="H", mass_fraction=0.085294),
+                    ScintillatorElement(symbol="C", mass_fraction=0.914706),
+                ],
             ),
             optical=ScintillatorOpticalProperties(
                 photon_energy=[2.8, 3.0, 3.2],
@@ -198,6 +202,59 @@ class MacroWriteTests(unittest.TestCase):
             self.assertTrue(any(cmd == "/run/initialize" for cmd in commands))
             self.assertTrue(any(cmd.startswith("/gps/") for cmd in commands))
             self.assertTrue(any(cmd.startswith("/run/beamOn") for cmd in commands))
+            self.assertIn(
+                "/scintillator/properties/elements C=0.914706,H=0.085294",
+                commands,
+            )
+            self.assertFalse(
+                any(cmd.startswith("/scintillator/properties/isotopes") for cmd in commands)
+            )
+            self.assertFalse(any("carbonAtoms" in cmd for cmd in commands))
+            self.assertFalse(any("hydrogenAtoms" in cmd for cmd in commands))
+
+    def test_write_macro_emits_sorted_enriched_composition(self) -> None:
+        """Element and isotope commands should be complete and deterministic."""
+
+        from src.models.scintillator import (
+            ScintillatorComposition,
+            ScintillatorElement,
+            ScintillatorIsotope,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            simulation = _create_minimal_simulation(Path(tmp_dir))
+            simulation.scintillator.properties.composition = ScintillatorComposition(
+                density=2.42,
+                elements=[
+                    ScintillatorElement(symbol="Zn", mass_fraction=0.5),
+                    ScintillatorElement(
+                        symbol="Li",
+                        mass_fraction=0.5,
+                        isotopes=[
+                            ScintillatorIsotope(mass_number=7, atom_fraction=0.05),
+                            ScintillatorIsotope(mass_number=6, atom_fraction=0.95),
+                        ],
+                    ),
+                ],
+            )
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+            commands = macro_path.read_text(encoding="utf-8").splitlines()
+
+            self.assertIn(
+                "/scintillator/properties/elements Li=0.5,Zn=0.5",
+                commands,
+            )
+            self.assertIn(
+                "/scintillator/properties/isotopes Li=6:0.95,7:0.05",
+                commands,
+            )
 
     def test_write_macro_filename_format(self) -> None:
         """write_macro should create files with correct naming format."""

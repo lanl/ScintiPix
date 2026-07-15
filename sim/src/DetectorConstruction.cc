@@ -6,6 +6,7 @@
 #include "G4Box.hh"
 #include "G4Colour.hh"
 #include "G4Element.hh"
+#include "G4Isotope.hh"
 #include "G4LogicalVolume.hh"
 #include "G4Material.hh"
 #include "G4MaterialPropertiesTable.hh"
@@ -37,8 +38,6 @@ G4double PositiveOrDefault(G4double value, G4double fallback) {
 
 struct ScintillatorMaterialConfig {
   G4double density = 1.023 * g / cm3;
-  G4int carbonAtoms = 9;
-  G4int hydrogenAtoms = 10;
   std::vector<G4double> photonEnergy = {
       2.00 * eV, 2.40 * eV, 2.76 * eV, 3.10 * eV, 3.50 * eV};
   std::vector<G4double> rIndex = {1.58, 1.58, 1.58, 1.58, 1.58};
@@ -65,8 +64,6 @@ ScintillatorMaterialConfig ResolveScintillatorMaterialConfig(const Config* confi
   }
 
   out.density = config->GetScintDensity();
-  out.carbonAtoms = config->GetScintCarbonAtoms();
-  out.hydrogenAtoms = config->GetScintHydrogenAtoms();
   out.photonEnergy = config->GetScintPhotonEnergy();
   out.rIndex = config->GetScintRIndex();
   out.absLength = config->GetScintAbsLength();
@@ -82,8 +79,6 @@ ScintillatorMaterialConfig ResolveScintillatorMaterialConfig(const Config* confi
 
   const auto defaults = DefaultScintillatorMaterialConfig();
   out.density = PositiveOrDefault(out.density, defaults.density);
-  out.carbonAtoms = (out.carbonAtoms > 0) ? out.carbonAtoms : defaults.carbonAtoms;
-  out.hydrogenAtoms = (out.hydrogenAtoms > 0) ? out.hydrogenAtoms : defaults.hydrogenAtoms;
   out.scintYieldPerMeV = PositiveOrDefault(out.scintYieldPerMeV, defaults.scintYieldPerMeV);
   out.resolutionScale = PositiveOrDefault(out.resolutionScale, defaults.resolutionScale);
   for (std::size_t i = 0; i < kScintillationComponentCount; ++i) {
@@ -107,21 +102,92 @@ ScintillatorMaterialConfig ResolveScintillatorMaterialConfig(const Config* confi
   return out;
 }
 
-// Build (once per config version) and return a configurable EJ200-like material.
-G4Material* BuildOrGetEJ200(G4NistManager* nist, const Config* config) {
+// Build (once per config version) and return a configurable scintillator material.
+G4Material* BuildOrGetConfiguredScintillator(G4NistManager* nist, const Config* config) {
   const auto settings = ResolveScintillatorMaterialConfig(config);
-  const std::string runtimeName = "EJ200_cfg_" + std::to_string(settings.version);
+  const std::string materialName = config ? config->GetScintMaterial() : "EJ200";
+  const std::string runtimeName = materialName + "_cfg_" + std::to_string(settings.version);
 
   if (auto* existing = G4Material::GetMaterial(runtimeName, false)) {
     return existing;
   }
 
-  auto* carbon = nist->FindOrBuildElement("C");
-  auto* hydrogen = nist->FindOrBuildElement("H");
+  const auto elementConfigs = config ? config->GetScintElements()
+                                     : std::vector<ScintillatorElementConfig>{{"C", 0.914706, {}}, {"H", 0.085294, {}}};
 
-  auto* scintMaterial = new G4Material(runtimeName, settings.density, 2);
-  scintMaterial->AddElement(carbon, settings.carbonAtoms);
-  scintMaterial->AddElement(hydrogen, settings.hydrogenAtoms);
+  if (elementConfigs.empty()) {
+    G4cerr << "[Material] No elements configured for " << materialName
+           << "; cannot construct material." << G4endl;
+    return nullptr;
+  }
+
+  const G4int nComponents = static_cast<G4int>(elementConfigs.size());
+  auto* scintMaterial = new G4Material(runtimeName, settings.density, nComponents);
+
+  for (const auto& elementConfig : elementConfigs) {
+    G4Element* element = nullptr;
+
+    if (elementConfig.isotopes.empty()) {
+      // Natural isotopic composition.
+      element = nist->FindOrBuildElement(elementConfig.symbol);
+      if (!element) {
+        G4cerr << "[Material] Unknown element symbol '" << elementConfig.symbol
+               << "' for " << materialName << G4endl;
+        delete scintMaterial;
+        return nullptr;
+      }
+    } else {
+      // Enriched element: build from configured isotopes.
+      const G4int atomicNumber = nist->GetZ(elementConfig.symbol);
+      if (atomicNumber <= 0) {
+        G4cerr << "[Material] Unknown element symbol '" << elementConfig.symbol
+               << "' for " << materialName << G4endl;
+        delete scintMaterial;
+        return nullptr;
+      }
+
+      for (const auto& isotopeConfig : elementConfig.isotopes) {
+        if (nist->GetIsotopeMass(atomicNumber, isotopeConfig.massNumber) <= 0.0) {
+          G4cerr << "[Material] Invalid isotope " << elementConfig.symbol
+                 << isotopeConfig.massNumber << " for element "
+                 << elementConfig.symbol << G4endl;
+          delete scintMaterial;
+          return nullptr;
+        }
+      }
+
+      const auto enrichedName = elementConfig.symbol + "_enriched_" + std::to_string(settings.version);
+      const G4int nIsotopes = static_cast<G4int>(elementConfig.isotopes.size());
+      element = new G4Element(enrichedName, elementConfig.symbol, nIsotopes);
+
+      for (const auto& isotopeConfig : elementConfig.isotopes) {
+        const auto isotopeName = elementConfig.symbol + std::to_string(isotopeConfig.massNumber);
+        auto* isotope = new G4Isotope(isotopeName,
+                                      atomicNumber,
+                                      isotopeConfig.massNumber);
+        element->AddIsotope(isotope, isotopeConfig.atomFraction);
+      }
+    }
+
+    scintMaterial->AddElement(element, elementConfig.massFraction);
+  }
+
+  G4cout << "[Material] Constructed " << runtimeName << " at "
+         << settings.density / (g / cm3) << " g/cm3 with elements: ";
+  for (std::size_t i = 0; i < elementConfigs.size(); ++i) {
+    if (i > 0) G4cout << ", ";
+    G4cout << elementConfigs[i].symbol << " " << elementConfigs[i].massFraction;
+    if (!elementConfigs[i].isotopes.empty()) {
+      G4cout << " (";
+      for (std::size_t j = 0; j < elementConfigs[i].isotopes.size(); ++j) {
+        if (j > 0) G4cout << ",";
+        G4cout << elementConfigs[i].isotopes[j].massNumber << ":"
+               << elementConfigs[i].isotopes[j].atomFraction;
+      }
+      G4cout << ")";
+    }
+  }
+  G4cout << G4endl;
 
   auto* mpt = new G4MaterialPropertiesTable();
   mpt->AddProperty("RINDEX", settings.photonEnergy, settings.rIndex);
@@ -176,22 +242,14 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   auto* nist = G4NistManager::Instance();
   auto* worldMaterial = nist->FindOrBuildMaterial("G4_AIR");
 
-  // Unknown scintillator names fall back to configurable EJ200.
-  G4Material* scintMaterial = nullptr;
-  std::string scintMaterialName = "EJ200";
-  if (fConfig) {
-    scintMaterialName = fConfig->GetScintMaterial();
-  }
-
-  if (scintMaterialName == "EJ200") {
-    scintMaterial = BuildOrGetEJ200(nist, fConfig);
-  } else {
-    scintMaterial = nist->FindOrBuildMaterial(scintMaterialName, false);
-    if (!scintMaterial) {
-      G4cout << "Material '" << scintMaterialName
-             << "' not found. Falling back to EJ200." << G4endl;
-      scintMaterial = BuildOrGetEJ200(nist, fConfig);
-    }
+  // Build configurable scintillator material from composition.
+  // Always use configured composition when available.
+  G4Material* scintMaterial = BuildOrGetConfiguredScintillator(nist, fConfig);
+  if (!scintMaterial) {
+    std::string scintMaterialName = fConfig ? fConfig->GetScintMaterial() : "EJ200";
+    G4cerr << "Failed to construct scintillator material '" << scintMaterialName
+           << "'. Check element composition configuration." << G4endl;
+    return nullptr;
   }
 
   // Define world optical properties for optical-photon transport.
@@ -252,7 +310,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     opticalInterfacePosX = fConfig->GetOpticalInterfacePosX();
     opticalInterfacePosY = fConfig->GetOpticalInterfacePosY();
     opticalInterfacePosZ = fConfig->GetOpticalInterfacePosZ();
-    maskRadius = std::max(0.0, fConfig->GetMaskRadius());
+    maskRadius = std::max(0.0 * mm, fConfig->GetMaskRadius());
     resolutionTargetEnabled = fConfig->GetResolutionTargetEnabled();
     resolutionTargetOuterRadius =
         PositiveOrDefault(fConfig->GetResolutionTargetOuterRadius(),

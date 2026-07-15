@@ -20,7 +20,7 @@ def print_scintillator_info(simulation, test_name):
 
         # Verify nested composition structure
         print(f"  Composition.density: {props.composition.density} (type: {type(props.composition.density).__name__})")
-        print(f"  Composition.atoms: {props.composition.atoms}")
+        print(f"  Composition.elements: {props.composition.elements}")
 
         # Verify nested optical structure
         print(f"  Optical.scint_yield: {props.optical.scint_yield} (type: {type(props.optical.scint_yield).__name__})")

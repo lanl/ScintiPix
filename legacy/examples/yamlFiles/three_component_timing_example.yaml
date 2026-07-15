@@ -18,9 +18,11 @@ scintillator:
     name: EJ200_three_component_timing
     composition:
       density: 1.023
-      atoms:
-        C: 9
-        H: 10
+      elements:
+        - symbol: C
+          massFraction: 0.914706
+        - symbol: H
+          massFraction: 0.085294
     optical:
       photonEnergy: [2.8, 3.0, 3.2]
       rIndex: [1.58, 1.59, 1.60]
@@ -68,16 +70,12 @@ optical:
   lenses:
     - catalogId: CanonEF50mmf1.0L
       primary: true
-  geometry:
-    entranceDiameter: 60.55
-    sensorMaxWidth: 36.0
-  sensitiveDetectorConfig:
-    position_mm:
+  interface:
+    diameterMm: 60.55
+    positionMm:
       x_mm: 0.0
       y_mm: 0.0
       z_mm: 210.05
-    shape: circle
-    diameterRule: min(entranceDiameter,sensorMaxWidth)
   showTransportProgress: true
   transportAssumptions:
     objectPlane: scintillator_back_face

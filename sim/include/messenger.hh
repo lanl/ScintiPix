@@ -54,8 +54,8 @@ class Messenger : public G4UImessenger {
   G4UIcmdWithADoubleAndUnit* fResolutionTargetOuterRadiusCmd = nullptr;
   G4UIcmdWithAnInteger* fResolutionTargetLinePairsCmd = nullptr;
   G4UIcmdWithADoubleAndUnit* fScintDensityCmd = nullptr;
-  G4UIcmdWithAnInteger* fScintCarbonAtomsCmd = nullptr;
-  G4UIcmdWithAnInteger* fScintHydrogenAtomsCmd = nullptr;
+  G4UIcmdWithAString* fScintElementsCmd = nullptr;
+  G4UIcmdWithAString* fScintIsotopesCmd = nullptr;
   G4UIcmdWithAString* fScintPhotonEnergyCmd = nullptr;
   G4UIcmdWithAString* fScintRIndexCmd = nullptr;
   G4UIcmdWithAString* fScintAbsLengthCmd = nullptr;

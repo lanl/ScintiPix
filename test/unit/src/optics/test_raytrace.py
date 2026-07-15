@@ -18,7 +18,7 @@ from src.optics.io import (
 
 
 def test_trace_photons_keeps_only_photocathode_hits(monkeypatch) -> None:
-    config = from_yaml("examples/yamlFiles/autofocus_siemens_star_50mm.yaml")
+    config = from_yaml("examples/yamlFiles/EJ200_siemens_50mm.yaml")
     photons = np.zeros(3, dtype=SIMULATED_PHOTON_DTYPE)
     photons["gun_call_id"] = [10, 11, 12]
     photons["primary_track_id"] = 20
@@ -58,7 +58,7 @@ def test_trace_photons_keeps_only_photocathode_hits(monkeypatch) -> None:
 
 
 def test_transport_photons_uses_simulation_paths(tmp_path, monkeypatch) -> None:
-    config = from_yaml("examples/yamlFiles/autofocus_siemens_star_50mm.yaml")
+    config = from_yaml("examples/yamlFiles/EJ200_siemens_50mm.yaml")
     environment = config.metadata.run_environment
     environment.simulated_photons_directory = str(tmp_path / "simulatedPhotons")
     environment.transported_photons_directory = str(tmp_path / "transportedPhotons")

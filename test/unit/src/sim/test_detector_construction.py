@@ -48,6 +48,44 @@ class DetectorConstructionSourceTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, source)
 
+    def test_generic_composition_replaces_carbon_hydrogen_config(self) -> None:
+        """Config and messenger should expose only generic composition controls."""
+
+        root = _repo_root()
+        config_header = (root / "sim" / "include" / "config.hh").read_text(
+            encoding="utf-8"
+        )
+        messenger_source = (root / "sim" / "src" / "messenger.cc").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("struct ScintillatorElementConfig", config_header)
+        self.assertIn("struct ScintillatorIsotopeConfig", config_header)
+        self.assertIn("GetScintElements()", config_header)
+        self.assertIn("SetScintElements(", config_header)
+        self.assertIn('"/scintillator/properties/elements"', messenger_source)
+        self.assertIn('"/scintillator/properties/isotopes"', messenger_source)
+
+        for removed_token in ("carbonAtoms", "hydrogenAtoms"):
+            self.assertNotIn(removed_token, config_header)
+            self.assertNotIn(removed_token, messenger_source)
+
+    def test_enriched_isotopes_are_validated_before_construction(self) -> None:
+        """Geant4 isotope records should be checked before they are constructed."""
+
+        source = (_repo_root() / "sim" / "src" / "DetectorConstruction.cc").read_text(
+            encoding="utf-8"
+        )
+
+        resolve_z = source.index("nist->GetZ(elementConfig.symbol)")
+        validate_mass = source.index(
+            "nist->GetIsotopeMass(atomicNumber, isotopeConfig.massNumber)"
+        )
+        construct_isotope = source.index("new G4Isotope")
+
+        self.assertLess(resolve_z, validate_mass)
+        self.assertLess(validate_mass, construct_isotope)
+
 
 if __name__ == "__main__":
     unittest.main()

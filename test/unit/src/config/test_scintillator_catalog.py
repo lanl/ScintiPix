@@ -70,6 +70,55 @@ class ScintillatorCatalogTests(unittest.TestCase):
             profile[0].time_constant.unit, "ns"
         )
 
+    def test_catalog_compositions_use_normalized_mass_fractions(self) -> None:
+        """Every bundled material should expose the approved element fractions."""
+
+        expected = {
+            "EJ200": {"C": 0.914706, "H": 0.085294},
+            "EJ-276D": {"C": 0.926886, "H": 0.073114},
+            "EJ-276G": {"C": 0.926886, "H": 0.073114},
+            "EJ-426": {
+                "Li": 0.0393,
+                "F": 0.1231,
+                "Zn": 0.4358,
+                "S": 0.2137,
+                "Si": 0.0769,
+                "C": 0.0657,
+                "H": 0.0017,
+                "O": 0.0438,
+            },
+            "CsI-Na": {"Cs": 0.511460, "I": 0.488440, "Na": 0.000100},
+            "CsI-Tl": {"Cs": 0.511110, "I": 0.488104, "Tl": 0.000786},
+            "NaI-Tl": {"Na": 0.152000, "I": 0.838000, "Tl": 0.010000},
+        }
+
+        for material_id, expected_elements in expected.items():
+            material = self._load_scintillator_definition(material_id)
+            actual = {
+                element.symbol: element.mass_fraction
+                for element in material.composition.elements
+            }
+            self.assertEqual(actual, expected_elements)
+            self.assertAlmostEqual(sum(actual.values()), 1.0, places=6)
+
+    def test_ej426_preserves_lithium_enrichment(self) -> None:
+        """EJ-426 should retain the approved Li-6/Li-7 atom fractions."""
+
+        material = self._load_scintillator_definition("EJ-426")
+        lithium = next(
+            element
+            for element in material.composition.elements
+            if element.symbol == "Li"
+        )
+        assert lithium.isotopes is not None
+        self.assertEqual(
+            {
+                isotope.mass_number: isotope.atom_fraction
+                for isotope in lithium.isotopes
+            },
+            {6: 0.95, 7: 0.05},
+        )
+
     def test_time_components_schema_requires_exactly_three(self) -> None:
         """Each configured profile should expose exactly three time components."""
 
@@ -115,7 +164,7 @@ class ScintillatorCatalogTests(unittest.TestCase):
                     name: Test Material
                     composition:
                       density: {value: 1.0, unit: g/cm3}
-                      atoms: {C: 1}
+                      elements: [{symbol: C, massFraction: 1.0}]
                     optical:
                       curves:
                         rIndex: {path: curves/TEST/rindex.csv, xUnit: eV, yUnit: unitless}
@@ -166,7 +215,7 @@ class ScintillatorCatalogTests(unittest.TestCase):
                     name: Test Material
                     composition:
                       density: {value: 1.0, unit: g/cm3}
-                      atoms: {C: 1}
+                      elements: [{symbol: C, massFraction: 1.0}]
                     optical:
                       curves:
                         rIndex: {path: curves/TEST/rindex.csv, xUnit: eV, yUnit: unitless}
@@ -219,7 +268,7 @@ class ScintillatorCatalogTests(unittest.TestCase):
                     name: Test Material
                     composition:
                       density: {value: 1.0, unit: g/cm3}
-                      atoms: {C: 1}
+                      elements: [{symbol: C, massFraction: 1.0}]
                     optical:
                       curves:
                         rIndex: {path: curves/TEST/rindex.csv, xUnit: eV, yUnit: unitless}
@@ -273,7 +322,7 @@ class ScintillatorCatalogTests(unittest.TestCase):
                     name: Test Material
                     composition:
                       density: {value: 1.0, unit: g/cm3}
-                      atoms: {C: 1}
+                      elements: [{symbol: C, massFraction: 1.0}]
                     optical:
                       curves:
                         rIndex: {path: curves/TEST/rindex.csv, xUnit: eV, yUnit: unitless}

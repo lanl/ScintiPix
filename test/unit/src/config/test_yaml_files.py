@@ -33,7 +33,11 @@ class TestYamlExampleFiles:
         # Verify composition structure
         assert isinstance(props.composition.density, float)
         assert props.composition.density == 1.05
-        assert props.composition.atoms == {"C": 9, "H": 10}
+        assert [element.symbol for element in props.composition.elements] == ["C", "H"]
+        assert [element.mass_fraction for element in props.composition.elements] == [
+            0.914706,
+            0.085294,
+        ]
 
         # Verify optical structure
         assert isinstance(props.optical.scint_yield, float)
@@ -68,7 +72,11 @@ class TestYamlExampleFiles:
 
             # Verify density is converted to float
             assert isinstance(props.composition.density, float)
-            assert props.composition.atoms == {"C": 4944, "H": 4647}
+            assert [element.symbol for element in props.composition.elements] == ["C", "H"]
+            assert [element.mass_fraction for element in props.composition.elements] == [
+                0.926886,
+                0.073114,
+            ]
 
             # Verify scint_yield is converted to float
             assert isinstance(props.optical.scint_yield, float)
@@ -124,7 +132,7 @@ class TestYamlExampleFiles:
                 assert isinstance(props.composition.density, float)
                 assert props.composition.density == 1.023
                 assert isinstance(props.optical.scint_yield, float)
-                assert props.optical.scint_yield == 10000.0
+                assert props.optical.scint_yield == 9800.0
         except Exception as e:
             if "scintillator.properties" in str(e):
                 pytest.fail(f"Scintillator structure validation failed: {e}")
@@ -165,7 +173,10 @@ class TestScintillatorPropertiesStructure:
             "name": "TestMaterial",
             "composition": {
                 "density": 1.0,
-                "atoms": {"C": 9, "H": 10}
+                "elements": [
+                    {"symbol": "C", "massFraction": 0.914706},
+                    {"symbol": "H", "massFraction": 0.085294},
+                ]
             },
             "optical": {
                 "photonEnergy": [2.0, 3.0, 4.0],

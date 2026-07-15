@@ -2,6 +2,8 @@ id: CsI-Tl
 name: CsI(Tl)
 description: >
   SSLG4-derived iodide scintillator entry from isc-2002 (CsITI).
+  The thallium dopant mass fraction is inherited from SSLG4 and has not been
+  confirmed against a manufacturer composition specification.
   Optical constants come from sslg4/macros/iscnt/isc-2002.mac.
   SSLG4 does not define ABSLENGTH for this material; a large flat
   placeholder (1e6 cm) is used to emulate no explicit absorption limit.
@@ -10,10 +12,13 @@ composition:
   density:
     value: 4.51
     unit: g/cm3
-  atoms:
-    Cs: 5110
-    I: 4880
-    Tl: 8
+  elements:
+    - symbol: Cs
+      massFraction: 0.511110
+    - symbol: I
+      massFraction: 0.488104
+    - symbol: Tl
+      massFraction: 0.000786
 
 optical:
   curves:

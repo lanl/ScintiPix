@@ -2,6 +2,8 @@ id: CsI-Na
 name: CsI(Na)
 description: >
   SSLG4-derived iodide scintillator entry from isc-2001 (CsINa).
+  The sodium dopant mass fraction is inherited from SSLG4 and has not been
+  confirmed against a manufacturer composition specification.
   Optical constants come from sslg4/macros/iscnt/isc-2001.mac.
   SSLG4 does not define ABSLENGTH for this material; a large flat
   placeholder (1e6 cm) is used to emulate no explicit absorption limit.
@@ -10,10 +12,13 @@ composition:
   density:
     value: 4.51
     unit: g/cm3
-  atoms:
-    Cs: 5110
-    I: 4880
-    Na: 1
+  elements:
+    - symbol: Cs
+      massFraction: 0.511460
+    - symbol: I
+      massFraction: 0.488440
+    - symbol: Na
+      massFraction: 0.000100
 
 optical:
   curves:

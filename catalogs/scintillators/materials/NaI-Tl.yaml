@@ -2,6 +2,8 @@ id: NaI-Tl
 name: NaI(Tl)
 description: >
   SSLG4-derived iodide scintillator entry from isc-2004 (NaITI).
+  The thallium dopant mass fraction is inherited from SSLG4 and has not been
+  confirmed against a manufacturer composition specification.
   Optical constants come from sslg4/macros/iscnt/isc-2004.mac.
   SSLG4 does not define ABSLENGTH for this material; a large flat
   placeholder (1e6 cm) is used to emulate no explicit absorption limit.
@@ -10,10 +12,13 @@ composition:
   density:
     value: 3.67
     unit: g/cm3
-  atoms:
-    Na: 1520
-    I: 8380
-    Tl: 100
+  elements:
+    - symbol: Na
+      massFraction: 0.152000
+    - symbol: I
+      massFraction: 0.838000
+    - symbol: Tl
+      massFraction: 0.010000
 
 optical:
   curves:

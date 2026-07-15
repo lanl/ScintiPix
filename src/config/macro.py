@@ -210,13 +210,39 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
         f"/scintillator/geom/posZ {scint.position_mm.z_mm:g} mm",
     ]
 
-    # Access composition properties from nested structure
-    if scint.properties.composition.density is not None:
-        commands.append(f"/scintillator/properties/density {scint.properties.composition.density:g} g/cm3")
-    if "C" in scint.properties.composition.atoms:
-        commands.append(f"/scintillator/properties/carbonAtoms {scint.properties.composition.atoms['C']}")
-    if "H" in scint.properties.composition.atoms:
-        commands.append(f"/scintillator/properties/hydrogenAtoms {scint.properties.composition.atoms['H']}")
+    composition = scint.properties.composition
+    density_g_cm3 = (
+        composition.density.to_g_cm3()
+        if hasattr(composition.density, "to_g_cm3")
+        else composition.density
+    )
+    commands.append(f"/scintillator/properties/density {density_g_cm3:g} g/cm3")
+    elements = sorted(composition.elements, key=lambda element: element.symbol)
+    commands.append(
+        "/scintillator/properties/elements "
+        + ",".join(
+            f"{element.symbol}={_format_macro_scalar(element.mass_fraction)}"
+            for element in elements
+        )
+    )
+
+    enriched_elements = [element for element in elements if element.isotopes]
+    if enriched_elements:
+        commands.append(
+            "/scintillator/properties/isotopes "
+            + ";".join(
+                f"{element.symbol}="
+                + ",".join(
+                    f"{isotope.mass_number}:"
+                    f"{_format_macro_scalar(isotope.atom_fraction)}"
+                    for isotope in sorted(
+                        element.isotopes,
+                        key=lambda isotope: isotope.mass_number,
+                    )
+                )
+                for element in enriched_elements
+            )
+        )
 
     # Access optical properties from nested structure
     scint_optical = scint.properties.optical

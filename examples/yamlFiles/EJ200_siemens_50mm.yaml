@@ -22,9 +22,11 @@ scintillator:
     name: EJ200
     composition:
       density: 1.023
-      atoms:
-        C: 9
-        H: 10
+      elements:
+        - symbol: C
+          massFraction: 0.914706
+        - symbol: H
+          massFraction: 0.085294
     optical:
       photonEnergy: [2.8, 3.0, 3.2]
       rIndex: [1.58, 1.59, 1.60]
@@ -135,7 +137,7 @@ metadata:
     intensification: false
     sensor_detection: false
   RunEnvironment:
-    SimulationRunID: autofocus_siemens_50mm
+    SimulationRunID: EJ200_siemens_50mm
     WorkingDirectory: data
     MacroDirectory: macros
     LogDirectory: logs

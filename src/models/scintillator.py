@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 
-from pydantic import AliasChoices, Field, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 
 from src.common.utilities import ValueWithUnit, extract_numeric_value, convert_time_to_ns, convert_density_to_g_cm3, convert_scint_yield_to_per_mev
 from .base import Size3Mm, StrictModel, Vec3Mm
@@ -166,28 +166,79 @@ class ScintillationTimeComponentsByExcitation(StrictModel):
             "(`neutron`/`gamma`) or `default`."
         )
 
+CHEMICAL_ELEMENT_SYMBOLS = frozenset(
+    {
+        "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
+        "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca",
+        "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+        "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr",
+        "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn",
+        "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
+        "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb",
+        "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+        "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th",
+        "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
+        "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds",
+        "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og",
+    }
+)
+COMPOSITION_FRACTION_TOLERANCE = 1.0e-6
+
+
+class ScintillatorIsotope(StrictModel):
+    """Isotopic composition of one element by atom fraction."""
+
+    mass_number: int = Field(alias="massNumber", gt=0)
+    atom_fraction: float = Field(alias="atomFraction", gt=0.0, le=1.0)
+
+
+class ScintillatorElement(StrictModel):
+    """One chemical element and its fraction of the material mass."""
+
+    symbol: str
+    mass_fraction: float = Field(alias="massFraction", gt=0.0, le=1.0)
+    isotopes: list[ScintillatorIsotope] | None = Field(default=None, min_length=1)
+
+    @field_validator("symbol")
+    @classmethod
+    def validate_symbol(cls, symbol: str) -> str:
+        """Require a recognized chemical element symbol."""
+
+        if symbol not in CHEMICAL_ELEMENT_SYMBOLS:
+            raise ValueError(f"unknown chemical element symbol: {symbol!r}")
+        return symbol
+
+    @model_validator(mode="after")
+    def validate_isotopes(self) -> "ScintillatorElement":
+        """Require unique, normalized isotope atom fractions when provided."""
+
+        if self.isotopes is None:
+            return self
+
+        mass_numbers = [isotope.mass_number for isotope in self.isotopes]
+        if len(mass_numbers) != len(set(mass_numbers)):
+            raise ValueError(f"duplicate isotope mass number for {self.symbol}")
+
+        total = sum(isotope.atom_fraction for isotope in self.isotopes)
+        if not math.isclose(
+            total,
+            1.0,
+            rel_tol=0.0,
+            abs_tol=COMPOSITION_FRACTION_TOLERANCE,
+        ):
+            raise ValueError(f"isotope atom fractions for {self.symbol} must sum to 1.0")
+        return self
+
+
 class ScintillatorComposition(StrictModel):
-    """Composition information of scintillator material.
-
-    Density can be specified as a float (g/cm³) or as ValueWithUnit for explicit
-    units. Elements are specified as a dictionary mapping element symbols to atom counts.
-
-    Examples:
-        >>> # Catalog format with unit
-        >>> ScintillatorComposition(
-        ...     density={"value": 1.05, "unit": "g/cm3"},
-        ...     atoms={"C": 9, "H": 10}
-        ... )
-        >>> # Simulation format without unit
-        >>> ScintillatorComposition(density=1.05, atoms={"C": 9, "H": 10})
-    """
+    """Density and normalized elemental mass fractions for a material."""
 
     density: ValueWithUnit | float
-    atoms: dict[str, int] = Field(min_length=1)
+    elements: list[ScintillatorElement] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_composition(self) -> "ScintillatorComposition":
-        """Require positive density and atom counts."""
+        """Require positive density and unique, normalized elements."""
 
         density = extract_numeric_value(
             self.density,
@@ -195,8 +246,19 @@ class ScintillatorComposition(StrictModel):
         )
         if density <= 0:
             raise ValueError("density must be > 0")
-        if any(count <= 0 for count in self.atoms.values()):
-            raise ValueError("atom counts must be > 0")
+
+        symbols = [element.symbol for element in self.elements]
+        if len(symbols) != len(set(symbols)):
+            raise ValueError("duplicate element symbol")
+
+        total = sum(element.mass_fraction for element in self.elements)
+        if not math.isclose(
+            total,
+            1.0,
+            rel_tol=0.0,
+            abs_tol=COMPOSITION_FRACTION_TOLERANCE,
+        ):
+            raise ValueError("element mass fractions must sum to 1.0")
         return self
 
 

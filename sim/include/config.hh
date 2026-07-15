@@ -26,6 +26,19 @@ struct SourceTimingInfo {
   G4int pulseId = -1;
 };
 
+/// One isotope and its atom fraction within an enriched element.
+struct ScintillatorIsotopeConfig {
+  G4int massNumber = 0;
+  G4double atomFraction = 0.0;
+};
+
+/// One scintillator element, its material mass fraction, and optional isotopes.
+struct ScintillatorElementConfig {
+  std::string symbol;
+  G4double massFraction = 0.0;
+  std::vector<ScintillatorIsotopeConfig> isotopes;
+};
+
 /// Thread-safe runtime configuration shared across geometry/actions/messenger.
 class Config {
  public:
@@ -117,14 +130,10 @@ class Config {
   G4double GetScintDensity() const;
   /// Set scintillator density in Geant4 internal units.
   void SetScintDensity(G4double value);
-  /// Get scintillator stoichiometric carbon atom count.
-  G4int GetScintCarbonAtoms() const;
-  /// Set scintillator stoichiometric carbon atom count.
-  void SetScintCarbonAtoms(G4int value);
-  /// Get scintillator stoichiometric hydrogen atom count.
-  G4int GetScintHydrogenAtoms() const;
-  /// Set scintillator stoichiometric hydrogen atom count.
-  void SetScintHydrogenAtoms(G4int value);
+  /// Get the complete scintillator elemental composition.
+  std::vector<ScintillatorElementConfig> GetScintElements() const;
+  /// Replace the complete scintillator elemental composition.
+  void SetScintElements(const std::vector<ScintillatorElementConfig>& values);
 
   /// Get scintillator photon-energy nodes in Geant4 internal units.
   std::vector<G4double> GetScintPhotonEnergy() const;
@@ -269,8 +278,7 @@ class Config {
   /// Material and output settings.
   std::string fScintMaterial;
   G4double fScintDensity = 0.0;
-  G4int fScintCarbonAtoms = 0;
-  G4int fScintHydrogenAtoms = 0;
+  std::vector<ScintillatorElementConfig> fScintElements;
   std::vector<G4double> fScintPhotonEnergy;
   std::vector<G4double> fScintRIndex;
   std::vector<G4double> fScintAbsLength;

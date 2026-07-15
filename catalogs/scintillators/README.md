@@ -19,6 +19,10 @@ Current materials:
 - `materials/*.yaml`: per-scintillator metadata, composition, and curve references.
 - `curves/<material>/*.csv`: optical property curves (`energy_eV,value`).
 
+Material compositions use an `elements` list. Each `massFraction` is the
+element's fraction of the complete material mass, and the fractions sum to
+1.0. Optional isotope records use `atomFraction` within one element.
+
 ## Curve file format
 
 - UTF-8 text.
