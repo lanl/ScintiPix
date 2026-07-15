@@ -264,7 +264,9 @@ def transport_photons(config: Simulation) -> Path:
     transported_count = 0
     with output_path.open("wb") as handle:
         write_transported_photon_header(handle, 0)
-        if worker_count == 1 and photon_ranges:
+        if not photon_ranges:
+            transported_chunks = ()
+        elif worker_count == 1:
             photons = memory_map_simulated_photons(input_path)
             opt_model = load_lens_model(config)
             transported_chunks = (
@@ -283,7 +285,6 @@ def transport_photons(config: Simulation) -> Path:
                 photon_ranges,
                 worker_count,
             )
-
         for transported in transported_chunks:
             append_transported_photons(handle, transported)
             transported_count += len(transported)
