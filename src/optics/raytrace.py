@@ -73,6 +73,8 @@ def trace_photons(
     config: Simulation,
     opt_model: OpticalModel,
     photons: np.ndarray,
+    *,
+    source_index_start: int = 0,
 ) -> np.ndarray:
     """Trace photons and return only hits inside the photocathode image plane."""
 
@@ -92,7 +94,7 @@ def trace_photons(
     )
     transported: list[tuple[object, ...]] = []
 
-    for source_index, photon in enumerate(photons):
+    for source_index, photon in enumerate(photons, start=source_index_start):
         point = np.asarray(
             [
                 photon["photon_scint_exit_x_mm"],
