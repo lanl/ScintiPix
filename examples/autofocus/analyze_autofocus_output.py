@@ -41,15 +41,15 @@ def main() -> None:
 
     image_scintillator_exit(
         simulated_bin,
-        bins=100,
+        bins=500,
         dimensions_mm=(field_of_view.width_mm, field_of_view.height_mm),
         output_path=run_env.run_directory / "scintillator_exit.png",
         show=False,
     )
     image_transported_photons(
         transported_bin,
-        bins=200,
-        extent_mm=10,
+        bins=300,
+        extent_mm=8,
         output_path=run_env.run_directory / "photocathode_image.png",
         show=False,
     )
