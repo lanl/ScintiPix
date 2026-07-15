@@ -211,9 +211,12 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
     ]
 
     composition = scint.properties.composition
-    commands.append(
-        f"/scintillator/properties/density {composition.density:g} g/cm3"
+    density_g_cm3 = (
+        composition.density.to_g_cm3()
+        if hasattr(composition.density, "to_g_cm3")
+        else composition.density
     )
+    commands.append(f"/scintillator/properties/density {density_g_cm3:g} g/cm3")
     elements = sorted(composition.elements, key=lambda element: element.symbol)
     commands.append(
         "/scintillator/properties/elements "
