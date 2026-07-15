@@ -138,6 +138,24 @@ G4Material* BuildOrGetConfiguredScintillator(G4NistManager* nist, const Config* 
       }
     } else {
       // Enriched element: build from configured isotopes.
+      const G4int atomicNumber = nist->GetZ(elementConfig.symbol);
+      if (atomicNumber <= 0) {
+        G4cerr << "[Material] Unknown element symbol '" << elementConfig.symbol
+               << "' for " << materialName << G4endl;
+        delete scintMaterial;
+        return nullptr;
+      }
+
+      for (const auto& isotopeConfig : elementConfig.isotopes) {
+        if (nist->GetIsotopeMass(atomicNumber, isotopeConfig.massNumber) <= 0.0) {
+          G4cerr << "[Material] Invalid isotope " << elementConfig.symbol
+                 << isotopeConfig.massNumber << " for element "
+                 << elementConfig.symbol << G4endl;
+          delete scintMaterial;
+          return nullptr;
+        }
+      }
+
       const auto enrichedName = elementConfig.symbol + "_enriched_" + std::to_string(settings.version);
       const G4int nIsotopes = static_cast<G4int>(elementConfig.isotopes.size());
       element = new G4Element(enrichedName, elementConfig.symbol, nIsotopes);
@@ -145,15 +163,8 @@ G4Material* BuildOrGetConfiguredScintillator(G4NistManager* nist, const Config* 
       for (const auto& isotopeConfig : elementConfig.isotopes) {
         const auto isotopeName = elementConfig.symbol + std::to_string(isotopeConfig.massNumber);
         auto* isotope = new G4Isotope(isotopeName,
-                                      nist->GetZ(elementConfig.symbol),
+                                      atomicNumber,
                                       isotopeConfig.massNumber);
-        if (isotope->GetZ() == 0) {
-          G4cerr << "[Material] Invalid isotope " << isotopeName
-                 << " for element " << elementConfig.symbol << G4endl;
-          delete scintMaterial;
-          delete element;
-          return nullptr;
-        }
         element->AddIsotope(isotope, isotopeConfig.atomFraction);
       }
     }
