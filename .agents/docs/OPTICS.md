@@ -1,6 +1,6 @@
 # Optics Overview
 
-Last updated: 2026-06-30 15:52 MDT.
+Last updated: 2026-07-15.
 
 For future edits, add an `Added YYYY-MM-DD` or `Updated YYYY-MM-DD` line to any
 section where the design changes materially.
@@ -86,7 +86,7 @@ explicitly needs them.
 
 ## Binary Ray Tracing
 
-Added 2026-06-30. Updated 2026-07-13.
+Added 2026-06-30. Updated 2026-07-15.
 
 Use this setup flow:
 
@@ -138,6 +138,24 @@ blocked, non-finite, and out-of-bounds rays are not written.
 RayOptics traces each photon at the nearest wavelength sampled by the imported
 prescription, while the transported record preserves the original Geant4
 wavelength.
+
+`transport_photons(config)` processes the validated binary input in contiguous
+chunks of 50,000 records. On multi-core systems it uses a process pool because
+RayOptics tracing is CPU-bound. Each worker opens its own read-only NumPy memmap
+of the input file and loads and configures its own RayOptics lens model once.
+The complete simulated-photon array is not copied into worker processes.
+
+Workers receive only `(start, stop)` ranges. The global range start is retained
+when assigning `source_photon_index`, so provenance remains relative to the
+original simulated-photon file. The parent consumes completed ranges in input
+order, appends each accepted result directly to the transported binary, and
+finalizes the SCINPIX header count at the end. This keeps output deterministic
+without assembling the complete transported result in memory.
+
+When only one worker is available or the input fits in one chunk, the same
+memmap, range, provenance, filtering, and incremental-write path runs directly
+in the parent process. Worker count and chunk size are internal implementation
+details; there are no CLI or YAML controls for transport parallelism.
 
 ## C-Mount Image Plane
 
@@ -257,11 +275,3 @@ pitch_mm(r) = 2*pi*r_mm / linePairs
 
 Keep this independent from the circular `maskRadius`; the circular mask controls
 aperture or field, while the Siemens star provides a resolution pattern.
-
-## TODO
-
-Added 2026-06-30. Updated 2026-07-13.
-
-- Add batching only after the simple record-at-a-time transport path is
-  validated against physical test data.
-- Integrate the binary optics stage into the top-level simulation runner.
