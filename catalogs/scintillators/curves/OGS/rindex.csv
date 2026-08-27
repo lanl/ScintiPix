@@ -1,0 +1,22 @@
+# Refractive index vs photon energy for OGS.
+# ESTIMATE: 1.60 is a flagged, unsourced modeling assumption (no measured OGS
+# index found in the reviewed sources). Held constant across the emission band.
+# Replace when a measured index-vs-wavelength curve is available.
+# energy grid is shared with scint_spectrum.csv (loader requires identical grids).
+energy_eV,value
+2.1377,1.60
+2.2140,1.60
+2.2960,1.60
+2.3843,1.60
+2.4797,1.60
+2.5830,1.60
+2.6380,1.60
+2.6953,1.60
+2.7552,1.60
+2.8178,1.60
+2.8502,1.60
+2.8834,1.60
+2.9173,1.60
+2.9520,1.60
+3.0240,1.60
+3.0996,1.60

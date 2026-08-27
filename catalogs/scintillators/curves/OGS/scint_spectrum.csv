@@ -1,0 +1,23 @@
+# Relative scintillation emission vs photon energy for OGS.
+# Shape: main peak ~430-435 nm with a ~460 nm shoulder, band ~400-580 nm
+# (Warburton 2021 Table 6; Grodzicka-Kobylka 2023 Table 2). Modeled as the sum
+# of two Gaussians and normalized so the peak = 1.0. Relative units only.
+# energy grid is shared with rindex.csv (loader requires identical grids).
+# energy_eV corresponds to wavelength: 2.1377=580nm ... 3.0996=400nm.
+energy_eV,value
+2.1377,0.0000
+2.2140,0.0000
+2.2960,0.0003
+2.3843,0.0068
+2.4797,0.0769
+2.5830,0.3280
+2.6380,0.5004
+2.6953,0.6729
+2.7552,0.8445
+2.8178,0.9780
+2.8502,1.0000
+2.8834,0.9746
+2.9173,0.8974
+2.9520,0.7761
+3.0240,0.4717
+3.0996,0.2146
