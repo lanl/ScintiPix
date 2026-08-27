@@ -1,0 +1,72 @@
+id: OGS
+name: OGS
+description: >
+  Organic Glass Scintillator (OGS), the melt-cast small-molecule glass developed
+  at Sandia National Laboratories (Carlson & Feng). This entry models the
+  standard "final" formulation from Warburton et al., NIM A 1018 (2021) 165778:
+  a 90:10 by-mass blend of bis(9,9-dimethylfluoren-2-yl)diphenylsilane (P2,
+  C42H36Si) and tris(9,9-dimethylfluoren-2-yl)phenylsilane (P3, C51H44Si) with
+  0.04 wt% bis-MSB wavelength shifter. The material is carbon/hydrogen/silicon
+  with NO oxygen. Elemental mass fractions below are computed from those formulas
+  and the blend ratio.
+
+  SOURCED VALUES: composition (Warburton 2021 sec. 2.1; H:C ratio confirmed by
+  Carlson JACS 2017); light yield 15,821 photons/MeV at 662 keV (Warburton 2021
+  Table 4/6); emission peak ~430-435 nm with a ~460 nm shoulder (Warburton 2021
+  Table 6; Grodzicka-Kobylka et al., NIM A 1047 (2023) 167702 Table 2); decay
+  time components (Grodzicka-Kobylka 2023 Table 4).
+
+  ESTIMATED VALUES (NOT found in any reviewed paper; flagged, to be replaced when
+  a primary source is available): density 1.08 g/cm3 and refractive index 1.58.
+  Both are physically reasonable estimates for an amorphous aromatic arylsilane
+  glass, but neither is measured in the literature reviewed here.
+
+composition:
+  density:
+    value: 1.08          # ESTIMATE - not sourced; see description
+    unit: g/cm3
+  elements:
+    - symbol: C
+      massFraction: 0.8876
+    - symbol: H
+      massFraction: 0.0639
+    - symbol: Si
+      massFraction: 0.0485
+
+optical:
+  curves:
+    rIndex:
+      path: curves/OGS/rindex.csv
+      xUnit: eV
+      yUnit: unitless
+    scintSpectrum:
+      path: curves/OGS/scint_spectrum.csv
+      xUnit: eV
+      yUnit: unitless
+  constants:
+    scintYield:
+      value: 15821.0
+      unit: 1/MeV
+    resolutionScale: 1.0
+    timeComponents:
+      default:
+        - timeConstant: {value: 3.3, unit: ns}
+          yieldFraction: 0.89
+        - timeConstant: {value: 29.0, unit: ns}
+          yieldFraction: 0.08
+        - timeConstant: {value: 158.0, unit: ns}
+          yieldFraction: 0.03
+      gamma:
+        - timeConstant: {value: 3.3, unit: ns}
+          yieldFraction: 0.89
+        - timeConstant: {value: 29.0, unit: ns}
+          yieldFraction: 0.08
+        - timeConstant: {value: 158.0, unit: ns}
+          yieldFraction: 0.03
+      neutron:
+        - timeConstant: {value: 3.7, unit: ns}
+          yieldFraction: 0.6931
+        - timeConstant: {value: 27.0, unit: ns}
+          yieldFraction: 0.1485
+        - timeConstant: {value: 100.0, unit: ns}
+          yieldFraction: 0.1584

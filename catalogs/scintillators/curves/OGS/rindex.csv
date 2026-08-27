@@ -1,0 +1,22 @@
+# Refractive index vs photon energy for OGS.
+# ESTIMATE: 1.58 is a flagged, unsourced estimate (no measured value found in the
+# reviewed papers). Held constant across the emission band. Replace when a
+# measured index-vs-wavelength curve is available.
+# energy grid is shared with scint_spectrum.csv (loader requires identical grids).
+energy_eV,value
+2.1377,1.58
+2.2140,1.58
+2.2960,1.58
+2.3843,1.58
+2.4797,1.58
+2.5830,1.58
+2.6380,1.58
+2.6953,1.58
+2.7552,1.58
+2.8178,1.58
+2.8502,1.58
+2.8834,1.58
+2.9173,1.58
+2.9520,1.58
+3.0240,1.58
+3.0996,1.58

@@ -8,3 +8,4 @@ materials:
   CsI-Na: materials/CsI-Na.yaml
   CsI-Tl: materials/CsI-Tl.yaml
   NaI-Tl: materials/NaI-Tl.yaml
+  OGS: materials/OGS.yaml
