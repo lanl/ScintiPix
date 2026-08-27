@@ -11,19 +11,24 @@ description: >
   and the blend ratio.
 
   SOURCED VALUES: composition (Warburton 2021 sec. 2.1; H:C ratio confirmed by
-  Carlson JACS 2017); light yield 15,821 photons/MeV at 662 keV (Warburton 2021
+  Carlson JACS 2017); density 1.09 g/cm3 (Skjerdal et al., EPJ Web Conf. 288
+  (2023) 09003, and Skjerdal et al., Radiat. Phys. Chem. 238 (2026) 113096 - the
+  value implemented in their Geant4 OGS model; their "53.2% C, 45.6% H, 1.2% Si"
+  is atom percent of the C42H36Si base monomer, consistent with the mass
+  fractions below); light yield 15,821 photons/MeV at 662 keV (Warburton 2021
   Table 4/6); emission peak ~430-435 nm with a ~460 nm shoulder (Warburton 2021
   Table 6; Grodzicka-Kobylka et al., NIM A 1047 (2023) 167702 Table 2); decay
   time components (Grodzicka-Kobylka 2023 Table 4).
 
-  ESTIMATED VALUES (NOT found in any reviewed paper; flagged, to be replaced when
-  a primary source is available): density 1.08 g/cm3 and refractive index 1.58.
-  Both are physically reasonable estimates for an amorphous aromatic arylsilane
-  glass, but neither is measured in the literature reviewed here.
+  ESTIMATED VALUE (NOT found in any reviewed source - the OGS papers, the UC
+  Berkeley organic-scintillator table, or Laplace 2020; flagged, to be replaced
+  when a measured value is available): refractive index 1.60. This is a
+  physically reasonable modeling assumption for an amorphous aromatic arylsilane
+  glass, but no measured OGS index appears in the literature reviewed here.
 
 composition:
   density:
-    value: 1.08          # ESTIMATE - not sourced; see description
+    value: 1.09          # Skjerdal 2023 (EPJ Web Conf 288 09003); Skjerdal 2026 (RPC 238 113096)
     unit: g/cm3
   elements:
     - symbol: C
