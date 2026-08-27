@@ -55,3 +55,6 @@ __pycache__/
 
 #ignore all cline files
 *.clinerules
+
+# ignore the resources dir
+/resources/
