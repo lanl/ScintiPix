@@ -520,6 +520,29 @@ void Config::SetPhotonCullingAcceptanceAngleDeg(G4double value) {
   fPhotonCullingAcceptanceAngleDeg = value;
 }
 
+G4bool Config::GetCorrelatedGammaEnabled() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fCorrelatedGammaEnabled;
+}
+
+void Config::SetCorrelatedGammaEnabled(G4bool value) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  fCorrelatedGammaEnabled = value;
+}
+
+G4double Config::GetCorrelatedGammaProbability() const {
+  std::lock_guard<std::mutex> lock(fMutex);
+  return fCorrelatedGammaProbability;
+}
+
+void Config::SetCorrelatedGammaProbability(G4double value) {
+  if (value < 0.0 || value > 1.0) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(fMutex);
+  fCorrelatedGammaProbability = value;
+}
+
 void Config::SetWritePhotonsOutput(G4bool value) {
   std::lock_guard<std::mutex> lock(fMutex);
   fWritePhotonsOutput = value;

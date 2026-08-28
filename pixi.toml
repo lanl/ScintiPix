@@ -11,6 +11,7 @@ pip = ">=24.0"
 cmake = ">=3.28,<4"
 ninja = ">=1.12,<2"
 cxx-compiler = ">=1.9,<2"
+gtest = ">=1.14,<2"
 geant4 = { version = "==11.3.2", build = "*_0" }
 jupyterlab = ">=4,<5"
 matplotlib = ">=3.8,<4"
@@ -31,5 +32,6 @@ check-enviornment = "python -c \"import importlib.util, os; from pathlib import 
 build-sim = "bash -lc 'if [ \"$(uname)\" = \"Darwin\" ]; then export CC=/usr/bin/clang CXX=/usr/bin/clang++; fi; cmake --fresh -S sim -B build -G Ninja -DGeant4_DIR=$CONDA_PREFIX/lib/cmake/Geant4 -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=Release && cmake --build build -j && ln -sf $PIXI_PROJECT_ROOT/build/scintipix $CONDA_PREFIX/bin/scintipix'"
 clean-sim = "cmake --build build --target clean"
 rebuild-sim = { depends-on = ["clean-sim", "build-sim"] }
+test-sim = "ctest --test-dir build --output-on-failure"
 config-run = "scintipix sim/macros/neutron_gps.mac"
 run-vis = "scintipix"

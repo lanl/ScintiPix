@@ -35,22 +35,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 file(GLOB APP_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 file(GLOB APP_HEADERS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hh)
 
-add_executable(scintipix ${CMAKE_CURRENT_SOURCE_DIR}/apps/scintipix_main.cc ${APP_SOURCES} ${APP_HEADERS})
-
-target_include_directories(scintipix PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(scintipix PRIVATE
-  ${Geant4_LIBRARIES}
-)
-
-# No external libraries needed for binary output
-
 get_filename_component(SCINTIPIX_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
-target_compile_definitions(scintipix PRIVATE
-  SCINTIPIX_REPO_ROOT="${SCINTIPIX_REPO_ROOT}"
-)
+
+# Core simulation sources built once and shared by the executable and the tests.
+add_library(scintipix_core STATIC ${APP_SOURCES} ${APP_HEADERS})
+target_include_directories(scintipix_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(scintipix_core PUBLIC ${Geant4_LIBRARIES})
+target_compile_definitions(scintipix_core PUBLIC SCINTIPIX_REPO_ROOT="${SCINTIPIX_REPO_ROOT}")
+
+add_executable(scintipix ${CMAKE_CURRENT_SOURCE_DIR}/apps/scintipix_main.cc)
+target_link_libraries(scintipix PRIVATE scintipix_core)
 
 # Keep executable path stable as ./build/scintipix.
 set_target_properties(scintipix PROPERTIES
@@ -69,3 +63,11 @@ endif()
 
 # Make macro paths stable when running from the build directory.
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/macros DESTINATION ${PROJECT_BINARY_DIR}/sim)
+
+# C++ unit tests (GoogleTest), run with `pixi run test-sim`.
+enable_testing()
+find_package(GTest REQUIRED)
+
+add_executable(test_correlated_gamma ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_correlated_gamma.cc)
+target_link_libraries(test_correlated_gamma PRIVATE scintipix_core GTest::gtest GTest::gtest_main)
+add_test(NAME correlated_gamma COMMAND test_correlated_gamma)

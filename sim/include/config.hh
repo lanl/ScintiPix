@@ -243,6 +243,15 @@ class Config {
   /// Set photon culling acceptance angle in degrees.
   void SetPhotonCullingAcceptanceAngleDeg(G4double value);
 
+  /// Return true when a correlated 4.439 MeV gamma is emitted with each neutron.
+  G4bool GetCorrelatedGammaEnabled() const;
+  /// Enable or disable the correlated 4.439 MeV gamma.
+  void SetCorrelatedGammaEnabled(G4bool value);
+  /// Get the per-neutron probability of emitting the correlated gamma.
+  G4double GetCorrelatedGammaProbability() const;
+  /// Set the per-neutron probability of emitting the correlated gamma (0 to 1).
+  void SetCorrelatedGammaProbability(G4double value);
+
  private:
   /// Guards all mutable config fields for cross-thread read/write safety.
   mutable std::mutex fMutex;
@@ -309,6 +318,10 @@ class Config {
   /// Photon culling settings.
   G4bool fPhotonCullingEnabled = false;
   G4double fPhotonCullingAcceptanceAngleDeg = 30.0;
+
+  /// Correlated 4.439 MeV gamma settings (default off).
+  G4bool fCorrelatedGammaEnabled = false;
+  G4double fCorrelatedGammaProbability = 0.0;
 };
 
 #endif
