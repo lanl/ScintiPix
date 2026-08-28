@@ -359,6 +359,14 @@ def _macro_commands(
     include_run_initialize: bool = True,
 ) -> list[str]:
     """Generate complete macro command list from simulation configuration."""
+    gps = simulation.source.gps
+    if gps.particle is None or gps.energy is None:
+        raise ValueError(
+            "Source is missing `gps.particle` or `gps.energy`. Provide them "
+            "inline, or load the configuration with `from_yaml(...)` so the "
+            "`source.catalogId` reference is hydrated."
+        )
+
     commands: list[str] = []
     if simulation.geant4runner is not None and simulation.geant4runner.runtime_controls is not None:
         runtime = simulation.geant4runner.runtime_controls

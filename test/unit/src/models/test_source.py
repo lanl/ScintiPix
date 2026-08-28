@@ -402,6 +402,34 @@ class TestSourceGps:
         with pytest.raises(ValidationError, match="particle"):
             SourceGps.model_validate(payload)
 
+    def test_particle_optional_when_omitted(self) -> None:
+        """particle may be omitted; a source catalog fills it during hydration."""
+        payload = self._minimal_gps_payload()
+        del payload["particle"]
+        gps = SourceGps.model_validate(payload)
+        assert gps.particle is None
+
+    def test_energy_optional_when_omitted(self) -> None:
+        """energy may be omitted; a source catalog fills it during hydration."""
+        payload = self._minimal_gps_payload()
+        del payload["energy"]
+        gps = SourceGps.model_validate(payload)
+        assert gps.energy is None
+
+    def test_position_only_gps(self) -> None:
+        """A position-only GPS block validates (particle and energy from catalog)."""
+        gps = SourceGps.model_validate(
+            {
+                "position": {
+                    "centerMm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": -100.0},
+                    "radiusMm": 10.0,
+                }
+            }
+        )
+        assert gps.particle is None
+        assert gps.energy is None
+        assert gps.position.radius_mm == 10.0
+
     def test_complete_gps_configuration(self) -> None:
         """Complete GPS with all fields should validate."""
         gps = SourceGps.model_validate(
@@ -786,3 +814,49 @@ class TestSource:
         source = Source.model_validate(payload)
         assert source.correlated_gamma is not None
         assert source.correlated_gamma.probability == 0.582
+
+    @staticmethod
+    def _catalog_source_payload() -> dict:
+        """Helper for a catalog-referencing source with a position-only gps."""
+        return {
+            "catalogId": "AmBe",
+            "gps": {
+                "position": {
+                    "centerMm": {"x_mm": 0.0, "y_mm": 0.0, "z_mm": -100.0},
+                    "radiusMm": 10.0,
+                }
+            },
+        }
+
+    def test_source_with_catalog_id_position_only(self) -> None:
+        """With a catalogId, gps may carry only position (particle/energy from catalog)."""
+        source = Source.model_validate(self._catalog_source_payload())
+        assert source.catalog_id == "AmBe"
+        assert source.gps.particle is None
+        assert source.gps.energy is None
+        assert source.gps.position.radius_mm == 10.0
+
+    def test_source_missing_particle_without_catalog_rejected(self) -> None:
+        """Without a catalogId, an omitted particle should be rejected."""
+        payload = self._minimal_source_payload()
+        del payload["gps"]["particle"]
+        with pytest.raises(
+            ValidationError,
+            match="particle.*required unless.*catalogId",
+        ):
+            Source.model_validate(payload)
+
+    def test_source_missing_energy_without_catalog_rejected(self) -> None:
+        """Without a catalogId, an omitted energy should be rejected."""
+        payload = self._minimal_source_payload()
+        del payload["gps"]["energy"]
+        with pytest.raises(
+            ValidationError,
+            match="energy.*required unless.*catalogId",
+        ):
+            Source.model_validate(payload)
+
+    def test_source_catalog_id_alias(self) -> None:
+        """camelCase catalogId alias should map to catalog_id."""
+        source = Source.model_validate(self._catalog_source_payload())
+        assert source.catalog_id == "AmBe"

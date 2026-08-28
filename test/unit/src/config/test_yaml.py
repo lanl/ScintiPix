@@ -498,3 +498,196 @@ class TestRoundTrip:
         assert final.geant4runner.runtime_controls.control_verbose == 1
         assert final.metadata.author == "Round Trip Test"
         assert final.metadata.run_environment.sub_run_number == 5
+
+
+class TestSourceCatalogHydration:
+    """Tests that a `source.catalogId` reference is hydrated on load."""
+
+    @staticmethod
+    def _scintillator_and_metadata_block() -> str:
+        """Inline scintillator and metadata shared by the hydration configs."""
+        return """
+scintillator:
+  position_mm: {x_mm: 0.0, y_mm: 0.0, z_mm: 0.0}
+  dimension_mm: {x_mm: 100.0, y_mm: 100.0, z_mm: 20.0}
+  properties:
+    name: TestScint
+    composition:
+      density: 1.023
+      elements:
+        - {symbol: C, massFraction: 0.914706}
+        - {symbol: H, massFraction: 0.085294}
+    optical:
+      photonEnergy: [2.0, 3.0, 4.0]
+      rIndex: [1.58, 1.58, 1.58]
+      nKEntries: 3
+      timeComponents:
+        default:
+          - {timeConstant: 2.4, yieldFraction: 1.0}
+          - {timeConstant: 0.0, yieldFraction: 0.0}
+          - {timeConstant: 0.0, yieldFraction: 0.0}
+
+geant4runner:
+  numberOfParticles: 100
+  binary: scintipix
+
+metadata:
+  author: Test Author
+  date: "2026-06-16"
+  version: v1.0
+  description: Test configuration
+  RunEnvironment:
+    SimulationRunID: test_run
+"""
+
+    def test_catalog_id_hydrates_intrinsic_fields(self, tmp_path):
+        """A position-only source with catalogId fills particle/angular/energy/gamma."""
+        yaml_file = tmp_path / "ambe_source.yaml"
+        yaml_file.write_text(
+            """
+source:
+  catalogId: AmBe
+  gps:
+    position:
+      centerMm: {x_mm: 0.0, y_mm: 0.0, z_mm: -100.0}
+      radiusMm: 10.0
+"""
+            + self._scintillator_and_metadata_block()
+        )
+
+        simulation = from_yaml(yaml_file)
+
+        assert simulation.source.catalog_id == "AmBe"
+        assert simulation.source.gps.particle == "neutron"
+        assert simulation.source.gps.angular.type == "iso"
+        assert simulation.source.gps.energy.type == "AmBe"
+        assert simulation.source.correlated_gamma is not None
+        assert simulation.source.correlated_gamma.probability == 0.582
+        # Placement stays exactly as written in the simulation config.
+        assert simulation.source.gps.position.center_mm.z_mm == -100.0
+        assert simulation.source.gps.position.radius_mm == 10.0
+
+    def test_inline_fields_override_catalog(self, tmp_path):
+        """Inline particle/energy/angular win over the catalog entry."""
+        yaml_file = tmp_path / "ambe_override.yaml"
+        yaml_file.write_text(
+            """
+source:
+  catalogId: AmBe
+  gps:
+    particle: gamma
+    position:
+      centerMm: {x_mm: 0.0, y_mm: 0.0, z_mm: -100.0}
+      radiusMm: 10.0
+    energy:
+      type: Mono
+      monoMeV: 4.439
+"""
+            + self._scintillator_and_metadata_block()
+        )
+
+        simulation = from_yaml(yaml_file)
+
+        # Inline particle and energy are kept; angular still comes from the catalog.
+        assert simulation.source.gps.particle == "gamma"
+        assert simulation.source.gps.energy.type == "Mono"
+        assert simulation.source.gps.energy.mono_mev == 4.439
+        assert simulation.source.gps.angular.type == "iso"
+
+    def test_no_hydration_when_disabled(self, tmp_path):
+        """With hydration off, an un-filled catalog source keeps None fields."""
+        yaml_file = tmp_path / "ambe_no_hydrate.yaml"
+        yaml_file.write_text(
+            """
+source:
+  catalogId: AmBe
+  gps:
+    position:
+      centerMm: {x_mm: 0.0, y_mm: 0.0, z_mm: -100.0}
+      radiusMm: 10.0
+"""
+            + self._scintillator_and_metadata_block()
+        )
+
+        simulation = from_yaml(yaml_file, hydrate_catalogs=False)
+
+        assert simulation.source.catalog_id == "AmBe"
+        assert simulation.source.gps.particle is None
+        assert simulation.source.gps.energy is None
+
+    def test_hydrated_source_writes_ambe_macro(self, tmp_path):
+        """A hydrated AmBe source should drive the arbitrary-energy macro output."""
+        from src.config.macro import write_macro
+
+        yaml_file = tmp_path / "ambe_macro.yaml"
+        yaml_file.write_text(
+            f"""
+source:
+  catalogId: AmBe
+  gps:
+    position:
+      centerMm: {{x_mm: 0.0, y_mm: 0.0, z_mm: -100.0}}
+      radiusMm: 10.0
+
+optical:
+  lenses:
+    - {{name: TestLens, primary: true, zmxFile: test.zmx}}
+  interface:
+    diameterMm: 60.55
+    positionMm: {{x_mm: 0.0, y_mm: 0.0, z_mm: 210.05}}
+
+scintillator:
+  position_mm: {{x_mm: 0.0, y_mm: 0.0, z_mm: 0.0}}
+  dimension_mm: {{x_mm: 100.0, y_mm: 100.0, z_mm: 20.0}}
+  properties:
+    name: TestScint
+    composition:
+      density: 1.023
+      elements:
+        - {{symbol: C, massFraction: 0.914706}}
+        - {{symbol: H, massFraction: 0.085294}}
+    optical:
+      photonEnergy: [2.0, 3.0, 4.0]
+      rIndex: [1.58, 1.58, 1.58]
+      nKEntries: 3
+      timeComponents:
+        default:
+          - {{timeConstant: 2.4, yieldFraction: 1.0}}
+          - {{timeConstant: 0.0, yieldFraction: 0.0}}
+          - {{timeConstant: 0.0, yieldFraction: 0.0}}
+
+geant4runner:
+  numberOfParticles: 100
+  binary: scintipix
+
+metadata:
+  author: Test Author
+  date: "2026-06-16"
+  version: v1.0
+  description: Test configuration
+  RunEnvironment:
+    SimulationRunID: test_run
+    WorkingDirectory: {tmp_path}
+    MacroDirectory: macros
+    LogDirectory: logs
+"""
+        )
+
+        simulation = from_yaml(yaml_file)
+        macro_path = write_macro(simulation)
+        commands = macro_path.read_text(encoding="utf-8").strip().split("\n")
+
+        assert "/gps/particle neutron" in commands
+        assert "/gps/ene/type Arb" in commands
+        assert "/gps/hist/type arb" in commands
+        assert "/gps/hist/inter/Lin" in commands
+        assert "/gps/ang/type iso" in commands
+
+        hist_points = [c for c in commands if c.startswith("/gps/hist/point ")]
+        assert len(hist_points) == 240
+        assert hist_points[0] == "/gps/hist/point 0.025 0.461933"
+        assert hist_points[-1] == "/gps/hist/point 11.975 0"
+
+        assert "/source/correlatedGamma/enabled 1" in commands
+        assert "/source/correlatedGamma/probability 0.582" in commands
+        assert not any(cmd.startswith("/gps/ene/mono") for cmd in commands)

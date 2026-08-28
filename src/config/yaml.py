@@ -9,13 +9,47 @@ import yaml
 try:
     from src.config.LensCatalog import load_lens
     from src.config.ScintillatorCatalog import load_scintillator
+    from src.config.SourceCatalog import load_source
     from src.models.simulation import Simulation
 except ModuleNotFoundError:
     import sys
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.config.LensCatalog import load_lens
     from src.config.ScintillatorCatalog import load_scintillator
+    from src.config.SourceCatalog import load_source
     from src.models.simulation import Simulation
+
+
+def _hydrate_source_catalog(payload: dict) -> dict:
+    """Fill intrinsic source fields from the source catalog when `catalogId` is set.
+
+    Runs on the raw YAML mapping (before validation) so that fields the user
+    omitted are filled from the catalog while anything the user wrote wins.
+    Placement (`gps.position`) and `timing` are never taken from the catalog.
+    """
+    source = payload.get("source")
+    if not isinstance(source, dict):
+        return payload
+
+    catalog_id = source.get("catalogId", source.get("catalog_id"))
+    if not catalog_id:
+        return payload
+
+    entry = load_source(catalog_id)
+    gps = source.setdefault("gps", {})
+    gps.setdefault("particle", entry.particle)
+    if "angular" not in gps:
+        gps["angular"] = entry.angular.model_dump(mode="python", by_alias=True)
+    if "energy" not in gps:
+        gps["energy"] = entry.energy.model_dump(
+            mode="python", by_alias=True, exclude_none=True
+        )
+    if entry.correlated_gamma is not None:
+        if "correlatedGamma" not in source and "correlated_gamma" not in source:
+            source["correlatedGamma"] = entry.correlated_gamma.model_dump(
+                mode="python", by_alias=True
+            )
+    return payload
 
 
 def _hydrate_catalogs(simulation: Simulation) -> Simulation:
@@ -82,6 +116,11 @@ def from_yaml(yaml_path: str | Path, *, hydrate_catalogs: bool = True) -> Simula
         raise ValueError(
             f"YAML config at {path} must be a mapping/object at top level."
         )
+
+    # Source catalog fills omitted intrinsic fields on the raw mapping, before
+    # validation, so the `gps.angular` default factory cannot mask them.
+    if hydrate_catalogs:
+        payload = _hydrate_source_catalog(payload)
 
     simulation = Simulation.model_validate(payload)
 

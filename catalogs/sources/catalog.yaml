@@ -1,0 +1,28 @@
+# Source catalog: named radiation sources, beams, and generators.
+#
+# Each entry holds only what is intrinsic to the source type (particle,
+# angular distribution, energy, optional coincident gamma). Where the source
+# sits (gps.position) and how fast it emits (timing) are simulation-specific
+# and are given in the `source` block of a simulation config, not here.
+#
+# Reference a source from a simulation with:
+#   source:
+#     catalogId: AmBe
+#     gps:
+#       position:
+#         centerMm: {x_mm: 0.0, y_mm: 0.0, z_mm: -100.0}
+#         radiusMm: 10.0
+
+version: 1
+default: AmBe
+
+sources:
+  AmBe:
+    kind: radioactive-source
+    particle: neutron
+    angular:
+      type: iso
+    energy:
+      type: AmBe
+    correlatedGamma:
+      probability: 0.582

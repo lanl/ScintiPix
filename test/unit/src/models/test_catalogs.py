@@ -19,7 +19,12 @@ def _repo_root() -> Path:
 
 sys.path.insert(0, str(_repo_root()))
 
-from src.models.catalogs import LensCatalogIndex, ScintillatorCatalogIndex
+from src.models.catalogs import (
+    LensCatalogIndex,
+    ScintillatorCatalogIndex,
+    SourceCatalogEntry,
+    SourceCatalogIndex,
+)
 
 
 # ============================================================================
@@ -290,3 +295,196 @@ class TestScintillatorCatalogIndex:
         del payload["materials"]
         with pytest.raises(ValidationError, match="materials"):
             ScintillatorCatalogIndex.model_validate(payload)
+
+
+# ============================================================================
+# SourceCatalogEntry Tests
+# ============================================================================
+
+
+class TestSourceCatalogEntry:
+    """Tests for a single source catalog entry."""
+
+    @staticmethod
+    def _minimal_entry_payload() -> dict:
+        """Helper to create a minimal valid source entry payload."""
+        return {
+            "kind": "radioactive-source",
+            "particle": "neutron",
+            "energy": {"type": "AmBe"},
+        }
+
+    def test_valid_minimal_entry(self) -> None:
+        """A minimal entry (kind, particle, energy) should validate."""
+        entry = SourceCatalogEntry.model_validate(self._minimal_entry_payload())
+        assert entry.kind == "radioactive-source"
+        assert entry.particle == "neutron"
+        assert entry.energy.type == "AmBe"
+        assert entry.correlated_gamma is None
+
+    def test_angular_default_factory(self) -> None:
+        """Omitted angular should fall back to the beam2d default."""
+        entry = SourceCatalogEntry.model_validate(self._minimal_entry_payload())
+        assert entry.angular.type == "beam2d"
+
+    def test_full_entry_with_aliases(self) -> None:
+        """A full entry including camelCase correlatedGamma should validate."""
+        entry = SourceCatalogEntry.model_validate(
+            {
+                "kind": "radioactive-source",
+                "particle": "neutron",
+                "angular": {"type": "iso"},
+                "energy": {"type": "AmBe"},
+                "correlatedGamma": {"probability": 0.582},
+            }
+        )
+        assert entry.angular.type == "iso"
+        assert entry.correlated_gamma is not None
+        assert entry.correlated_gamma.probability == 0.582
+
+    def test_empty_kind_rejected(self) -> None:
+        """Empty kind string should be rejected (min_length=1)."""
+        payload = self._minimal_entry_payload()
+        payload["kind"] = ""
+        with pytest.raises(ValidationError, match="kind"):
+            SourceCatalogEntry.model_validate(payload)
+
+    def test_empty_particle_rejected(self) -> None:
+        """Empty particle string should be rejected (min_length=1)."""
+        payload = self._minimal_entry_payload()
+        payload["particle"] = ""
+        with pytest.raises(ValidationError, match="particle"):
+            SourceCatalogEntry.model_validate(payload)
+
+    def test_energy_field_required(self) -> None:
+        """Energy field is required."""
+        payload = self._minimal_entry_payload()
+        del payload["energy"]
+        with pytest.raises(ValidationError, match="energy"):
+            SourceCatalogEntry.model_validate(payload)
+
+    def test_energy_validation_applied(self) -> None:
+        """A Mono energy without monoMeV should be rejected by the entry."""
+        payload = self._minimal_entry_payload()
+        payload["energy"] = {"type": "Mono"}
+        with pytest.raises(ValidationError, match="monoMeV"):
+            SourceCatalogEntry.model_validate(payload)
+
+
+# ============================================================================
+# SourceCatalogIndex Tests
+# ============================================================================
+
+
+class TestSourceCatalogIndex:
+    """Tests for the source catalog index model."""
+
+    @staticmethod
+    def _minimal_source_catalog_payload() -> dict:
+        """Helper to create a minimal valid source catalog payload."""
+        return {
+            "version": 1,
+            "default": "AmBe",
+            "sources": {
+                "AmBe": {
+                    "kind": "radioactive-source",
+                    "particle": "neutron",
+                    "angular": {"type": "iso"},
+                    "energy": {"type": "AmBe"},
+                    "correlatedGamma": {"probability": 0.582},
+                },
+            },
+        }
+
+    def test_valid_minimal_catalog(self) -> None:
+        """A minimal valid source catalog should validate."""
+        catalog = SourceCatalogIndex.model_validate(
+            self._minimal_source_catalog_payload()
+        )
+        assert catalog.version == 1
+        assert catalog.default == "AmBe"
+        assert "AmBe" in catalog.sources
+        assert catalog.sources["AmBe"].particle == "neutron"
+
+    def test_version_positive(self) -> None:
+        """Version must be >= 1."""
+        payload = self._minimal_source_catalog_payload()
+        payload["version"] = 0
+        with pytest.raises(ValidationError, match="version"):
+            SourceCatalogIndex.model_validate(payload)
+
+    def test_empty_default_rejected(self) -> None:
+        """Empty default string should be rejected (min_length=1)."""
+        payload = self._minimal_source_catalog_payload()
+        payload["default"] = ""
+        with pytest.raises(ValidationError, match="default"):
+            SourceCatalogIndex.model_validate(payload)
+
+    def test_empty_sources_dict_rejected(self) -> None:
+        """Empty sources dict should be rejected (min_length=1)."""
+        payload = self._minimal_source_catalog_payload()
+        payload["sources"] = {}
+        with pytest.raises(ValidationError, match="sources"):
+            SourceCatalogIndex.model_validate(payload)
+
+    def test_default_must_exist_in_sources(self) -> None:
+        """Default key must exist in the sources mapping."""
+        payload = self._minimal_source_catalog_payload()
+        payload["default"] = "nonexistent_source"
+        with pytest.raises(
+            ValidationError,
+            match="default 'nonexistent_source' not found in sources mapping",
+        ):
+            SourceCatalogIndex.model_validate(payload)
+
+    def test_source_entry_validation_applied(self) -> None:
+        """Entries in the catalog should be validated."""
+        payload = self._minimal_source_catalog_payload()
+        del payload["sources"]["AmBe"]["particle"]
+        with pytest.raises(ValidationError, match="particle"):
+            SourceCatalogIndex.model_validate(payload)
+
+    def test_multiple_sources_in_catalog(self) -> None:
+        """Multiple sources in the catalog should validate."""
+        catalog = SourceCatalogIndex.model_validate(
+            {
+                "version": 1,
+                "default": "AmBe",
+                "sources": {
+                    "AmBe": {
+                        "kind": "radioactive-source",
+                        "particle": "neutron",
+                        "energy": {"type": "AmBe"},
+                    },
+                    "DTBeam": {
+                        "kind": "beam",
+                        "particle": "neutron",
+                        "energy": {"type": "Mono", "monoMeV": 14.1},
+                    },
+                },
+            }
+        )
+        assert len(catalog.sources) == 2
+        assert catalog.sources["DTBeam"].kind == "beam"
+        assert catalog.sources["DTBeam"].energy.mono_mev == 14.1
+
+    def test_version_field_required(self) -> None:
+        """Version field is required."""
+        payload = self._minimal_source_catalog_payload()
+        del payload["version"]
+        with pytest.raises(ValidationError, match="version"):
+            SourceCatalogIndex.model_validate(payload)
+
+    def test_default_field_required(self) -> None:
+        """Default field is required."""
+        payload = self._minimal_source_catalog_payload()
+        del payload["default"]
+        with pytest.raises(ValidationError, match="default"):
+            SourceCatalogIndex.model_validate(payload)
+
+    def test_sources_field_required(self) -> None:
+        """Sources field is required."""
+        payload = self._minimal_source_catalog_payload()
+        del payload["sources"]
+        with pytest.raises(ValidationError, match="sources"):
+            SourceCatalogIndex.model_validate(payload)
