@@ -31,6 +31,10 @@ compile_commands.json
 !/catalogs/scintillators/
 !/catalogs/scintillators/**
 
+# Versioned source spectra catalog (static reference data, not output)
+!/catalogs/sources/
+!/catalogs/sources/**
+
 # Local scratch dirs (common spelling variants)
 /.scratch/
 /docs/temp/
