@@ -14,13 +14,51 @@ from pathlib import Path
 import sys
 
 try:
+    from src.common.utilities import repo_root
     from src.models.simulation import Simulation
 except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
+    from src.common.utilities import repo_root
     from src.models.simulation import Simulation
 
 NS_PER_SECOND = 1_000_000_000.0
 MM_PER_CM = 10.0
+
+AMBE_NEUTRON_SPECTRUM_PATH = (
+    repo_root() / "catalogs" / "sources" / "AmBe" / "emerging_neutron_spectrum.csv"
+)
+
+
+def _load_ambe_neutron_spectrum() -> list[tuple[float, float]]:
+    """Read the committed AmBe neutron spectrum as (energy_MeV, intensity) rows."""
+    path = AMBE_NEUTRON_SPECTRUM_PATH
+    if not path.exists():
+        raise FileNotFoundError(f"AmBe neutron spectrum table not found: {path}")
+
+    points: list[tuple[float, float]] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        tokens = [token.strip() for token in line.split(",")]
+        if len(tokens) < 2:
+            raise ValueError(
+                "Spectrum row must have two columns "
+                f"'energy_MeV,relative_intensity', got: {line!r}"
+            )
+        try:
+            energy_mev = float(tokens[0])
+            intensity = float(tokens[1])
+        except ValueError as exc:
+            # Skip the header row ("energy_MeV,relative_intensity").
+            if not points:
+                continue
+            raise ValueError(f"Spectrum row has non-numeric data: {line!r}") from exc
+        points.append((energy_mev, intensity))
+
+    if not points:
+        raise ValueError(f"AmBe neutron spectrum table has no data rows: {path}")
+    return points
 
 
 def _source_commands(simulation: Simulation) -> list[str]:
@@ -43,18 +81,38 @@ def _source_commands(simulation: Simulation) -> list[str]:
         f"/gps/ang/rot1 {angular.rot1.x:g} {angular.rot1.y:g} {angular.rot1.z:g}",
         f"/gps/ang/rot2 {angular.rot2.x:g} {angular.rot2.y:g} {angular.rot2.z:g}",
         f"/gps/direction {angular.direction.x:g} {angular.direction.y:g} {angular.direction.z:g}",
-        f"/gps/ene/type {energy.type}",
     ]
 
-    if energy.type.strip().lower() == "mono":
-        mono_mev = energy.mono_mev
-        if mono_mev is None:
-            raise ValueError(
-                "`source.gps.energy.monoMeV` is required when `/gps/ene/type Mono`."
-            )
-        commands.append(f"/gps/ene/mono {mono_mev:g} MeV")
+    energy_type = energy.type.strip().lower()
+    if energy_type == "ambe":
+        # AmBe neutron energy is a tabulated spectrum sampled by GPS as an
+        # arbitrary-energy histogram read from the committed reference table.
+        commands.append("/gps/ene/type Arb")
+        commands.append("/gps/hist/type arb")
+        for energy_mev, intensity in _load_ambe_neutron_spectrum():
+            commands.append(f"/gps/hist/point {energy_mev:g} {intensity:g}")
+        commands.append("/gps/hist/inter/Lin")
+    else:
+        commands.append(f"/gps/ene/type {energy.type}")
+        if energy_type == "mono":
+            if energy.mono_mev is None:
+                raise ValueError(
+                    "`source.gps.energy.monoMeV` is required when `/gps/ene/type Mono`."
+                )
+            commands.append(f"/gps/ene/mono {energy.mono_mev:g} MeV")
 
     return commands
+
+
+def _correlated_gamma_commands(simulation: Simulation) -> list[str]:
+    """Generate coincident-gamma commands for an AmBe source."""
+    correlated_gamma = simulation.source.correlated_gamma
+    if correlated_gamma is None:
+        return []
+    return [
+        "/source/correlatedGamma/enabled 1",
+        f"/source/correlatedGamma/probability {correlated_gamma.probability:g}",
+    ]
 
 
 def _source_area_cm2(config: Simulation) -> float:
@@ -325,6 +383,7 @@ def _macro_commands(
         commands.append("/run/initialize")
     commands.extend(_source_commands(simulation))
     commands.extend(_source_timing_commands(simulation))
+    commands.extend(_correlated_gamma_commands(simulation))
     if simulation.geant4runner is not None and simulation.geant4runner.number_of_particles is not None:
         commands.append(f"/run/beamOn {simulation.geant4runner.number_of_particles}")
     return commands

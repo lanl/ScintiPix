@@ -20,6 +20,7 @@ def _repo_root() -> Path:
 sys.path.insert(0, str(_repo_root()))
 
 from src.models.source import (
+    CorrelatedGamma,
     GpsAngular,
     GpsEnergy,
     GpsPosition,
@@ -293,6 +294,12 @@ class TestGpsEnergy:
         """Non-Mono types should not require mono_mev."""
         energy = GpsEnergy(type="Lin")
         assert energy.type == "Lin"
+        assert energy.mono_mev is None
+
+    def test_ambe_type_without_mono_mev(self) -> None:
+        """AmBe type samples the committed spectrum, so mono_mev is not required."""
+        energy = GpsEnergy(type="AmBe")
+        assert energy.type == "AmBe"
         assert energy.mono_mev is None
 
     def test_various_energy_types_accepted(self) -> None:
@@ -633,6 +640,40 @@ class TestSourceTiming:
 
 
 # ============================================================================
+# CorrelatedGamma Tests
+# ============================================================================
+
+
+class TestCorrelatedGamma:
+    """Tests for the optional coincident-gamma block."""
+
+    def test_valid_probability_accepted(self) -> None:
+        """A probability in (0, 1] should validate."""
+        gamma = CorrelatedGamma(probability=0.582)
+        assert gamma.probability == 0.582
+
+    def test_probability_of_one_accepted(self) -> None:
+        """Probability of exactly 1.0 should be accepted (le=1.0)."""
+        gamma = CorrelatedGamma(probability=1.0)
+        assert gamma.probability == 1.0
+
+    def test_zero_probability_rejected(self) -> None:
+        """Zero probability should be rejected (gt=0)."""
+        with pytest.raises(ValidationError, match="probability"):
+            CorrelatedGamma(probability=0.0)
+
+    def test_negative_probability_rejected(self) -> None:
+        """Negative probability should be rejected."""
+        with pytest.raises(ValidationError, match="probability"):
+            CorrelatedGamma(probability=-0.1)
+
+    def test_probability_above_one_rejected(self) -> None:
+        """Probability greater than 1.0 should be rejected (le=1.0)."""
+        with pytest.raises(ValidationError, match="probability"):
+            CorrelatedGamma(probability=1.5)
+
+
+# ============================================================================
 # Source Tests
 # ============================================================================
 
@@ -732,3 +773,16 @@ class TestSource:
         """Source without timing field should have None timing."""
         source = Source.model_validate(self._minimal_source_payload())
         assert source.timing is None
+
+    def test_source_without_correlated_gamma(self) -> None:
+        """Source without a correlated_gamma block should default to None."""
+        source = Source.model_validate(self._minimal_source_payload())
+        assert source.correlated_gamma is None
+
+    def test_source_with_correlated_gamma_alias(self) -> None:
+        """camelCase correlatedGamma alias should map to correlated_gamma."""
+        payload = self._minimal_source_payload()
+        payload["correlatedGamma"] = {"probability": 0.582}
+        source = Source.model_validate(payload)
+        assert source.correlated_gamma is not None
+        assert source.correlated_gamma.probability == 0.582
