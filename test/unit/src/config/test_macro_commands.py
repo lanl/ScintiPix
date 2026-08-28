@@ -256,6 +256,83 @@ class MacroWriteTests(unittest.TestCase):
                 commands,
             )
 
+    def test_write_macro_emits_ambe_spectrum_and_correlated_gamma(self) -> None:
+        """AmBe energy should emit the arbitrary-energy histogram and gamma commands."""
+
+        from src.models.source import (
+            CorrelatedGamma,
+            GpsAngular,
+            GpsEnergy,
+            GpsPosition,
+            Source,
+            SourceGps,
+        )
+        from src.models.base import Vec3Mm
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+            simulation.source = Source(
+                gps=SourceGps(
+                    particle="neutron",
+                    position=GpsPosition(
+                        center_mm=Vec3Mm(x_mm=0.0, y_mm=0.0, z_mm=-100.0),
+                        radius_mm=10.0,
+                    ),
+                    angular=GpsAngular(type="iso"),
+                    energy=GpsEnergy(type="AmBe"),
+                ),
+                correlated_gamma=CorrelatedGamma(probability=0.582),
+            )
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            self.assertIn("/gps/ene/type Arb", commands)
+            self.assertIn("/gps/hist/type arb", commands)
+            self.assertIn("/gps/hist/inter/Lin", commands)
+            self.assertIn("/gps/ang/type iso", commands)
+
+            hist_points = [c for c in commands if c.startswith("/gps/hist/point ")]
+            self.assertEqual(len(hist_points), 240)
+            self.assertEqual(hist_points[0], "/gps/hist/point 0.025 0.461933")
+            self.assertEqual(hist_points[-1], "/gps/hist/point 11.975 0")
+
+            self.assertIn("/source/correlatedGamma/enabled 1", commands)
+            self.assertIn("/source/correlatedGamma/probability 0.582", commands)
+
+            # An AmBe spectrum must not emit a mono-energy line.
+            self.assertFalse(any(cmd.startswith("/gps/ene/mono") for cmd in commands))
+
+    def test_write_macro_mono_source_omits_ambe_and_gamma(self) -> None:
+        """A Mono source should emit neither histogram nor correlated-gamma commands."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            self.assertIn("/gps/ene/type Mono", commands)
+            self.assertIn("/gps/ene/mono 6 MeV", commands)
+            self.assertFalse(any(cmd.startswith("/gps/hist/") for cmd in commands))
+            self.assertFalse(
+                any(cmd.startswith("/source/correlatedGamma/") for cmd in commands)
+            )
+
     def test_write_macro_filename_format(self) -> None:
         """write_macro should create files with correct naming format."""
 

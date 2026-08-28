@@ -28,7 +28,13 @@ class GpsAngular(StrictModel):
 
 
 class GpsEnergy(StrictModel):
-    """GPS energy distribution."""
+    """GPS energy distribution.
+
+    `type` names the Geant4 GPS energy distribution. `Mono` uses the single
+    `monoMeV` value. `AmBe` samples the committed AmBe neutron energy spectrum
+    (`catalogs/sources/AmBe/emerging_neutron_spectrum.csv`), which the macro
+    writes out as a GPS arbitrary-energy histogram.
+    """
 
     type: str = Field(default="Mono", min_length=1)
     mono_mev: float | None = Field(default=None, alias="monoMeV", gt=0)
@@ -139,8 +145,23 @@ class SourceTiming(StrictModel):
         return self
 
 
+class CorrelatedGamma(StrictModel):
+    """Optional 4.439 MeV gamma emitted with each AmBe neutron.
+
+    Presence of this block turns the coincident gamma on in the primary
+    generator; the gamma energy is fixed in the simulation code. `probability`
+    is the chance per neutron that the gamma is emitted (Falezza et al. report
+    about 0.582 for their source).
+    """
+
+    probability: float = Field(gt=0.0, le=1.0)
+
+
 class Source(StrictModel):
     """Primary source block represented directly as GPS uration."""
 
     gps: SourceGps
     timing: SourceTiming | None = None
+    correlated_gamma: CorrelatedGamma | None = Field(
+        default=None, alias="correlatedGamma"
+    )
