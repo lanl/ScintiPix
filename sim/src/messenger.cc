@@ -281,6 +281,9 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fSourceTimingDir = new G4UIdirectory("/source/timing/");
   fSourceTimingDir->SetGuidance("Source timing controls");
 
+  fSourceCorrelatedGammaDir = new G4UIdirectory("/source/correlatedGamma/");
+  fSourceCorrelatedGammaDir->SetGuidance("Correlated 4.439 MeV gamma controls");
+
   fOutputDir = new G4UIdirectory("/output/");
   fOutputDir->SetGuidance("Output controls");
 
@@ -622,9 +625,28 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fPhotonCullingAcceptanceAngleDegCmd->SetParameterName("acceptanceAngleDeg", false);
   fPhotonCullingAcceptanceAngleDegCmd->SetRange("acceptanceAngleDeg > 0. && acceptanceAngleDeg <= 180.");
   fPhotonCullingAcceptanceAngleDegCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fCorrelatedGammaEnabledCmd =
+      new G4UIcmdWithAnInteger("/source/correlatedGamma/enabled", this);
+  fCorrelatedGammaEnabledCmd->SetGuidance(
+      "Enable or disable the correlated 4.439 MeV gamma emitted with each neutron (0=disabled, 1=enabled)");
+  fCorrelatedGammaEnabledCmd->SetParameterName("enabled", false);
+  fCorrelatedGammaEnabledCmd->SetRange("enabled >= 0 && enabled <= 1");
+  fCorrelatedGammaEnabledCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fCorrelatedGammaProbabilityCmd =
+      new G4UIcmdWithADouble("/source/correlatedGamma/probability", this);
+  fCorrelatedGammaProbabilityCmd->SetGuidance(
+      "Set the per-neutron probability of emitting the correlated 4.439 MeV gamma");
+  fCorrelatedGammaProbabilityCmd->SetParameterName("probability", false);
+  fCorrelatedGammaProbabilityCmd->SetRange("probability >= 0. && probability <= 1.");
+  fCorrelatedGammaProbabilityCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 Messenger::~Messenger() {
+  delete fCorrelatedGammaProbabilityCmd;
+  delete fCorrelatedGammaEnabledCmd;
+
   delete fPhotonCullingAcceptanceAngleDegCmd;
   delete fPhotonCullingEnabledCmd;
 
@@ -682,6 +704,7 @@ Messenger::~Messenger() {
 
   delete fPhotonCullingDir;
   delete fOutputDir;
+  delete fSourceCorrelatedGammaDir;
   delete fSourceTimingDir;
   delete fSourceDir;
   delete fOpticalInterfaceGeomDir;
@@ -1076,6 +1099,23 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     fConfig->SetPhotonCullingAcceptanceAngleDeg(value);
     G4cout << "Photon culling acceptance angle set to " << value << " degrees."
            << G4endl;
+    return;
+  }
+
+  if (command == fCorrelatedGammaEnabledCmd) {
+    fConfig->SetCorrelatedGammaEnabled(
+        fCorrelatedGammaEnabledCmd->GetNewIntValue(newValue) != 0);
+    G4cout << "Correlated 4.439 MeV gamma "
+           << (fConfig->GetCorrelatedGammaEnabled() ? "enabled" : "disabled")
+           << "." << G4endl;
+    return;
+  }
+
+  if (command == fCorrelatedGammaProbabilityCmd) {
+    const auto value = fCorrelatedGammaProbabilityCmd->GetNewDoubleValue(newValue);
+    fConfig->SetCorrelatedGammaProbability(value);
+    G4cout << "Correlated gamma probability set to "
+           << fConfig->GetCorrelatedGammaProbability() << "." << G4endl;
     return;
   }
 }

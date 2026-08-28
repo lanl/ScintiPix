@@ -38,6 +38,7 @@ class Messenger : public G4UImessenger {
   G4UIdirectory* fOpticalInterfaceGeomDir = nullptr;
   G4UIdirectory* fSourceDir = nullptr;
   G4UIdirectory* fSourceTimingDir = nullptr;
+  G4UIdirectory* fSourceCorrelatedGammaDir = nullptr;
   G4UIdirectory* fOutputDir = nullptr;
   G4UIdirectory* fPhotonCullingDir = nullptr;
 
@@ -99,6 +100,10 @@ class Messenger : public G4UImessenger {
   /// Photon culling optimization commands.
   G4UIcmdWithAnInteger* fPhotonCullingEnabledCmd = nullptr;
   G4UIcmdWithADouble* fPhotonCullingAcceptanceAngleDegCmd = nullptr;
+
+  /// Correlated 4.439 MeV gamma commands.
+  G4UIcmdWithAnInteger* fCorrelatedGammaEnabledCmd = nullptr;
+  G4UIcmdWithADouble* fCorrelatedGammaProbabilityCmd = nullptr;
 };
 
 #endif
