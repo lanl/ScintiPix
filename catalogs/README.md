@@ -36,7 +36,19 @@ Scintillator Layout:
 
 ## Sources ##
 Selection:
-- AmBe: Americium-beryllium neutron source
+- AmBe: Americium-beryllium neutron source (radioactive source)
 
 Sources Layout:
+- `catalog.yaml`: source catalog entries. Each entry holds only what is intrinsic to the source type: `kind` (`radioactive-source`, `beam`, or `generator`), `particle`, `angular` distribution, `energy`, and an optional `correlatedGamma`. Where the source sits (`gps.position`) and how fast it emits (`timing`) are simulation-specific and are set in the simulation config, not the catalog.
 - `AmBe/emerging_neutron_spectrum.csv`: relative energy spectrum of the neutrons that leave the AmBe source casing, in 50 keV bins from 0 to 12 MeV (columns `energy_MeV` and `relative_intensity`, normalized to a maximum of 1). Digitized from F. Falezza et al., Nucl. Inst. and Methods in Physics Research A 1085 (2026) 171233, Fig. 9.
+
+Reference a catalog source from a simulation with `catalogId`, and give the placement inline:
+
+```yaml
+source:
+  catalogId: AmBe
+  gps:
+    position:
+      centerMm: {x_mm: 0.0, y_mm: 0.0, z_mm: -100.0}
+      radiusMm: 10.0
+```

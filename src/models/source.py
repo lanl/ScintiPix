@@ -49,12 +49,18 @@ class GpsEnergy(StrictModel):
 
 
 class SourceGps(StrictModel):
-    """Explicit GPS command payload nested under source."""
+    """Explicit GPS command payload nested under source.
 
-    particle: str = Field(min_length=1)
+    `particle` and `energy` may be omitted when the parent `Source` names a
+    `catalogId`; the source catalog fills them during hydration. `position` is
+    always required, because where a source sits is specific to each simulation
+    and is never a property of the source type.
+    """
+
+    particle: str | None = Field(default=None, min_length=1)
     position: GpsPosition
     angular: GpsAngular = Field(default_factory=GpsAngular)
-    energy: GpsEnergy
+    energy: GpsEnergy | None = None
 
 
 class SourceTiming(StrictModel):
@@ -158,10 +164,37 @@ class CorrelatedGamma(StrictModel):
 
 
 class Source(StrictModel):
-    """Primary source block represented directly as GPS uration."""
+    """Primary source block represented directly as GPS configuration.
+
+    A source can be spelled out inline (a full `gps` block) or selected from
+    the source catalog with `catalogId`, which fills the intrinsic fields
+    (particle, angular distribution, energy, coincident gamma) during
+    hydration. Either way the `gps.position` placement is given here.
+    """
 
     gps: SourceGps
+    catalog_id: str | None = Field(default=None, alias="catalogId", min_length=1)
     timing: SourceTiming | None = None
     correlated_gamma: CorrelatedGamma | None = Field(
         default=None, alias="correlatedGamma"
     )
+
+    @model_validator(mode="after")
+    def require_inline_or_catalog(self) -> "Source":
+        """Require an inline particle and energy unless a catalog id is given."""
+
+        if self.catalog_id is None:
+            missing = [
+                name
+                for name, value in (
+                    ("particle", self.gps.particle),
+                    ("energy", self.gps.energy),
+                )
+                if value is None
+            ]
+            if missing:
+                joined = ", ".join(f"`source.gps.{name}`" for name in missing)
+                raise ValueError(
+                    f"{joined} required unless `source.catalogId` is set."
+                )
+        return self
