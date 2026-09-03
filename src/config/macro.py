@@ -91,7 +91,7 @@ def _source_commands(simulation: Simulation) -> list[str]:
         commands.append("/gps/hist/type arb")
         for energy_mev, intensity in _load_ambe_neutron_spectrum():
             commands.append(f"/gps/hist/point {energy_mev:g} {intensity:g}")
-        commands.append("/gps/hist/inter/Lin")
+        commands.append("/gps/hist/inter Lin")
     else:
         commands.append(f"/gps/ene/type {energy.type}")
         if energy_type == "mono":
