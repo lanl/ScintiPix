@@ -351,6 +351,9 @@ class MacroWriteTests(unittest.TestCase):
             self.assertIn("/gps/hist/inter Lin", commands)
             self.assertFalse(any(cmd.startswith("/gps/hist/inter/") for cmd in commands))
             self.assertIn("/gps/ang/type iso", commands)
+            # Geant4 resets the angular type to "planar" when /gps/direction is
+            # given, which would turn this isotropic source into a straight beam.
+            self.assertFalse(any(cmd.startswith("/gps/direction") for cmd in commands))
 
             hist_points = [c for c in commands if c.startswith("/gps/hist/point ")]
             self.assertEqual(len(hist_points), 240)
@@ -385,6 +388,25 @@ class MacroWriteTests(unittest.TestCase):
             self.assertFalse(
                 any(cmd.startswith("/source/correlatedGamma/") for cmd in commands)
             )
+
+    def test_write_macro_emits_direction_for_beam_source(self) -> None:
+        """A beam source needs /gps/direction to say which way it points."""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            self.assertIn("/gps/ang/type beam2d", commands)
+            self.assertIn("/gps/direction 0 0 1", commands)
 
     def test_write_macro_filename_format(self) -> None:
         """write_macro should create files with correct naming format."""
