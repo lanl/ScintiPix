@@ -1,0 +1,101 @@
+# End-to-end example: OGS scintillator + Canon EF 50 mm lens + AmBe source.
+#
+# An AmBe source sends neutrons (sampled from the committed AmBe energy spectrum,
+# emitted in all directions) plus the coincident 4.439 MeV carbon-12 gamma into a
+# 100 x 100 x 20 mm Organic Glass Scintillator viewed by a Canon EF 50 mm f/1.0L
+# lens. Running it produces the scintillation photons that reach the lens, traces
+# them to the photocathode plane, and lets the truth-labeled photon table record
+# which incident particle caused each photon.
+#
+# The scintillator, source, and lens are all pulled from the catalogs by name:
+# `catalogId: OGS`, `catalogId: AmBe`, and `catalogId: CanonEF50mmf1.0L`. The AmBe
+# entry fills in the neutron, the isotropic emission, the energy spectrum, and the
+# coincident gamma; only where the source sits (`gps.position`) is given here.
+#
+# See .agents/docs/ogs_ambe_example.md for how to run this and read the result.
+
+scintillator:
+  catalogId: OGS
+  position_mm:
+    x_mm: 0.0
+    y_mm: 0.0
+    z_mm: 0.0
+  dimension_mm:
+    x_mm: 100.0
+    y_mm: 100.0
+    z_mm: 20.0
+  maskRadius: 0
+  # The lens images this central region of the scintillator back face onto the
+  # intensifier input screen. The full 100 x 100 mm face is far larger than the
+  # 18 mm intensifier circle, so a 40 x 40 mm window is imaged here.
+  fieldOfView:
+    widthMm: 40.0
+    heightMm: 40.0
+
+source:
+  catalogId: AmBe
+  gps:
+    position:
+      type: Plane
+      shape: Circle
+      centerMm:
+        x_mm: 0.0
+        y_mm: 0.0
+        z_mm: -100.0
+      radiusMm: 20.0
+
+optical:
+  lenses:
+    - catalogId: CanonEF50mmf1.0L
+      primary: true
+      focusAdjustmentBoundsMm: [-3.0, 3.0]
+      backFocusBoundsMm: [48.0, 52.0]
+  interface:
+    diameterMm: 60.55
+    positionMm:
+      x_mm: 0.0
+      y_mm: 0.0
+      z_mm: 210.0
+    workingDistanceBoundsMm: [180.0, 250.0]
+  showTransportProgress: true
+
+intensifier:
+  model: Cricket2
+  input_screen:
+    image_circle_diameter_mm: 18.0
+    center_mm: [0.0, 0.0]
+    magnification: 1.0
+
+geant4runner:
+  numberOfParticles: 1000
+  binary: scintipix
+  showProgress: true
+  verifyOutput: true
+  photonCulling:
+    enabled: true
+    acceptanceAngleDeg: 27.0
+  runtimeControls:
+    controlVerbose: 0
+    runVerbose: 0
+    eventVerbose: 0
+    trackingVerbose: 0
+    printProgress: 100
+
+metadata:
+  author: Alex Long
+  date: 2026-09-03
+  version: ScintPiX v0.1
+  description: OGS 100 x 100 x 20 mm viewed by a Canon EF 50 mm f/1.0L lens, illuminated by an AmBe source, producing the truth-labeled HERMES-style photon parquet.
+  RunControls:
+    auto_focus_lens: true
+    geant4_simulation: true
+    transportation: true
+    intensification: false
+    sensor_detection: false
+  RunEnvironment:
+    SimulationRunID: OGS_50mm_AmBe
+    WorkingDirectory: data
+    MacroDirectory: macros
+    LogDirectory: logs
+    SimulatedPhotonsDirectory: simulatedPhotons
+    TransportedPhotonsDirectory: transportedPhotons
