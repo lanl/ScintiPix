@@ -174,10 +174,20 @@ the neutron is 1 and the gamma is 2. The `event_type` is recorded per particle, 
 of rows are correctly labelled `n` and `g` even though they share a `cluster_id`.
 
 This is the interesting case for clustering. The neutron and the gamma start at the same place
-at the same time but travel at very different speeds, so their light shows up in two separate
-places, often at two separate times, while sharing one `cluster_id`. A clustering algorithm has
-to decide whether that is one thing or two. If you want strictly one incident particle per
-group, group by `cluster_id` and `primary_track_id` together rather than `cluster_id` alone.
+at the same time but fly off in unrelated directions, so they deposit energy in different parts
+of the scintillator and their light shows up in two separate places while sharing one
+`cluster_id`. Measured on a 25,000-particle run, the two patches sit 4.6 to 9.1 mm apart, which
+is what the lens predicts from the separation of the deposits: it images the scintillator face at
+a magnification of -0.251, so a 30 mm separation inside the scintillator becomes 7.5 mm on the
+photocathode.
+
+They also arrive at two separate times, the gamma first by 2 to 13 ns, because it covers the
+distance to its deposit at the speed of light while the neutron takes longer. That speed
+difference sets the arrival times; it is not what separates the two patches in space.
+
+A clustering algorithm has to decide whether that is one thing or two. If you want strictly one
+incident particle per group, group by `cluster_id` and `primary_track_id` together rather than
+`cluster_id` alone.
 
 Expect this case to be rare, because it needs both particles to make detectable light. It did
 not occur at all in the example's 1000-particle run. A 20,000-particle run with the gamma
