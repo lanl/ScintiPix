@@ -346,7 +346,10 @@ class MacroWriteTests(unittest.TestCase):
 
             self.assertIn("/gps/ene/type Arb", commands)
             self.assertIn("/gps/hist/type arb", commands)
-            self.assertIn("/gps/hist/inter/Lin", commands)
+            # Geant4 takes the interpolation type as an argument, not in the
+            # command path; the slashed form aborts the batch as "COMMAND NOT FOUND".
+            self.assertIn("/gps/hist/inter Lin", commands)
+            self.assertFalse(any(cmd.startswith("/gps/hist/inter/") for cmd in commands))
             self.assertIn("/gps/ang/type iso", commands)
 
             hist_points = [c for c in commands if c.startswith("/gps/hist/point ")]
