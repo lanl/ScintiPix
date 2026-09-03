@@ -94,10 +94,15 @@ def trace_photons(
         )
 
     seq_model = opt_model["seq_model"]
-    working_distance_mm = float(seq_model.gaps[0].thi)
     supported_wavelengths_nm = tuple(float(value) for value in seq_model.wvlns)
     if not supported_wavelengths_nm:
         raise ValueError("The RayOptics lens model has no trace wavelengths.")
+    # Refractive index of the space between the last lens surface and the
+    # photocathode, needed below to time the photon's last leg.
+    image_space_index = {
+        wavelength_nm: float(seq_model.gaps[-1].medium.rindex(wavelength_nm))
+        for wavelength_nm in supported_wavelengths_nm
+    }
     center_x_mm, center_y_mm = config.intensifier.input_screen.center_mm
     image_radius_mm = (
         config.intensifier.input_screen.image_circle_diameter_mm / 2.0
@@ -157,7 +162,17 @@ def trace_photons(
         ):
             continue
 
-        lens_path_mm = max(0.0, float(ray_package.op) - working_distance_mm)
+        # RayOptics reports the distance travelled between the first and last
+        # lens surfaces, already weighted by the refractive index of each piece
+        # of glass. Two legs are left out of that: the one from the scintillator
+        # to the front of the lens, which Geant4 has already timed, and the one
+        # from the last lens surface to the photocathode, which is added here.
+        # The photon's last leg is the second-to-last step of the traced ray;
+        # the final step sits on the photocathode and covers no distance.
+        lens_path_mm = (
+            float(ray_package.op)
+            + float(ray_package.ray[-2][2]) * image_space_index[trace_wavelength_nm]
+        )
         image_time_ns = (
             float(photon["optical_interface_hit_time_ns"])
             + lens_path_mm / _SPEED_OF_LIGHT_MM_PER_NS
