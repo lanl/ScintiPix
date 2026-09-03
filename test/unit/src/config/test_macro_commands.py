@@ -256,6 +256,56 @@ class MacroWriteTests(unittest.TestCase):
                 commands,
             )
 
+    def test_write_macro_emits_value_with_unit_time_constants(self) -> None:
+        """Catalog scintillators give decay times as value+unit, not bare floats.
+
+        The macro writer must read the numeric nanosecond value from those
+        `ValueWithUnit` time constants (as OGS, EJ-276D, EJ-276G do) instead of
+        formatting the wrapper object, which previously crashed the run.
+        """
+
+        from src.models.scintillator import (
+            ScintillationTimeComponent,
+            ScintillationTimeComponentsByExcitation,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            simulation = _create_minimal_simulation(tmp_path)
+            # OGS-style three-component decay expressed with explicit units.
+            simulation.scintillator.properties.optical.time_components = (
+                ScintillationTimeComponentsByExcitation(
+                    default=[
+                        ScintillationTimeComponent(
+                            time_constant={"value": 3.3, "unit": "ns"},
+                            yield_fraction=0.89,
+                        ),
+                        ScintillationTimeComponent(
+                            time_constant={"value": 29.0, "unit": "ns"},
+                            yield_fraction=0.08,
+                        ),
+                        ScintillationTimeComponent(
+                            time_constant={"value": 158.0, "unit": "ns"},
+                            yield_fraction=0.03,
+                        ),
+                    ]
+                )
+            )
+
+            macro_path = self.write_macro(
+                simulation,
+                include_output=True,
+                include_run_initialize=True,
+                create_directories=True,
+                overwrite=True,
+            )
+            commands = macro_path.read_text(encoding="utf-8").strip().split('\n')
+
+            self.assertIn("/scintillator/properties/timeConstant1 3.3 ns", commands)
+            self.assertIn("/scintillator/properties/timeConstant2 29 ns", commands)
+            self.assertIn("/scintillator/properties/timeConstant3 158 ns", commands)
+            self.assertIn("/scintillator/properties/yieldFraction1 0.89", commands)
+
     def test_write_macro_emits_ambe_spectrum_and_correlated_gamma(self) -> None:
         """AmBe energy should emit the arbitrary-energy histogram and gamma commands."""
 

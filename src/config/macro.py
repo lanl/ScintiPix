@@ -317,7 +317,7 @@ def _geometry_commands(simulation: Simulation) -> list[str]:
 
     _, selected_components = scint_optical.time_components.resolve_for_particle(simulation.source.gps.particle)
     for index, component in enumerate(selected_components, start=1):
-        commands.append("/scintillator/properties/timeConstant" f"{index} {component.time_constant:g} ns")
+        commands.append("/scintillator/properties/timeConstant" f"{index} {component.time_constant_ns:g} ns")
         commands.append("/scintillator/properties/yieldFraction" f"{index} {component.yield_fraction:g}")
 
     if scint.mask_radius_mm > 0.0:
