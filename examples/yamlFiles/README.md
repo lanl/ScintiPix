@@ -97,14 +97,17 @@ Required for inline optical tables:
 
 - `photonEnergy`: photon-energy table in eV; length must match `nKEntries`
 - `rIndex`: refractive-index table; length must match `nKEntries`
+- `absLength`: absorption-length table in cm; length must match `nKEntries`
+- `scintSpectrum`: emission-spectrum table; length must match `nKEntries`
 - `nKEntries`: number of optical table entries; must be greater than zero
+
+All four are read against the single shared `photonEnergy` grid, so all four must
+be present and the same length. A run whose scintillator leaves one of them out
+stops with a message naming the table, because there is no way to model the
+material without it.
 
 Optional optical fields:
 
-- `absLength`: absorption-length table in cm; if present, length must match
-  `nKEntries`
-- `scintSpectrum`: emission-spectrum table; if present, length must match
-  `nKEntries`
 - `timeComponents`: scintillation decay profiles
 - `scintYield`: scintillation yield in photons/MeV; must be greater than zero
 - `resolutionScale`: Geant4 scintillation resolution scale; must be greater

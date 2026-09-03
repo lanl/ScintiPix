@@ -57,6 +57,25 @@ class ScintillatorCatalogTests(unittest.TestCase):
         self.assertIn("CsI-Na", materials)
         self.assertIn("CsI-Tl", materials)
         self.assertIn("NaI-Tl", materials)
+        self.assertIn("OGS", materials)
+
+    def test_every_material_defines_all_three_light_curves(self) -> None:
+        """A material missing any light curve cannot be simulated as itself.
+
+        Refractive index, absorption length and emission spectrum are all read
+        against one shared photon-energy grid, so the simulation needs all three
+        and needs them the same length. OGS shipped without an absorption length,
+        and the simulation responded by quietly using EJ200's light properties
+        instead while still reporting the run as OGS.
+        """
+
+        for material_id in self._available_scintillators():
+            curves = self._load_scintillator_definition(material_id).optical.curves
+            for curve_name in ("r_index", "abs_length", "scint_spectrum"):
+                self.assertIsNotNone(
+                    getattr(curves, curve_name),
+                    msg=f"{material_id} does not define {curve_name}.",
+                )
 
     def test_load_material_definition(self) -> None:
         """Material-only loader should parse metadata/constants."""
