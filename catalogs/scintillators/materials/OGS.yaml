@@ -20,11 +20,18 @@ description: >
   Table 6; Grodzicka-Kobylka et al., NIM A 1047 (2023) 167702 Table 2); decay
   time components (Grodzicka-Kobylka 2023 Table 4).
 
-  ESTIMATED VALUE (NOT found in any reviewed source - the OGS papers, the UC
+  ESTIMATED VALUES (NOT found in any reviewed source - the OGS papers, the UC
   Berkeley organic-scintillator table, or Laplace 2020; flagged, to be replaced
-  when a measured value is available): refractive index 1.60. This is a
-  physically reasonable modeling assumption for an amorphous aromatic arylsilane
-  glass, but no measured OGS index appears in the literature reviewed here.
+  when measured values are available):
+
+  - Refractive index 1.60. This is a physically reasonable modeling assumption
+    for an amorphous aromatic arylsilane glass, but no measured OGS index appears
+    in the literature reviewed here.
+  - Absorption length 1000 cm, held constant across the emission band. This
+    treats OGS as transparent: at 500x the 2 cm sample thickness it removes 0.2%
+    of the light crossing the material. It is an upper bound on transparency, not
+    a measurement, and it overestimates collected light if OGS reabsorbs near its
+    430 nm emission peak. See curves/OGS/abs_length_cm.csv.
 
 composition:
   density:
@@ -44,6 +51,10 @@ optical:
       path: curves/OGS/rindex.csv
       xUnit: eV
       yUnit: unitless
+    absLength:
+      path: curves/OGS/abs_length_cm.csv
+      xUnit: eV
+      yUnit: cm
     scintSpectrum:
       path: curves/OGS/scint_spectrum.csv
       xUnit: eV
