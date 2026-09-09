@@ -188,7 +188,7 @@ metadata:
 
 ## See Also
 
-- Main documentation: `../../.agents/docs/WORKFLOWS.md`
+- Main documentation: `../../.agents/docs/workflows.md`
 - Configuration reference: `../../.agents/docs/`
 - Lens catalog: `../../catalogs/lenses/catalog.yaml`
 - Other examples: `../runSimulation/`, `../sourceTiming/`

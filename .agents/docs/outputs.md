@@ -238,20 +238,18 @@ as transported photons.
 
 ## Reading Binary Output in Python
 
-Use the provided Python reader to load binary files into pandas DataFrames:
+Use the provided Python reader to load binary files into pandas DataFrames. A
+run stores each stage in its own directory:
 
 ```python
 import sys
-sys.path.append('scripts')
+sys.path.append("scripts")
 import read_binary_output as reader
 
-# Read individual files
-primaries_df = reader.read_primaries("output/primaries.bin")
-secondaries_df = reader.read_secondaries("output/secondaries.bin")
-photons_df = reader.read_photons("output/photons.bin")
-
-# Or read entire directory
-results = reader.validate_output_directory("output/")
+run = "data/OGS_50mm_AmBe_000"
+primaries_df = reader.read_primaries(f"{run}/primaries/primaries.bin")
+secondaries_df = reader.read_secondaries(f"{run}/secondaries/secondaries.bin")
+photons_df = reader.read_photons(f"{run}/simulatedPhotons/photons.bin")
 ```
 
 The DataFrames have column names matching the field names in the tables above, with the same units.
@@ -260,12 +258,12 @@ The DataFrames have column names matching the field names in the tables above, w
 
 ## Converting to Other Formats
 
-The Python reader loads data into pandas DataFrames, which can be easily exported:
+The Python reader loads data into pandas DataFrames, which can be exported:
 
 ```python
 import read_binary_output as reader
 
-df = reader.read_photons("output/photons.bin")
+df = reader.read_photons("data/OGS_50mm_AmBe_000/simulatedPhotons/photons.bin")
 
 # Convert to Parquet for long-term storage
 df.to_parquet("photons.parquet", compression="snappy")
@@ -333,7 +331,8 @@ Binary I/O implementation is in `sim/src/SimIO.cc`:
 
 ## Migration from HDF5/Parquet
 
-If you have existing analysis code that used HDF5:
+If you have existing analysis code that used HDF5, update it to read the
+current fixed-record binary schema:
 
 **Before (HDF5)**:
 ```python
@@ -344,7 +343,11 @@ df = pd.read_hdf("primaries.h5", key="/primaries")
 **After (Binary)**:
 ```python
 import read_binary_output as reader
-df = reader.read_primaries("primaries.bin")
+df = reader.read_primaries(
+    "data/OGS_50mm_AmBe_000/primaries/primaries.bin"
+)
 ```
 
-The DataFrames have identical schemas - only the file format changed. All downstream analysis code should work without modification.
+The binary reader exposes the fields documented above. Existing HDF5 analysis
+may need small schema or path changes; the repository does not provide an
+automatic HDF5 compatibility layer.

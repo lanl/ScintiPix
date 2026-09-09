@@ -166,7 +166,7 @@ Defines run metadata, directory layout, and which simulation stages to execute.
 metadata:
   author: Alex Long
   date: 2026-07-09
-  version: ScintiPix v0.1
+  version: ScintiPix v0.1.0
   description: Example simulation with EJ-276D scintillator
   RunControls:
     auto_focus_lens: false
@@ -326,39 +326,36 @@ See `src/models/sensor.py` for complete field definitions.
 
 ```python
 from pathlib import Path
-from src.models.simulation import Simulation
 
-# Load configuration from YAML
-config = Simulation.model_validate_yaml(Path("config.yaml").read_text())
+from src.config.yaml import from_yaml
 
-# Access fields
+# Load and validate a configuration, including catalog references.
+config = from_yaml(Path("config.yaml"))
+
+# Access fields using Python names.
 print(config.source.gps.particle)
-print(config.scintillator.catalogId)
-print(config.geant4runner.numberOfParticles)
+print(config.scintillator.catalog_id)
+print(config.geant4runner.number_of_particles)
 ```
 
 ### Programmatic Construction
 
-```python
-from src.models.simulation import Simulation
-from src.models.source import Source, SourceGps
-from src.models.scintillator import Scintillator
-
-config = Simulation(
-    source=Source(gps=SourceGps(particle="neutron", ...)),
-    scintillator=Scintillator(catalogId="EJ-276D", ...),
-    ...
-)
-```
+For a complete programmatic configuration, construct the nested Pydantic models
+with the required source, scintillator, runtime, and metadata fields. YAML is
+usually simpler and keeps catalog references in one file.
 
 ### Hybrid Approach
 
 ```python
-# Load base config from YAML
-config = Simulation.model_validate_yaml(Path("base_config.yaml").read_text())
+from pathlib import Path
 
-# Override specific fields
-config.geant4runner.numberOfParticles = 10000
+from src.config.yaml import from_yaml
+
+# Load and validate a base configuration from YAML.
+config = from_yaml(Path("base_config.yaml"))
+
+# Override specific fields using Python names.
+config.geant4runner.number_of_particles = 10000
 config.metadata.description = "Modified run with 10k particles"
 ```
 
@@ -366,7 +363,7 @@ config.metadata.description = "Modified run with 10k particles"
 
 Complete example configurations are provided in `examples/yamlFiles/`:
 
-- `EJ276D.yaml`: Full example with EJ-276D scintillator, intensifier, and sensor
+- `EJ276D.yaml`: Configuration example with EJ-276D, intensifier, and sensor blocks (those stages are disabled in the example)
 - `EJ200.yaml`: Example with EJ-200 scintillator
 - `CanonEF50mmf1p0L_example.yaml`: Example with Canon lens configuration
 - `pulsed_neutron_source_timing.yaml`: Pulsed neutron source example
@@ -402,6 +399,6 @@ density: "1.096 g/cm³"
 ## Further Reading
 
 - **Workflow**: See `.agents/docs/WORKFLOWS.md` for how configuration flows through the simulation pipeline
-- **Outputs**: See `.agents/docs/OUTPUT.md` for details on binary output formats
+- **Outputs**: See `.agents/docs/outputs.md` for details on binary output formats
 - **Optics**: See `.agents/docs/OPTICS.md` for optical transport configuration details
 - **Models**: See `src/models/*.py` for complete Pydantic model definitions with field documentation

@@ -2,7 +2,7 @@
 
 This document provides an overview of the ScintiPix workflow, from simulation configuration with Pydantic, to Geant4 simulations, to optics transport with RayOptics, photon multiplication in the image intensifier, and finally to sensor readout. 
 
-NOTE [07/08/26]: The optics, intensifier, and sensor stages are still under active development, so this document focuses on the current state of the Geant4 simulation and the intended design for the downstream optics, intensifier, and sensor stages.
+NOTE [2026-07-08]: The intensifier and sensor stages are still under active development. This document focuses on the current Geant4 simulation and binary optical transport stages, followed by the intended downstream design.
 
 ScintiPix is configured through the top-level Pydantic `Simulation` model. This model is the single source of truth for parameters across the workflow, from Geant4 to optics, intensifier, and sensor stages.
 
@@ -35,7 +35,7 @@ The Geant4 simulation runner is defined in `src/runner/runSimulation.py`. The ma
 
 The optical interface is a scoring/collection plane positioned between the scintillator back face and the lens system. It captures photons that exit the scintillator and records their position, direction, polarization, time, wavelength, and provenance information (linking back to the primary and secondary particles that generated each photon). This data serves as the handoff point to the downstream optics stage.
 
-The binary output format is described in detail in `.agents/docs/OUTPUT.md`. The runner creates separate output files for primaries, secondaries, and photons, depending on which outputs are enabled in the configuration.
+The binary output format is described in detail in `.agents/docs/outputs.md`. The runner creates separate output files for primaries, secondaries, and photons, depending on which outputs are enabled in the configuration.
 
 ## Optical transport with RayOptics
 
@@ -54,10 +54,13 @@ is enabled.
 
 ## Image intensifier
 
-The active runtime is pending the binary RayOptics transport output. The retired
-HDF5 implementation is under `legacy/`.
+The binary RayOptics transport stage is active and writes transported photon
+records for the intensifier photocathode plane. Photon multiplication and the
+rest of the intensifier runtime are still under development. The retired HDF5
+implementation is under `legacy/`.
 
 ## Sensor readout
 
-The active runtime is pending the binary intensifier output. The retired HDF5
-implementation is under `legacy/`.
+The active runtime is pending the binary intensifier output. The sensor stage is
+not part of the supported end-to-end workflow. The retired HDF5 implementation
+is under `legacy/`.

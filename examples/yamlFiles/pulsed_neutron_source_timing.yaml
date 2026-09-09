@@ -123,7 +123,7 @@ geant4runner:
 metadata:
   author: Alex Long
   date: 2026-06-05
-  version: ScintPiX v0.1
+  version: ScintiPix v0.1.0
   description: Pulsed neutron source timing example.
   RunControls:
     geant4_simulation: true

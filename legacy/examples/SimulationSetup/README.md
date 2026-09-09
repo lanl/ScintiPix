@@ -1,17 +1,8 @@
-# Simulation Setup Examples
+# Retired simulation setup examples
 
-This folder contains YAML-driven macro-generation examples.
+This directory is retained for historical reference. Its scripts use the
+retired configuration API and are not part of the active v0.1.0 workflow.
 
-Current entry point:
-- `CanonEF50mmf1p0L_example.py`: writes a standard batch macro and a
-  mask-visualization macro for the Canon example setup.
-
-Run from repo root:
-
-```bash
-pixi run python examples/SimulationSetup/CanonEF50mmf1p0L_example.py
-```
-
-The script uses the shared YAML in
-[`examples/yamlFiles/CanonEF50mmf1p0L_example.yaml`](../yamlFiles/CanonEF50mmf1p0L_example.yaml)
-and prints the generated macro paths and follow-up commands.
+Use the current examples under `examples/runSimulation/` and
+`examples/yamlFiles/` instead. The remaining legacy YAML example is
+[`three_component_timing_example.yaml`](../yamlFiles/three_component_timing_example.yaml).

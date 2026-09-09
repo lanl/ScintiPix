@@ -83,7 +83,7 @@ geant4runner:
 metadata:
   author: Alex Long
   date: 2026-02-24
-  version: ScintPiX v0.1
+  version: ScintiPix v0.1.0
   description: Simple example matching Simulation model structure
   RunControls:
     geant4_simulation: true

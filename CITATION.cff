@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use ScintiPix, please cite this release."
+title: "ScintiPix"
+version: "0.1.0"
+date-released: 2026-09-09
+
+authors:
+  - family-names: Long
+    given-names: Alexander M.
+    email: alexlong@lanl.gov
+    affiliation: "Los Alamos National Laboratory"
+
+repository-code: "https://github.com/lanl/ScintiPix"
+license: GPL-3.0-or-later
+keywords:
+  - Geant4
+  - scintillator
+  - neutron
+  - optical simulation

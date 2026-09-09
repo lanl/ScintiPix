@@ -221,4 +221,4 @@ change `metadata.RunEnvironment.SimulationRunID`, which names the output directo
 
 - [Workflow overview](./workflows.md) — the stages this example runs through.
 - [Simulation outputs](./outputs.md) — the binary files written before the photon table.
-- [Autofocus](./autofocus.md) — the lens focusing step.
+- [Autofocus](./AUTOFOCUS.md) — the lens focusing step.
