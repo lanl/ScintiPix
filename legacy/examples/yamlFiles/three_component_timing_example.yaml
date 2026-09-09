@@ -117,7 +117,7 @@ geant4runner:
 metadata:
   author: Alex Long
   date: 2026-03-09
-  version: ScintPiX v0.1
+  version: ScintiPix v0.1.0
   description: Canon/lens end-to-end example with 3 active scintillation timing components, intensifier, and Timepix3 sensor.
   RunControls:
     geant4_simulation: true
