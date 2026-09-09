@@ -32,6 +32,8 @@ class RunSimulationTests(unittest.TestCase):
         try:
             from src.config.macro import write_macro
             from src.config.yaml import from_yaml
+            from src.optics.io import SIMULATED_PHOTON_DTYPE
+            from src.output.parquet import PRIMARY_DTYPE
             from src.runner.runSimulation import run, run_simulation
             from src.runner.runSimulation import _parse_simulated_events
         except ModuleNotFoundError as exc:
@@ -47,6 +49,8 @@ class RunSimulationTests(unittest.TestCase):
         cls.parse_simulated_events = staticmethod(_parse_simulated_events)
         cls.runner_run = staticmethod(run)
         cls.run_simulation = staticmethod(run_simulation)
+        cls.primary_dtype = PRIMARY_DTYPE
+        cls.simulated_photon_dtype = SIMULATED_PHOTON_DTYPE
 
     class _FakeProcess:
         def __init__(self, lines: list[str], returncode: int = 0):
@@ -123,10 +127,46 @@ class RunSimulationTests(unittest.TestCase):
             )
         return files
 
+    def _write_empty_binary(self, path: Path, dtype) -> None:
+        """Write a readable binary file holding no records, the way Geant4 would."""
+
+        from src.optics.io import HEADER_MAGIC, HEADER_STRUCT, HEADER_VERSION
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(
+            HEADER_STRUCT.pack(
+                HEADER_MAGIC,
+                HEADER_VERSION,
+                dtype.itemsize,
+                0,
+                bytes(40),
+            )
+        )
+
     def _write_enabled_outputs(self, config) -> None:
-        for output_file in self._enabled_output_files(config):
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            output_file.write_text("ok\n", encoding="utf-8")
+        env = config.metadata.run_environment
+        output = config.geant4runner.output
+        if output.primaries:
+            self._write_empty_binary(
+                self._output_file(env.primaries_directory, env.primaries_filename),
+                self.primary_dtype,
+            )
+        if output.secondaries:
+            # Secondary particles record no time, so nothing reads this file back.
+            secondaries_file = self._output_file(
+                env.secondaries_directory,
+                env.secondaries_filename,
+            )
+            secondaries_file.parent.mkdir(parents=True, exist_ok=True)
+            secondaries_file.write_text("ok\n", encoding="utf-8")
+        if output.photons:
+            self._write_empty_binary(
+                self._output_file(
+                    env.simulated_photons_directory,
+                    env.photons_filename,
+                ),
+                self.simulated_photon_dtype,
+            )
 
     def test_parse_simulated_events_extracts_aggregate_count(self) -> None:
         self.assertEqual(
@@ -366,13 +406,9 @@ class RunSimulationTests(unittest.TestCase):
             config.geant4runner.output.photons = False
 
             def _popen_side_effect(*args, **kwargs):
-                self._primaries_output_file(config).parent.mkdir(
-                    parents=True,
-                    exist_ok=True,
-                )
-                self._primaries_output_file(config).write_text(
-                    "ok\n",
-                    encoding="utf-8",
+                self._write_empty_binary(
+                    self._primaries_output_file(config),
+                    self.primary_dtype,
                 )
                 return self._FakeProcess(
                     ["G4WT10 > Simulated 10000 events\n"],

@@ -12,16 +12,21 @@ The output of a ScintiPix simulation run is organized into a directory structure
 
 ```text
 run_id/
+  config/
+    run_000.yaml
   logs/
     runLog.txt
   macros/
     run_000.mac
+  photons.parquet
   primaries/
     primaries.bin
+    primaries.parquet
   secondaries/
     secondaries.bin
   simulatedPhotons/
     photons.bin
+    photons.parquet
   transportedPhotons/
     photons.bin
 ```
@@ -38,6 +43,42 @@ ScintiPix currently defines these binary output datasets:
 All output stages use the same binary file format (described below).
 
 The Python optics stage uses the same 64-byte header for transported photons.
+
+---
+
+## Two Clocks: Binary Files and Parquet Files
+
+Every time in a `.bin` file is measured from the start of its own event: the moment that
+event's source fired is time zero for that event. Geant4 knows nothing about when in the run
+the event happened, and neither does the transported photon file that optical transport writes
+from it.
+
+After the run, `src/output/parquet.py` reads `source.timing` from the configuration the run
+saved, decides when in the run each event's source fired, and writes a parquet copy of every
+stage that records a time. Every time in a `.parquet` file is on that run clock:
+
+    time in the run = time assigned to the event + time recorded by Geant4
+
+Each parquet table carries an `event_time_ns` column holding the time assigned to that row's
+event, so the original event-relative time is recoverable by subtracting it. `run_simulation`
+always writes these tables, whether or not optical transport was enabled.
+
+| Parquet file | Copy of | Times moved onto the run clock |
+|---|---|---|
+| `primaries/primaries.parquet` | `primaries/primaries.bin` | `primary_interaction_time_ns` |
+| `simulatedPhotons/photons.parquet` | `simulatedPhotons/photons.bin` | `photon_creation_time_ns`, `optical_interface_hit_time_ns` |
+| `photons.parquet` | `transportedPhotons/photons.bin` | `timestamp_canonical` |
+
+Secondary particles record no time, so no parquet table is written for them.
+
+`photons.parquet` sits at the top of the run directory rather than beside its binary because it
+is the table HERMES reads. It is not a plain copy: it uses the HERMES column names, holds
+arrival times in canonical ticks of 25 ns / 12288 rather than nanoseconds, and adds truth
+columns naming the incident particle behind each photon (`cluster_id` is the same event id the
+other tables call `gun_call_id`).
+
+A primary that never interacted has no interaction time, and adding an event time to that
+leaves it just as empty, so those rows stay empty in the parquet table too.
 
 ---
 

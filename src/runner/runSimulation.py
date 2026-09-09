@@ -15,6 +15,7 @@ try:
     from src.models.simulation import Simulation
     from src.optics.focus import auto_focus_lens
     from src.optics.raytrace import transport_photons
+    from src.output.parquet import write_parquet_tables
 except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
@@ -23,6 +24,7 @@ except ModuleNotFoundError:
     from src.models.simulation import Simulation
     from src.optics.focus import auto_focus_lens
     from src.optics.raytrace import transport_photons
+    from src.output.parquet import write_parquet_tables
 
 
 _SIMULATED_EVENTS_PATTERN = re.compile(r"Simulated\s+(\d+)\s+events\b")
@@ -299,5 +301,10 @@ def run_simulation(
         with log_stage("transport"):
             output_path = transport_photons(config)
         logger.info(f"[transport] Completed. Output: {output_path}")
+
+    # Place every event on the run clock. Geant4 timed each event from its own start,
+    # so this is where the run's time structure is applied to every recorded time.
+    with log_stage("tables"):
+        write_parquet_tables(config)
 
     return completed
