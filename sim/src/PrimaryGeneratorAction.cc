@@ -48,15 +48,6 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
     }
   }
 
-  const auto timing = fConfig->GetSourceTimingForEvent(event->GetEventID());
-  if (!timing.enabled) {
-    return;
-  }
-
-  for (G4int index = 0; index < event->GetNumberOfPrimaryVertex(); ++index) {
-    auto* vertex = event->GetPrimaryVertex(index);
-    if (vertex) {
-      vertex->SetT0(timing.creationTime);
-    }
-  }
+  // Every vertex keeps its default time of zero. Each event is timed from the moment
+  // its own source fired; when the event happens in the run is assigned afterwards.
 }

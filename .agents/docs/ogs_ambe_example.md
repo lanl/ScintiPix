@@ -58,8 +58,8 @@ pixi run python examples/runSimulation/run_simulation_from_yaml.py \
 This does four things in order:
 
 1. Reads and checks the YAML file.
-2. Focuses the lens for the requested 40 x 40 mm patch, and saves the focused settings so the
-   run can be repeated exactly.
+2. Focuses the lens for the requested 40 x 40 mm patch, and saves the settings it will use so
+   the run can be repeated exactly.
 3. Writes a Geant4 command file and runs the simulator, which records the incident particles
    and the light they produce.
 4. Traces that light through the lens and keeps only the photons that land on the
@@ -72,7 +72,7 @@ photocathode.
 Everything lands in `data/OGS_50mm_AmBe_000/`:
 
 ```
-config/             the focused settings, so the run can be repeated
+config/             the settings the run used, so it can be repeated
 macros/             the Geant4 command file that was run
 logs/               the simulator's output
 primaries/          one record per incident neutron or gamma that deposited energy

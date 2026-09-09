@@ -64,13 +64,19 @@ class SourceGps(StrictModel):
 
 
 class SourceTiming(StrictModel):
-    """Optional neutron source timing model in global nanoseconds.
+    """Optional neutron source timing model in nanoseconds.
 
-    `none` preserves the current event-local Geant4 timing behavior.
-    `continuous` derives one source time per event from particle flux and source
-    area. `pulsed` derives the event count assigned to each pulse from particle
-    flux, source area, and pulse period, then samples creation time within each
-    pulse window during Geant4 primary generation.
+    Geant4 times every event from zero, from the moment that event's own source
+    fired. This block says when in the run each event happened, and is read once
+    the run has finished, where it shifts every recorded time for that event onto
+    a shared clock.
+
+    `none` leaves every event at zero, so the times stay as Geant4 recorded them.
+    `continuous` separates events by random gaps whose average comes from
+    particle flux and source area, the way a steady source arrives. `pulsed`
+    works out how many events each pulse window holds from particle flux, source
+    area, and pulse period, then spreads those events across the width of the
+    window.
     """
 
     mode: Literal["none", "continuous", "pulsed"] = "none"
@@ -127,7 +133,7 @@ class SourceTiming(StrictModel):
 
     @model_validator(mode="after")
     def validate_mode_payload(self) -> "SourceTiming":
-        """Require the timing fields needed by each ured mode."""
+        """Require the timing fields needed by each configured mode."""
 
         if self.mode in {"continuous", "pulsed"} and self.particle_flux is None:
             raise ValueError(

@@ -37,7 +37,6 @@ class Messenger : public G4UImessenger {
   G4UIdirectory* fOpticalInterfaceDir = nullptr;
   G4UIdirectory* fOpticalInterfaceGeomDir = nullptr;
   G4UIdirectory* fSourceDir = nullptr;
-  G4UIdirectory* fSourceTimingDir = nullptr;
   G4UIdirectory* fSourceCorrelatedGammaDir = nullptr;
   G4UIdirectory* fOutputDir = nullptr;
   G4UIdirectory* fPhotonCullingDir = nullptr;
@@ -86,16 +85,6 @@ class Messenger : public G4UImessenger {
   G4UIcmdWithAString* fPrimariesOutputFileCmd = nullptr;
   G4UIcmdWithAString* fSecondariesOutputFileCmd = nullptr;
   G4UIcmdWithAString* fPhotonsOutputFileCmd = nullptr;
-
-  /// Source timing commands.
-  G4UIcmdWithAString* fSourceTimingModeCmd = nullptr;
-  G4UIcmdWithADoubleAndUnit* fSourceTimingStartTimeCmd = nullptr;
-  G4UIcmdWithADoubleAndUnit* fSourceTimingEventSpacingCmd = nullptr;
-  G4UIcmdWithADoubleAndUnit* fSourceTimingPulsePeriodCmd = nullptr;
-  G4UIcmdWithAnInteger* fSourceTimingNeutronsPerPulseCmd = nullptr;
-  G4UIcmdWithADoubleAndUnit* fSourceTimingPulseTimeOffsetCmd = nullptr;
-  G4UIcmdWithADoubleAndUnit* fSourceTimingPulseTimeWidthCmd = nullptr;
-  G4UIcmdWithAString* fSourceTimingPulseShapeCmd = nullptr;
 
   /// Photon culling optimization commands.
   G4UIcmdWithAnInteger* fPhotonCullingEnabledCmd = nullptr;
