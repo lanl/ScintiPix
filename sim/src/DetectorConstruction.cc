@@ -6,6 +6,8 @@
 #include "G4Box.hh"
 #include "G4Colour.hh"
 #include "G4Element.hh"
+#include "G4Exception.hh"
+#include "G4ExceptionSeverity.hh"
 #include "G4Isotope.hh"
 #include "G4LogicalVolume.hh"
 #include "G4Material.hh"
@@ -88,15 +90,29 @@ ScintillatorMaterialConfig ResolveScintillatorMaterialConfig(const Config* confi
                                                             : defaults.yieldFractions[i];
   }
 
+  // Refractive index, absorption length and emission spectrum are all read
+  // against the single shared photonEnergy grid, so every one of them must have
+  // the same number of entries. Substituting another material's light properties
+  // here would let the run report the configured material's name while using
+  // EJ200's optics, so stop instead and say which table is wrong.
   const std::size_t nEntries = out.photonEnergy.size();
   if (nEntries == 0 || out.rIndex.size() != nEntries || out.absLength.size() != nEntries ||
       out.scintSpectrum.size() != nEntries) {
-    G4cout << "[Scintillator] Invalid material-table sizes; falling back to EJ200 defaults."
-           << G4endl;
-    out.photonEnergy = defaults.photonEnergy;
-    out.rIndex = defaults.rIndex;
-    out.absLength = defaults.absLength;
-    out.scintSpectrum = defaults.scintSpectrum;
+    G4ExceptionDescription message;
+    message << "Scintillator '" << config->GetScintMaterial()
+            << "' has light properties that do not line up with its photon-energy grid.\n"
+            << "  photonEnergy:  " << nEntries << " entries\n"
+            << "  rIndex:        " << out.rIndex.size() << " entries\n"
+            << "  absLength:     " << out.absLength.size() << " entries\n"
+            << "  scintSpectrum: " << out.scintSpectrum.size() << " entries\n"
+            << "All four must have the same number of entries, and photonEnergy must not be "
+            << "empty. A count of 0 means the macro carried no command for that property; "
+            << "a differing count means its curve uses a different energy grid.\n"
+            << "Add the missing curve to the material in catalogs/scintillators/materials/ "
+            << "on the same energy grid as the others.";
+
+    G4Exception("ResolveScintillatorMaterialConfig", "scintipix/scintillator/table-mismatch",
+                FatalException, message);
   }
 
   return out;

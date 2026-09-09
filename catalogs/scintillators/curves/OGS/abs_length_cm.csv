@@ -1,0 +1,28 @@
+# Bulk absorption length vs photon energy for OGS.
+# ESTIMATE: 1000 cm is a flagged, unsourced modeling assumption (no measured OGS
+# absorption or attenuation length found in the reviewed sources). It treats OGS
+# as transparent across its emission band: 1000 cm is 500x the 2 cm sample
+# thickness used here, so 99.8% of light survives the crossing and bulk
+# absorption has no practical effect on the light collected.
+# This is an upper bound on transparency, not a measurement. If OGS in fact
+# reabsorbs near its 430 nm emission peak, this overestimates collected light -
+# a true 5 cm length would remove about a third of it over 2 cm. Replace when a
+# measured absorption-vs-wavelength curve is available.
+# energy grid is shared with rindex.csv (loader requires identical grids).
+energy_eV,value
+2.1377,1000.0
+2.2140,1000.0
+2.2960,1000.0
+2.3843,1000.0
+2.4797,1000.0
+2.5830,1000.0
+2.6380,1000.0
+2.6953,1000.0
+2.7552,1000.0
+2.8178,1000.0
+2.8502,1000.0
+2.8834,1000.0
+2.9173,1000.0
+2.9520,1000.0
+3.0240,1000.0
+3.0996,1000.0
