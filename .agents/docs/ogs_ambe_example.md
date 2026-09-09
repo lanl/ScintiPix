@@ -95,10 +95,10 @@ several processes, and without that guard those processes fail to start.
 ## The photon table
 
 ```
-photon_id  x  y  timestamp_canonical  tot  quality_flags  cluster_id  primary_track_id  secondary_track_id  event_time_ns  event_type
+photon_id  x  y  timestamp_canonical  tot  quality_flags  event_id  event_type
 ```
 
-The first six columns are what HERMES writes for real data. The last five are the answer key
+The first six columns are what HERMES writes for real data. The last two are the answer key
 and do not exist in real data.
 
 | Column | Meaning |
@@ -108,33 +108,34 @@ and do not exist in real data.
 | `timestamp_canonical` | When the photon landed, counted in HERMES time ticks. One tick is 25 ns divided by 12288, about 2.03 picoseconds. Multiply by that to get nanoseconds. |
 | `tot` | Always 0 for now. |
 | `quality_flags` | Always 0 for now. |
-| `cluster_id` | Which firing of the source this photon belongs to. |
-| `primary_track_id` | Which incident particle within that firing: the neutron is 1, its coincident gamma is 2. |
-| `secondary_track_id` | Which particle inside the scintillator actually made the light. |
-| `event_time_ns` | When in the run this photon's event fired, in nanoseconds. Subtract it from `timestamp_canonical` to get back the time Geant4 recorded. |
+| `event_id` | Which firing of the source this photon belongs to. |
 | `event_type` | What the incident particle was: `n` for a neutron, `g` for a gamma. |
 
 `tot` and `quality_flags` are placeholders. In real data they come from the intensifier and
 the sensor, and neither of those stages is implemented yet. They are written anyway, as zeros,
 so code reading a HERMES table finds the columns it expects.
 
-### What `cluster_id` means
+Nothing else is in the table. `transportedPhotons/photons.bin` holds more about each photon,
+including which particle inside the scintillator made it, if you need to go further than the
+two answer-key columns.
+
+### What `event_id` means
 
 Every time the source fires, the simulator numbers that firing, and that number is copied onto
-every photon tracing back to it. So `cluster_id` groups photons by the firing that caused
-them. Two photons with the same `cluster_id` came from the same firing; two photons with
-different values came from different firings.
+every photon tracing back to it. So `event_id` groups photons by the firing that caused them.
+Two photons with the same `event_id` came from the same firing; two photons with different
+values came from different firings.
 
 This is the answer key for clustering. A clustering algorithm sees only `x`, `y`, and
 `timestamp_canonical`, and has to work out which photons belong together. Comparing its groups
-against `cluster_id` tells you whether it got it right.
+against `event_id` tells you whether it got it right.
 
 From the example's 1000-particle run: 296 firings produced at least one photon that reached the
 photocathode, and those 296 groups hold all 6,451 photons. Group sizes vary widely — half hold
 14 photons or fewer, while the largest holds 153. Most firings either send their light outside
 the imaged patch or away from the lens, which is why 1000 firings yield 296 groups.
 
-Because `cluster_id` is the firing number, values are not consecutive. A run of 1000 particles
+Because `event_id` is the firing number, values are not consecutive. A run of 1000 particles
 produces values spread across 0 to 999, with gaps where a firing produced no detected light.
 
 ### What `event_type` means
@@ -154,17 +155,17 @@ to make detectable light.
 An empty `event_type` means a photon could not be matched back to an incident particle. That
 should not happen; if it does, the writer logs a warning saying how many rows are affected.
 
-### A neutron and its gamma share one `cluster_id`
+### A neutron and its gamma share one `event_id`
 
 When the source emits a neutron and its coincident gamma, both belong to the same firing, so
-photons from both carry the **same** `cluster_id`. They are told apart by `primary_track_id`:
-the neutron is 1 and the gamma is 2. The `event_type` is recorded per particle, so the two sets
-of rows are correctly labelled `n` and `g` even though they share a `cluster_id`.
+photons from both carry the **same** `event_id`. `event_type` is recorded per particle, so the
+two sets of rows are still correctly labelled `n` and `g`, and grouping by `event_id` and
+`event_type` together separates them.
 
 This is the interesting case for clustering. The neutron and the gamma start at the same place
 at the same time but fly off in unrelated directions, so they deposit energy in different parts
 of the scintillator and their light shows up in two separate places while sharing one
-`cluster_id`. Measured on a 25,000-particle run, the two patches sit 4.6 to 9.1 mm apart, which
+`event_id`. Measured on a 25,000-particle run, the two patches sit 4.6 to 9.1 mm apart, which
 is what the lens predicts from the separation of the deposits: it images the scintillator face at
 a magnification of -0.251, so a 30 mm separation inside the scintillator becomes 7.5 mm on the
 photocathode.
@@ -173,21 +174,19 @@ They also arrive at two separate times, the gamma first by 2 to 13 ns, because i
 distance to its deposit at the speed of light while the neutron takes longer. That speed
 difference sets the arrival times; it is not what separates the two patches in space.
 
-A clustering algorithm has to decide whether that is one thing or two. If you want strictly one
-incident particle per group, group by `cluster_id` and `primary_track_id` together rather than
-`cluster_id` alone.
+A clustering algorithm has to decide whether that is one thing or two.
 
 Expect this case to be rare, because it needs both particles to make detectable light. It did
 not occur at all in the example's 1000-particle run. A 20,000-particle run with the gamma
 forced on every firing produced 8 such groups. One of them looked like this:
 
 ```
-event_type  primary_track_id  photons  first ns  last ns  mean x  mean y
-n           1                       9     11.77   171.08   -3.91    1.13
-g           2                      40      1.09   147.13   -4.63    3.60
+event_type  photons  first ns  last ns  mean x  mean y
+n                 9     11.77   171.08   -3.91    1.13
+g                40      1.09   147.13   -4.63    3.60
 ```
 
-One `cluster_id`, two incident particles, two separate patches of light.
+One `event_id`, two incident particles, two separate patches of light.
 
 ## Reading it into HERMES
 
@@ -198,13 +197,13 @@ photon_id  x  y  timestamp_canonical  tot  quality_flags
 ```
 
 `photons.parquet` has exactly those, with the same names, units, and order, so HERMES can read
-it directly. The four truth columns sit after them and are ignored by code that does not ask
-for them.
+it directly. `event_id` and `event_type` sit after them and are ignored by code that does not
+ask for them.
 
 The usual way to use this is:
 
 1. Hand the first six columns to the clustering code, exactly as if they were real data.
-2. Compare the groups it returns against `cluster_id`.
+2. Compare the groups it returns against `event_id`.
 3. Split that comparison by `event_type` to see how it does on neutrons against gammas.
 
 Two things to keep in mind when comparing against real HERMES data. `tot` and `quality_flags`

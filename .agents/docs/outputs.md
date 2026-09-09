@@ -59,9 +59,10 @@ stage that records a time. Every time in a `.parquet` file is on that run clock:
 
     time in the run = time assigned to the event + time recorded by Geant4
 
-Each parquet table carries an `event_time_ns` column holding the time assigned to that row's
-event, so the original event-relative time is recoverable by subtracting it. `run_simulation`
-always writes these tables, whether or not optical transport was enabled.
+The primaries and simulated-photon tables carry an `event_time_ns` column holding the time
+assigned to that row's event, so the original event-relative time is recoverable by
+subtracting it. `run_simulation` always writes these tables, whether or not optical transport
+was enabled.
 
 | Parquet file | Copy of | Times moved onto the run clock |
 |---|---|---|
@@ -72,10 +73,11 @@ always writes these tables, whether or not optical transport was enabled.
 Secondary particles record no time, so no parquet table is written for them.
 
 `photons.parquet` sits at the top of the run directory rather than beside its binary because it
-is the table HERMES reads. It is not a plain copy: it uses the HERMES column names, holds
-arrival times in canonical ticks of 25 ns / 12288 rather than nanoseconds, and adds truth
-columns naming the incident particle behind each photon (`cluster_id` is the same event id the
-other tables call `gun_call_id`).
+is the table HERMES reads. It is not a plain copy: it holds only the six HERMES columns plus
+`event_id` and `event_type`, and its arrival times are in canonical ticks of 25 ns / 12288
+rather than nanoseconds. `event_id` is the same event id the other tables call `gun_call_id`.
+Its arrival times are on the run clock with no `event_time_ns` column to undo that; join on
+`event_id` to `primaries/primaries.parquet` to get the offset back.
 
 A primary that never interacted has no interaction time, and adding an event time to that
 leaves it just as empty, so those rows stay empty in the parquet table too.

@@ -137,6 +137,7 @@ def test_photon_table_labels_each_photon(tmp_path) -> None:
     output_path = config.metadata.run_environment.run_directory / "photons.parquet"
     table = pd.read_parquet(output_path)
 
+    # The six HERMES columns, then the event id and the event type. Nothing else.
     assert list(table.columns) == [
         "photon_id",
         "x",
@@ -144,10 +145,7 @@ def test_photon_table_labels_each_photon(tmp_path) -> None:
         "timestamp_canonical",
         "tot",
         "quality_flags",
-        "cluster_id",
-        "primary_track_id",
-        "secondary_track_id",
-        "event_time_ns",
+        "event_id",
         "event_type",
     ]
     assert table["photon_id"].dtype == np.uint64
@@ -159,17 +157,47 @@ def test_photon_table_labels_each_photon(tmp_path) -> None:
     assert table["photon_id"].tolist() == [0, 1, 2]
     assert table["x"].tolist() == [1.0, -3.0, 0.5]
     assert table["y"].tolist() == [2.0, 4.0, -1.0]
-    assert table["cluster_id"].tolist() == [10, 11, 10]
-    assert table["secondary_track_id"].tolist() == [5, 7, 6]
+    assert table["event_id"].tolist() == [10, 11, 10]
     assert (table["tot"] == 0).all()
     assert (table["quality_flags"] == 0).all()
 
     # Without a timing block every event stays at zero, so the recorded arrival
     # times are converted straight to ticks.
-    assert (table["event_time_ns"] == 0.0).all()
     expected_ticks = np.array([25.0, 50.0, 12.5]) / CANONICAL_TICK_NS
     np.testing.assert_allclose(table["timestamp_canonical"].to_numpy(), expected_ticks)
 
+    assert table["event_type"].tolist() == ["neutron", "gamma", "neutron"]
+
+
+def test_two_incident_particles_in_one_firing_share_an_event_id(tmp_path) -> None:
+    """A neutron and its coincident gamma are told apart by `event_type` alone.
+
+    Both belong to the same firing, so they share one `event_id`. The table no
+    longer says which incident particle each photon came from, so the labelling
+    has to survive being matched on a track id that is not written out.
+    """
+
+    config = _config(tmp_path, None, event_count=20)
+
+    photons = np.zeros(3, dtype=TRANSPORTED_PHOTON_DTYPE)
+    photons["gun_call_id"] = [10, 10, 10]
+    photons["primary_track_id"] = [1, 2, 1]
+    _write_transported_photons(config, photons)
+
+    primaries = np.zeros(2, dtype=PRIMARY_DTYPE)
+    primaries["gun_call_id"] = [10, 10]
+    primaries["primary_track_id"] = [1, 2]
+    primaries["primary_species"] = [b"neutron", b"gamma"]
+    _write_primaries(config, primaries)
+
+    write_parquet_tables(config)
+
+    table = pd.read_parquet(
+        config.metadata.run_environment.run_directory / "photons.parquet"
+    )
+
+    assert len(table) == 3
+    assert table["event_id"].tolist() == [10, 10, 10]
     assert table["event_type"].tolist() == ["neutron", "gamma", "neutron"]
 
 
@@ -213,8 +241,9 @@ def test_photon_times_shift_with_their_own_event(tmp_path) -> None:
         config.metadata.run_environment.run_directory / "photons.parquet"
     )
 
+    # The photon table does not carry the event time, so look it up by event id.
     # The two photons from event 10 share one event time; event 11 gets its own.
-    event_times = table["event_time_ns"].to_numpy()
+    event_times = _event_times_ns(config)[table["event_id"].to_numpy()]
     assert event_times[0] == event_times[2]
     assert event_times[1] != event_times[0]
     assert (event_times > 0.0).all()

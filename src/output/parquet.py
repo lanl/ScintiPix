@@ -9,9 +9,9 @@ stage whose times are on the run clock:
 
     time in the run = time assigned to the event + time recorded by Geant4
 
-Each parquet table carries an `event_time_ns` column holding the time assigned to
-that row's event, so the original event-relative time is still recoverable by
-subtraction.
+The primaries and simulated-photon tables carry an `event_time_ns` column holding
+the time assigned to that row's event, so the original event-relative time is
+still recoverable by subtraction.
 
 Three tables are written, one per stage that records a time:
 
@@ -27,15 +27,16 @@ HERMES reads. HERMES writes one row per detected optical photon with the columns
 
     photon_id, x, y, timestamp_canonical, tot, quality_flags
 
-and the truth columns added here record which incident particle caused each
-photon, so photon-clustering algorithms can be tested against known ground truth:
+and two more are added here, so photon-clustering algorithms can be checked
+against a known answer:
 
-    cluster_id, primary_track_id, secondary_track_id, event_time_ns, event_type
+    event_id, event_type
 
-`cluster_id` is the same event id the other tables call `gun_call_id`. `tot` and
-`quality_flags` are placeholders (0): the intensifier and sensor stages that would
-fill them are not implemented yet. The columns are present so downstream HERMES
-code reads the same columns it always does.
+`event_id` is which firing of the source the photon came from, the same event id
+the other tables call `gun_call_id`. `event_type` is what the incident particle
+was. `tot` and `quality_flags` are placeholders (0): the intensifier and sensor
+stages that would fill them are not implemented yet. The columns are present so
+downstream HERMES code reads the same columns it always does.
 """
 
 import math
@@ -330,8 +331,8 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
         return
 
     photons = read_transported_photons(binary_path)
-    cluster_id = photons["gun_call_id"]
-    event_time_ns = _event_time_for_each_row(cluster_id, event_times_ns, binary_path)
+    event_id = photons["gun_call_id"]
+    event_time_ns = _event_time_for_each_row(event_id, event_times_ns, binary_path)
 
     photon_table = pd.DataFrame(
         {
@@ -344,10 +345,10 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
             / CANONICAL_TICK_NS,
             "tot": np.zeros(len(photons), dtype=np.uint64),
             "quality_flags": np.zeros(len(photons), dtype=np.uint16),
-            "cluster_id": cluster_id,
+            "event_id": event_id,
+            # Only here to match each photon to its incident particle below. It is
+            # dropped once the match is made, so it does not reach the file.
             "primary_track_id": photons["primary_track_id"],
-            "secondary_track_id": photons["secondary_track_id"],
-            "event_time_ns": event_time_ns,
         }
     )
 
@@ -363,11 +364,11 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
         )
     primary_species = _read_primaries(primaries_path)[
         ["gun_call_id", "primary_track_id", "primary_species"]
-    ].rename(columns={"gun_call_id": "cluster_id", "primary_species": "event_type"})
+    ].rename(columns={"gun_call_id": "event_id", "primary_species": "event_type"})
 
     labeled = photon_table.merge(
         primary_species,
-        on=["cluster_id", "primary_track_id"],
+        on=["event_id", "primary_track_id"],
         how="left",
     )
 
@@ -380,6 +381,7 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
             primaries_path.name,
         )
     labeled["event_type"] = labeled["event_type"].fillna("")
+    labeled = labeled.drop(columns="primary_track_id")
 
     output_path = Path(run_environment.run_directory) / PHOTON_TABLE_FILENAME
     labeled.to_parquet(output_path, index=False)
