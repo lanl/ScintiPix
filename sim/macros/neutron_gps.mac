@@ -3,9 +3,10 @@
 /event/verbose 0
 /tracking/verbose 0
 /run/printProgress 1000
-/output/primariesFile data/example_000/primaries/primaries.parquet
-/output/secondariesFile data/example_000/secondaries/secondaries.parquet
-/output/photonsFile data/example_000/simulatedPhotons/photons.parquet
+# Developer macro only: create these output directories before running.
+/output/primariesFile data/example_000/primaries/primaries.bin
+/output/secondariesFile data/example_000/secondaries/secondaries.bin
+/output/photonsFile data/example_000/simulatedPhotons/photons.bin
 /scintillator/geom/material EJ200
 /scintillator/geom/scintX 5 cm
 /scintillator/geom/scintY 5 cm

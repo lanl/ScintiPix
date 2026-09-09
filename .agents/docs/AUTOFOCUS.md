@@ -50,23 +50,22 @@ primary_lens.back_focus_mm
 
 ## Implementation Status
 
-**Completed:**
-- ✅ Models (`FocusGap`, lens catalog structure)
-- ✅ Focus gaps identified (Canon: gap 10, Nikkor: gaps 22/24/31)
-- ✅ Helper functions (`get_focus_gaps_as_tuples`, `apply_focus_adjustment`)
-- ✅ Hybrid optimization (`optimize_focus_hybrid`)
-- ✅ Main function (`auto_focus_lens`)
-- ✅ Runner integration before macro generation
+The bounded autofocus path is implemented in `src/optics/focus.py` and is run by
+`src/runner/runSimulation.py` before macro generation when enabled. It can vary
+working distance and any focus or back-focus values for which the configuration
+provides explicit bounds. The routine updates the validated configuration in
+place.
 
-**Current Issue:**
-- Canon EF 50mm ZMX fails at finite distances (DISZ INFINITY)
-- Nikkor Z 58mm ZMX works but needs G4LumaCam modifications (gap 22: 21.29mm → 2.68mm)
-- Need proper lens for Navitar DO-5095 proxy
+The current unit tests exercise catalog loading, required bounds, and the
+RayOptics focus path. The tests validate the software path; they do not establish
+mechanical limits for a physical lens, mount, adapter, or intensifier assembly.
 
-**Next Steps:**
-1. Modify optimization to allow variable back focus (10-30mm)
-2. Use Nikkor Z 58mm with G4LumaCam mods as Navitar proxy
-3. Complete unit tests
+Some lens prescriptions or requested fields of view may still fail to produce a
+valid solution within their configured bounds. Treat those as configuration or
+prescription limitations, not as evidence that autofocus can move beyond the
+bounds supplied in the YAML file. The Canon, Nikkor, and Navitar-related catalog
+entries require separate mechanical and optical validation before production
+use.
 
 ---
 

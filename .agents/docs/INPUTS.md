@@ -82,8 +82,8 @@ Defines the scintillator geometry, material composition, and optical properties.
 - `position_mm`: Center position of the scintillator (x, y, z)
 - `dimension_mm`: Physical dimensions (x, y, z)
 - `maskRadius`: Optional circular mask radius (for spatial filtering)
-- `composition`: Optional custom material composition (overrides catalog)
-- `optical`: Optional custom optical properties (overrides catalog)
+- `properties`: Optional custom material composition and optical properties;
+  when omitted, `catalogId` supplies the properties from the catalog.
 
 **Example**:
 ```yaml
@@ -145,7 +145,8 @@ geant4runner:
 **Output control**:
 - `primaries`: Write primary particle information to `primaries.bin`
 - `secondaries`: Write secondary particle information to `secondaries.bin`
-- `photons`: Write optical photon information to `simulatedPhotons.bin`
+- `photons`: Write optical photon information to
+  `simulatedPhotons/photons.bin`
 
 See `src/models/geant4runtime.py` for complete field definitions.
 
@@ -268,7 +269,9 @@ For the primary lens:
   generation
 - Manual specification is faster if you already know the correct working distance
 
-**Note**: The optics stage is under active development. See `.agents/docs/OPTICS.md` for current status.
+Binary RayOptics transport is available in the supported Geant4-plus-optics
+workflow. Photon multiplication and sensor readout remain under development.
+See `.agents/docs/OPTICS.md` for current details.
 
 See `src/models/optics.py` for complete field definitions.
 
@@ -279,7 +282,9 @@ Defines the image intensifier configuration.
 **Key components**:
 - `model`: Intensifier model identifier (e.g., `Cricket2`)
 - `input_screen`: Input screen geometry and magnification
-- `output_screen`: Output screen properties (if applicable)
+- `photocathode`: Photocathode response parameters
+- `mcp`: Microchannel-plate gain and spread parameters
+- `phosphor`: Phosphor response parameters
 
 **Example**:
 ```yaml

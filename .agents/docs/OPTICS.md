@@ -9,10 +9,11 @@ This note is for future agents working on ScintiPix optical transport. Keep this
 module focused on ray optics. Photocathode response, MCP/phosphor behavior, and
 sensor readout belong to the intensifier and sensor modules.
 
-The current source of truth is the Geant4 simulation output. The downstream
-Python optics, intensifier, and sensor stages have not yet been fully updated to
-the new Geant4 output path. Do not treat the existing
-`src/optics/OpticalTransport.py` as the desired design.
+The current source of truth is the Geant4 simulation output. Binary RayOptics
+transport is implemented in `src/optics/raytrace.py` and is part of the supported
+Geant4-plus-optics workflow. Photon multiplication and sensor readout remain
+under development. The old `legacy/src/optics/OpticalTransport.py` path is retired
+legacy code and is not part of the supported workflow.
 
 ## What Is This?
 

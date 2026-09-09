@@ -3,6 +3,7 @@
 The current `Simulation` model contains the intensifier configuration and its
 photocathode image-plane definition. 
 
-The active intensifier runtime will be rebuilt after binary RayOptics transport
-is available. It must consume transported binary photon records and produce 
-intensified photon records with the same provenance IDs.
+Binary RayOptics transport is available and writes photon records at the
+intensifier photocathode plane. The active intensifier runtime is still under
+development; it will consume those transported records and produce intensified
+photon records with the same provenance IDs.

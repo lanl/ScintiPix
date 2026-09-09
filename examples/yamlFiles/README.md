@@ -6,7 +6,9 @@ top-level model in `src/models/simulation.py`. YAML loading is implemented by
 `src.config.yaml.from_yaml(...)`.
 
 Current files:
-- `CanonEF50mmf1p0L_example.yaml`: primary end-to-end example configuration
+- `OGS_50mm_AmBe.yaml`: primary supported Geant4-plus-optics example
+- `CanonEF50mmf1p0L_example.yaml`: Canon configuration and Geant4 example;
+  transportation is disabled in this file
 - `continuous_neutron_source_timing.yaml`: small continuous source timing
   example. Uses `particle_flux` to set the average gap between events.
 - `EJ200.yaml`: catalog-driven scintillator example with overrides
@@ -404,15 +406,16 @@ Fields:
 - `runtimeControls`: optional macro preamble controls.
 - `binary`: scintipix executable command. Defaults to `scintipix` and must not
   be blank.
-- `eventsPerOutput`: Geant4 events buffered by each worker before writing one
-  Parquet part file. Defaults to `1000`.
-- `output`: selects which Geant4 Parquet tables are assembled and written.
+- `eventsPerOutput`: Geant4 events buffered by each worker before writing a
+  batch of fixed-record binary output. Defaults to `1000`.
+- `output`: selects which Geant4 binary outputs are written and later assembled
+  into Parquet tables.
   Defaults to all tables enabled. At least one of `primaries`, `secondaries`,
   or `photons` must be `true`.
 - `photonCulling`: optional photon culling optimization settings.
 - `resolutionTarget`: optional Geant4-side Siemens star resolution target.
 - `showProgress`: Python runner progress display flag. Defaults to `false`.
-- `verifyOutput`: check for expected simulation Parquet part files after
+- `verifyOutput`: check for expected simulation binary output files after
   simulation. Defaults to `true`.
 
 ### `geant4runner.runtimeControls`

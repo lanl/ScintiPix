@@ -501,13 +501,13 @@ Messenger::Messenger(Config* config) : fConfig(config) {
 
   fEventsPerOutputCmd = new G4UIcmdWithAnInteger("/output/eventsPerOutput", this);
   fEventsPerOutputCmd->SetGuidance(
-      "Set number of Geant4 events accumulated before writing one Parquet part.");
+      "Set number of Geant4 events accumulated before writing binary records.");
   fEventsPerOutputCmd->SetParameterName("eventsPerOutput", false);
   fEventsPerOutputCmd->SetRange("eventsPerOutput > 0");
   fEventsPerOutputCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fWritePrimariesOutputCmd = new G4UIcmdWithAnInteger("/output/writePrimaries", this);
-  fWritePrimariesOutputCmd->SetGuidance("Enable primary Parquet output: 0 or 1.");
+  fWritePrimariesOutputCmd->SetGuidance("Enable primary binary output: 0 or 1.");
   fWritePrimariesOutputCmd->SetParameterName("writePrimaries", false);
   fWritePrimariesOutputCmd->SetRange("writePrimaries >= 0 && writePrimaries <= 1");
   fWritePrimariesOutputCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
@@ -515,30 +515,30 @@ Messenger::Messenger(Config* config) : fConfig(config) {
   fWriteSecondariesOutputCmd =
       new G4UIcmdWithAnInteger("/output/writeSecondaries", this);
   fWriteSecondariesOutputCmd->SetGuidance(
-      "Enable secondary Parquet output: 0 or 1.");
+      "Enable secondary binary output: 0 or 1.");
   fWriteSecondariesOutputCmd->SetParameterName("writeSecondaries", false);
   fWriteSecondariesOutputCmd->SetRange(
       "writeSecondaries >= 0 && writeSecondaries <= 1");
   fWriteSecondariesOutputCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fWritePhotonsOutputCmd = new G4UIcmdWithAnInteger("/output/writePhotons", this);
-  fWritePhotonsOutputCmd->SetGuidance("Enable photon Parquet output: 0 or 1.");
+  fWritePhotonsOutputCmd->SetGuidance("Enable photon binary output: 0 or 1.");
   fWritePhotonsOutputCmd->SetParameterName("writePhotons", false);
   fWritePhotonsOutputCmd->SetRange("writePhotons >= 0 && writePhotons <= 1");
   fWritePhotonsOutputCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fPrimariesOutputFileCmd = new G4UIcmdWithAString("/output/primariesFile", this);
-  fPrimariesOutputFileCmd->SetGuidance("Set primaries Parquet output file.");
+  fPrimariesOutputFileCmd->SetGuidance("Set primaries binary output file.");
   fPrimariesOutputFileCmd->SetParameterName("primariesFile", false);
   fPrimariesOutputFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fSecondariesOutputFileCmd = new G4UIcmdWithAString("/output/secondariesFile", this);
-  fSecondariesOutputFileCmd->SetGuidance("Set secondaries Parquet output file.");
+  fSecondariesOutputFileCmd->SetGuidance("Set secondaries binary output file.");
   fSecondariesOutputFileCmd->SetParameterName("secondariesFile", false);
   fSecondariesOutputFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
   fPhotonsOutputFileCmd = new G4UIcmdWithAString("/output/photonsFile", this);
-  fPhotonsOutputFileCmd->SetGuidance("Set photons Parquet output file.");
+  fPhotonsOutputFileCmd->SetGuidance("Set photons binary output file.");
   fPhotonsOutputFileCmd->SetParameterName("photonsFile", false);
   fPhotonsOutputFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
@@ -894,14 +894,14 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
 
   if (command == fPrimariesOutputFileCmd) {
     fConfig->SetPrimariesOutputFile(newValue);
-    G4cout << "Primaries Parquet output file set to '"
+    G4cout << "Primaries binary output file set to '"
            << fConfig->GetPrimariesOutputFile() << "'." << G4endl;
     return;
   }
 
   if (command == fEventsPerOutputCmd) {
     fConfig->SetEventsPerOutput(fEventsPerOutputCmd->GetNewIntValue(newValue));
-    G4cout << "Parquet events per output part set to "
+    G4cout << "Binary events per output batch set to "
            << fConfig->GetEventsPerOutput() << "." << G4endl;
     return;
   }
@@ -909,7 +909,7 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
   if (command == fWritePrimariesOutputCmd) {
     fConfig->SetWritePrimariesOutput(
         fWritePrimariesOutputCmd->GetNewIntValue(newValue) != 0);
-    G4cout << "Primary Parquet output "
+    G4cout << "Primary binary output "
            << (fConfig->GetWritePrimariesOutput() ? "enabled" : "disabled")
            << "." << G4endl;
     return;
@@ -918,7 +918,7 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
   if (command == fWriteSecondariesOutputCmd) {
     fConfig->SetWriteSecondariesOutput(
         fWriteSecondariesOutputCmd->GetNewIntValue(newValue) != 0);
-    G4cout << "Secondary Parquet output "
+    G4cout << "Secondary binary output "
            << (fConfig->GetWriteSecondariesOutput() ? "enabled" : "disabled")
            << "." << G4endl;
     return;
@@ -927,7 +927,7 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
   if (command == fWritePhotonsOutputCmd) {
     fConfig->SetWritePhotonsOutput(
         fWritePhotonsOutputCmd->GetNewIntValue(newValue) != 0);
-    G4cout << "Photon Parquet output "
+    G4cout << "Photon binary output "
            << (fConfig->GetWritePhotonsOutput() ? "enabled" : "disabled")
            << "." << G4endl;
     return;
@@ -935,14 +935,14 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
 
   if (command == fSecondariesOutputFileCmd) {
     fConfig->SetSecondariesOutputFile(newValue);
-    G4cout << "Secondaries Parquet output file set to '"
+    G4cout << "Secondaries binary output file set to '"
            << fConfig->GetSecondariesOutputFile() << "'." << G4endl;
     return;
   }
 
   if (command == fPhotonsOutputFileCmd) {
     fConfig->SetPhotonsOutputFile(newValue);
-    G4cout << "Photons Parquet output file set to '"
+    G4cout << "Photons binary output file set to '"
            << fConfig->GetPhotonsOutputFile() << "'." << G4endl;
     return;
   }

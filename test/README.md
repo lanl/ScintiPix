@@ -7,7 +7,13 @@ Run from the repository root:
 pixi run test-python
 ```
 
-The equivalent direct command is:
+The native Geant4 test is separate:
+
+```bash
+pixi run test-sim
+```
+
+The equivalent direct Python command is:
 
 ```bash
 python -m pytest -q

@@ -1,8 +1,16 @@
 # Third-party and reference-data notes
 
 This file records what the repository itself says about bundled non-code data.
-It is a release review record, not a substitute for confirming redistribution
-rights with the relevant owner.
+To the best of the ScintiPix team's knowledge, the catalog properties and derived
+reference data were assembled by project contributors from public research and
+publicly available resources. External publications and resources are cited as
+scientific or technical references where known.
+
+This statement describes how the materials were developed; it is not a legal
+determination of ownership, licensing, or redistribution permission. Where a
+file is based on an external prescription, published values, or digitized data,
+retain the source and attribution information and confirm any applicable terms
+before redistributing it.
 
 ## Lens prescriptions
 

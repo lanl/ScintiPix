@@ -1,19 +1,23 @@
 # Autofocus with Optical Transport Example
 
-This example demonstrates the complete workflow for automatic lens focusing followed by Geant4 simulation and optical transport through the lens system.
+This example demonstrates the supported autofocus, Geant4, and optical
+transport stages. Intensifier multiplication and sensor readout are disabled
+and are not part of this release candidate.
 
 ## Overview
 
 The workflow includes four stages:
 
 1. **Automatic Lens Focusing** - Optimizes working distance, internal lens adjustment, and back focus using RayOptics
-2. **Configuration Saving** - Saves the optimized configuration to a YAML file for reference and reproducibility
+2. **Configuration Saving** - Saves the optimized configuration to a YAML file for reference; fresh Geant4 seeds still make exact output vary
 3. **Geant4 Simulation** - Simulates neutron interactions and scintillation photon generation
 4. **Optical Transport** - Traces photons through the lens system to the image intensifier photocathode
 
 ## Running the Simulation
 
 ### Basic Usage
+
+From the repository root, after `pixi install` and `pixi run build-sim`:
 
 ```bash
 pixi run python examples/autofocus/run_autofocus_with_transport.py
@@ -101,7 +105,7 @@ The automatic lens focusing routine:
    - `optical.interface.position_mm.z_mm` (working distance)
    - `optical.lenses[primary].focus_adjustment_mm` (internal focus)
    - `optical.lenses[primary].back_focus_mm` (back focal distance)
-5. **Saves the settings used** for reproducibility
+5. **Saves the settings used** so the configuration can be reviewed or rerun; fresh Geant4 seeds still make exact output vary
 
 ## Understanding the Output
 
@@ -188,7 +192,7 @@ metadata:
 
 ## See Also
 
-- Main documentation: `../../.agents/docs/workflows.md`
+- Main documentation: `../../.agents/docs/WORKFLOWS.md`
 - Configuration reference: `../../.agents/docs/`
 - Lens catalog: `../../catalogs/lenses/catalog.yaml`
 - Other examples: `../runSimulation/`, `../sourceTiming/`

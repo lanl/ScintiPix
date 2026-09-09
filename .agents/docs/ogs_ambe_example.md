@@ -59,16 +59,17 @@ This does five things in order:
 
 1. Reads and checks the YAML file.
 2. Focuses the lens for the requested 40 x 40 mm patch, and saves the settings it will use so
-   the run can be repeated exactly.
+   the configuration can be reviewed or rerun. Fresh Geant4 random seeds mean
+   that identical photon output is not guaranteed.
 3. Writes a Geant4 command file and runs the simulator, which records the incident particles
    and the light they produce.
 4. Traces that light through the lens and keeps only the photons that land on the
    photocathode.
 5. Places every event on one clock covering the whole run and writes the parquet tables.
 
-With the 1000 incident particles the example asks for, this takes under ten seconds. It
-produces 19,718 photons leaving the scintillator toward the lens, of which 6,451 reach the
-photocathode.
+The run time and photon counts depend on the machine, random seeds, and the
+configuration. Treat any counts or timings from a particular run as illustrative,
+not as fixed expected output.
 
 Everything lands in `data/OGS_50mm_AmBe_000/`:
 
@@ -130,10 +131,10 @@ This is the answer key for clustering. A clustering algorithm sees only `x`, `y`
 `timestamp_canonical`, and has to work out which photons belong together. Comparing its groups
 against `event_id` tells you whether it got it right.
 
-From the example's 1000-particle run: 296 firings produced at least one photon that reached the
-photocathode, and those 296 groups hold all 6,451 photons. Group sizes vary widely — half hold
-14 photons or fewer, while the largest holds 153. Most firings either send their light outside
-the imaged patch or away from the lens, which is why 1000 firings yield 296 groups.
+The number of firings that produce detected light and the group-size distribution
+vary with the run. Most firings can produce no transported photons because light
+may leave the imaged patch or miss the lens, so a run's particle count and photon
+count should not be treated as a fixed one-to-one relationship.
 
 Because `event_id` is the firing number, values are not consecutive. A run of 1000 particles
 produces values spread across 0 to 999, with gaps where a firing produced no detected light.
@@ -147,10 +148,10 @@ they leave different amounts of light in different patterns.
 The labels are short because that is what the simulator writes into `primaries.bin`. Expect
 `n` and `g`, not `neutron` and `gamma`.
 
-In the example's 1000-particle run, 6,421 photons were labelled `n` and 30 were labelled `g`.
-Gammas are rare in the table even though the source emits one with more than half its
-neutrons: a 4.439 MeV gamma usually crosses 20 mm of plastic without depositing enough energy
-to make detectable light.
+Gamma-labeled rows may be less common than neutron-labeled rows because a
+4.439 MeV gamma can cross 20 mm of plastic without depositing enough energy to
+make detectable light. The exact balance depends on the run configuration and
+random sampling.
 
 An empty `event_type` means a photon could not be matched back to an incident particle. That
 should not happen; if it does, the writer logs a warning saying how many rows are affected.
@@ -163,30 +164,18 @@ two sets of rows are still correctly labelled `n` and `g`, and grouping by `even
 `event_type` together separates them.
 
 This is the interesting case for clustering. The neutron and the gamma start at the same place
-at the same time but fly off in unrelated directions, so they deposit energy in different parts
-of the scintillator and their light shows up in two separate places while sharing one
-`event_id`. Measured on a 25,000-particle run, the two patches sit 4.6 to 9.1 mm apart, which
-is what the lens predicts from the separation of the deposits: it images the scintillator face at
-a magnification of -0.251, so a 30 mm separation inside the scintillator becomes 7.5 mm on the
-photocathode.
-
-They also arrive at two separate times, the gamma first by 2 to 13 ns, because it covers the
-distance to its deposit at the speed of light while the neutron takes longer. That speed
-difference sets the arrival times; it is not what separates the two patches in space.
+at the same time but fly off in unrelated directions, so they can deposit energy in different
+parts of the scintillator and their light can show up in two separate places while sharing one
+`event_id`. The measured separation depends on the sampled deposits, lens settings, and run
+seed. The gamma can arrive first because it reaches its deposit sooner than the neutron; that
+timing difference is separate from the spatial separation on the photocathode.
 
 A clustering algorithm has to decide whether that is one thing or two.
 
-Expect this case to be rare, because it needs both particles to make detectable light. It did
-not occur at all in the example's 1000-particle run. A 20,000-particle run with the gamma
-forced on every firing produced 8 such groups. One of them looked like this:
-
-```
-event_type  photons  first ns  last ns  mean x  mean y
-n                 9     11.77   171.08   -3.91    1.13
-g                40      1.09   147.13   -4.63    3.60
-```
-
-One `event_id`, two incident particles, two separate patches of light.
+Expect this case to be rare, because it needs both particles to make detectable light. When both particles produce detectable light, one `event_id` can contain two
+particle labels and two patches. The exact frequency and measured values depend
+on the source sampling and run configuration, so use a saved run artifact when
+checking a numerical example.
 
 ## Reading it into HERMES
 
@@ -219,6 +208,6 @@ change `metadata.RunEnvironment.SimulationRunID`, which names the output directo
 
 ## Related documents
 
-- [Workflow overview](./workflows.md) — the stages this example runs through.
+- [Workflow overview](./WORKFLOWS.md) — the stages this example runs through.
 - [Simulation outputs](./outputs.md) — the binary files written before the photon table.
 - [Autofocus](./AUTOFOCUS.md) — the lens focusing step.

@@ -50,9 +50,9 @@ Config::Config()
       fScintTimeConstants({2.1 * ns, 0.0, 0.0}),
       fScintYieldFractions({1.0, 0.0, 0.0}),
       fScintMaterialVersion(0),
-      fPrimariesOutputFile("data/example_000/primaries/primaries.parquet"),
-      fSecondariesOutputFile("data/example_000/secondaries/secondaries.parquet"),
-      fPhotonsOutputFile("data/example_000/simulatedPhotons/photons.parquet") {}
+      fPrimariesOutputFile("data/example_000/primaries/primaries.bin"),
+      fSecondariesOutputFile("data/example_000/secondaries/secondaries.bin"),
+      fPhotonsOutputFile("data/example_000/simulatedPhotons/photons.bin") {}
 
 G4double Config::GetScintX() const {
   std::lock_guard<std::mutex> lock(fMutex);

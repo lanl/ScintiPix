@@ -1,4 +1,4 @@
-"""Full end-to-end example: YAML -> simulation -> transport -> sensor."""
+"""Retired end-to-end example; not supported by the v0.1.0 workflow."""
 
 from __future__ import annotations
 

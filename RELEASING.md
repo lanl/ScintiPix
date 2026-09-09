@@ -46,5 +46,9 @@ release by downloading the archive into a new directory and following the
 installation and test steps above.
 
 Do not publish a binary artifact unless it has been built and tested separately
-for its target platform. The source release is the reproducible release
-artifact; dependencies are resolved from the committed Pixi lockfile.
+for its target platform. The source release records the source tree, dependency lockfile, and build
+instructions needed to reproduce the software environment and build. It does
+not guarantee bit-for-bit reproduction of simulation results: Geant4 uses fresh
+random seeds by default, and exact replay also depends on the relevant master
+and worker seeds, process setup, runtime configuration, and software
+environment.

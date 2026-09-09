@@ -27,7 +27,9 @@ The runner integration:
 
 This is a one-time setup step that should be done before running the Geant4 simulation, since the working distance affects the optical interface position in the Geant4 geometry.
 
-NOTE [07/09/26]: This routine is still under development and may be subject to change. This routine is not required to run the Geant4 simulation, but it is recommended for proper lens focusing in the optics stage.
+Autofocus is available for configurations that provide a valid lens prescription,
+field of view, and explicit mechanical bounds. It is not required for a Geant4-only
+run, but it is used before binary optical transport when enabled.
 
 ## Geant4 simulation
 

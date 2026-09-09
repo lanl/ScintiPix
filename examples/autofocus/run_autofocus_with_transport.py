@@ -1,9 +1,7 @@
-"""Run autofocus demonstration with Geant4 simulation and optical transport.
+"""Run the supported autofocus, Geant4, and optical transport stages.
 
-This example demonstrates the complete workflow:
-1. Automatic lens focusing to optimize working distance and lens parameters
-2. Geant4 simulation to generate scintillation photons
-3. Optical transport through the lens system to the photocathode
+This example does not run intensifier multiplication or sensor readout because
+those stages are still under development.
 
 The settings the run used, including any autofocus adjustments, are saved to the
 config directory for reference.
