@@ -49,8 +49,8 @@ source:
       centerMm:
         x_mm: 0.0
         y_mm: 0.0
-        z_mm: -100.0
-      radiusMm: 10.0
+        z_mm: -500.0
+      radiusMm: 2.0
     angular:
       type: beam2d
       rot1: {x: 1.0, y: 0.0, z: 0.0}
@@ -58,11 +58,17 @@ source:
       direction: {x: 0.0, y: 0.0, z: 1.0}
     energy:
       type: Mono
-      monoMeV: 6.0
+      monoMeV: 20.0
+  # A 2 mm radius disc is 0.1257 square centimetres, so this flux fires 10,000
+  # neutrons per second and each 1 ms pulse holds 10 of them. The 5000 events
+  # below fill 500 pulses, each 270 ns wide and 1 ms apart.
   timing:
-    mode: continuous
+    mode: pulsed
     start_time_ns: 0.0
-    particle_flux: 3183098.861837907
+    particle_flux: 79577.47154594767
+    pulse_period_ns: 1000000.0
+    pulse_time_offset_ns: 0.0
+    pulse_time_width_ns: 270.0
 
 optical:
   lenses:
