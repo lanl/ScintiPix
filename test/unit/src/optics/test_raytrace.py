@@ -18,6 +18,35 @@ from src.optics.io import (
 )
 
 
+def _fake_seq_model(wavelengths, image_space_index=1.0):
+    """Stand in for a lens model: a gap in front, then a gap to the photocathode."""
+    medium = SimpleNamespace(rindex=lambda wavelength_nm: image_space_index)
+    return SimpleNamespace(
+        gaps=[
+            SimpleNamespace(thi=200.0, medium=medium),
+            SimpleNamespace(thi=FAKE_BACK_FOCUS_MM, medium=medium),
+        ],
+        wvlns=wavelengths,
+    )
+
+
+def _fake_ray(image_point):
+    """Stand in for a traced ray: the last lens surface, then the photocathode.
+
+    Each step holds the point, the direction after it, the distance to the next
+    step, and the surface normal, matching what RayOptics returns. The last step
+    sits on the photocathode and so covers no further distance.
+    """
+    return [
+        ([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], FAKE_BACK_FOCUS_MM, None),
+        (image_point, [0.0, 0.0, 1.0], 0.0, None),
+    ]
+
+
+FAKE_BACK_FOCUS_MM = 50.0
+FAKE_LENS_OPTICAL_PATH_MM = 250.0
+
+
 def test_trace_photons_keeps_only_photocathode_hits(monkeypatch) -> None:
     config = from_yaml("examples/yamlFiles/EJ200_siemens_50mm.yaml")
     photons = np.zeros(4, dtype=SIMULATED_PHOTON_DTYPE)
@@ -37,15 +66,12 @@ def test_trace_photons_keeps_only_photocathode_hits(monkeypatch) -> None:
         traced_wavelengths.append(wavelength_nm)
         if point[0] == 3.0:
             raise raytrace.TraceError()
-        return SimpleNamespace(ray=[(next(image_points),)], op=250.0)
+        return SimpleNamespace(
+            ray=_fake_ray(next(image_points)), op=FAKE_LENS_OPTICAL_PATH_MM
+        )
 
     monkeypatch.setattr(raytrace.trace, "trace", fake_trace)
-    opt_model = {
-        "seq_model": SimpleNamespace(
-            gaps=[SimpleNamespace(thi=200.0)],
-            wvlns=[486.0, 587.0],
-        )
-    }
+    opt_model = {"seq_model": _fake_seq_model([486.0, 587.0])}
 
     result = raytrace.trace_photons(config, opt_model, photons)
 
@@ -55,7 +81,13 @@ def test_trace_photons_keeps_only_photocathode_hits(monkeypatch) -> None:
     assert result["photon_track_id"].tolist() == [40]
     assert result["photocathode_hit_x_mm"].tolist() == [2.0]
     assert result["photocathode_hit_y_mm"].tolist() == [3.0]
-    assert result["photocathode_hit_time_ns"][0] > 5.0
+    # The photon entered the lens at 5 ns and then crossed the lens itself
+    # (250 mm of glass and air, index-weighted) plus the 50 mm from the last
+    # surface to the photocathode.
+    expected_time_ns = 5.0 + (
+        FAKE_LENS_OPTICAL_PATH_MM + FAKE_BACK_FOCUS_MM
+    ) / raytrace._SPEED_OF_LIGHT_MM_PER_NS
+    assert result["photocathode_hit_time_ns"][0] == pytest.approx(expected_time_ns)
     assert traced_wavelengths == [486.0, 486.0, 486.0]
     assert result["photocathode_hit_wavelength_nm"].tolist() == [500.0]
 
@@ -69,14 +101,11 @@ def test_trace_photons_preserves_global_source_index(monkeypatch) -> None:
     monkeypatch.setattr(
         raytrace.trace,
         "trace",
-        lambda *args, **kwargs: SimpleNamespace(ray=[([0.0, 0.0, 0.0],)], op=250.0),
+        lambda *args, **kwargs: SimpleNamespace(
+            ray=_fake_ray([0.0, 0.0, 0.0]), op=FAKE_LENS_OPTICAL_PATH_MM
+        ),
     )
-    opt_model = {
-        "seq_model": SimpleNamespace(
-            gaps=[SimpleNamespace(thi=200.0)],
-            wvlns=[486.0],
-        )
-    }
+    opt_model = {"seq_model": _fake_seq_model([486.0])}
 
     first_chunk = raytrace.trace_photons(
         config,
