@@ -21,10 +21,10 @@ selected fixed-record binary outputs.
 - Generate and run from YAML: `examples/runSimulation/`
 - Inspect source timing: `examples/sourceTiming/`
 - Load or write configuration files: `examples/configurations/`
-- Plot primary timing: `analysis/plotting/`
-- Read the binary output contract: `.agents/docs/OUTPUT.md`
-- Read the autofocus and optics design: `.agents/docs/AUTOFOCUS.md` and
-  `.agents/docs/OPTICS.md`
+- Plot primary timing: `examples/analysis/plotting/`
+- Read the output file formats: `.agents/docs/outputs.md`
+- Read the autofocus and optics design: `.agents/docs/autofocus.md` and
+  `.agents/docs/optics.md`
 
 The RayOptics transport, intensifier, and sensor runtime stages are being
 rebuilt around the binary photon output. Their retired HDF5 implementations and

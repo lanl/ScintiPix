@@ -146,8 +146,8 @@ The `primaries/` dataset contains information about the primary particles genera
 | primary_detected_optical_interface_photon_count| int64     | 88     | 8    | Number of photons detected at optical interface |
 
 **Notes:**
-- Source creation and pulse timing values are used internally to set the GEANT4 primary vertex time
-- They are not recorded in `primaries.bin`; the only primary timing field persisted is `primary_interaction_time_ns`
+- `primary_interaction_time_ns` is the only time in this file, and it is measured from the start of its own event
+- When in the run the event fired is added in `primaries.parquet`, not here
 - Only primaries that created at least one secondary in the scintillator are recorded
 
 ### secondaries (96 bytes per record)
