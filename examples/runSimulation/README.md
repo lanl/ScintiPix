@@ -17,4 +17,4 @@ pixi run python examples/runSimulation/run_simulation_from_yaml.py \
 ```
 
 The OGS example enables autofocus and binary RayOptics transport. Photon
-multiplication and sensor readout are not part of this release candidate.
+multiplication and sensor readout are not part of this release.

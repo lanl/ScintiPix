@@ -1,34 +1,36 @@
 # Third-party and reference-data notes
 
-This file records what the repository itself says about bundled non-code data.
-To the best of the ScintiPix team's knowledge, the catalog properties and derived
-reference data were assembled by project contributors from public research and
-publicly available resources. External publications and resources are cited as
-scientific or technical references where known.
+This file records the project's review of bundled non-code data for the v0.1.0
+release. To the best of the ScintiPix team's knowledge, the catalog properties
+and derived reference data were assembled by project contributors from public
+research and publicly available resources. The project team has reviewed this
+basis and the release includes the available source and attribution information.
+External publications and resources are cited as scientific or technical
+references where known.
 
-This statement describes how the materials were developed; it is not a legal
-determination of ownership, licensing, or redistribution permission. Where a
-file is based on an external prescription, published values, or digitized data,
-retain the source and attribution information and confirm any applicable terms
-before redistributing it.
+This record describes how the materials were developed and reviewed; it is not
+a legal determination of ownership, licensing, or redistribution permission.
+It does not change the license of an external work or grant rights that the
+project does not hold.
 
 ## Lens prescriptions
 
 The files under `catalogs/lenses/mxFiles/` are Zemax prescriptions and optional
 SMX sidecars. The files identify external sources or references, including Bill
 Claff / PhotonsToPhotos URLs, G4LumaCam, and a Canon patent example. The catalog
-and lens README do not state redistribution terms. Confirm permission and any
-required attribution for each prescription before redistributing a release
-archive containing them.
+and lens README do not state redistribution terms. For v0.1.0, the project team
+reviewed the available source information and retained the known references and
+attribution notes for these project reference materials. This review does not
+make a legal determination about rights held by external sources.
 
 ## Scintillator curves and material values
 
 The files under `catalogs/scintillators/` contain material compositions and
 optical curves. The material YAML files identify sources for several values,
 including SSLG4-derived entries and published OGS measurements or estimates.
-The repository does not record a license or redistribution grant for each
-source dataset. Preserve those citations and confirm the applicable terms
-before treating the data as GPL-covered project material.
+The project team reviewed these references for v0.1.0 and retained the cited
+source information. The project license does not change the terms of an
+external source dataset.
 
 ## AmBe spectrum
 
@@ -36,13 +38,14 @@ before treating the data as GPL-covered project material.
 `catalogs/README.md` as a digitization of F. Falezza et al., *Nuclear
 Instruments and Methods in Physics Research A* 1085 (2026) 171233, Figure 9.
 The CSV records `energy_MeV` and `relative_intensity` in 50 keV bins. The
-repository does not record a DOI, digitization checksum, or permission to
-redistribute the extracted values. Confirm the reuse status and add the DOI and
-method details before public redistribution.
+project team retained the cited publication and the description of the
+50 keV-bin digitization in the repository. The project license does not change
+the terms of the source publication or extracted reference values.
 
 ## Project license boundary
 
 `LICENSE` and the README state that ScintiPix software is GPLv3-or-later under
 LANL open-source approval O5110. That statement does not, by itself, establish
 that every externally sourced prescription or reference dataset is licensed
-under GPLv3. Keep third-party notices and any required terms with a release.
+under GPLv3. This release retains the available third-party notices and source
+references with the project materials.

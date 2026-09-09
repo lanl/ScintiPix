@@ -2,7 +2,7 @@
 
 This example demonstrates the supported autofocus, Geant4, and optical
 transport stages. Intensifier multiplication and sensor readout are disabled
-and are not part of this release candidate.
+and are not part of this release.
 
 ## Overview
 

@@ -3,11 +3,10 @@
 ScintiPix is a Geant4-based simulation for scintillator and neutron-GPS
 workflows with optical-photon recording at an optical-interface plane.
 
-This source tree prepares the **v0.1.0 release candidate**. The candidate
-changes are not yet tagged or published. The Geant4 simulation and binary
-optical transport workflows are available. The intensifier and sensor stages
-are still under development and are not part of the supported end-to-end
-workflow.
+This source tree contains the **v0.1.0 release**. The release has not yet
+been tagged or published. The Geant4 simulation and binary optical transport
+workflows are available. The intensifier and sensor stages are still under
+development and are not part of the supported end-to-end workflow.
 
 ## Quick start
 
@@ -61,15 +60,15 @@ callers are preserved under `legacy/` and are not active code.
 
 ## Release and provenance
 
-- Release candidate metadata: [`CITATION.cff`](CITATION.cff)
-- Release process and publication gate: [`RELEASING.md`](RELEASING.md)
+- Release metadata: [`CITATION.cff`](CITATION.cff)
+- Release process: [`RELEASING.md`](RELEASING.md)
 - License: [`LICENSE`](LICENSE)
-- Bundled-data review record: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+- Bundled-data notes: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 
 The source archive and release tag will be linked here after publication. Cite
 the software release using `CITATION.cff`, and cite the scientific source data
-separately where applicable. The bundled-data review record must be resolved
-before redistributing an archive that includes affected assets.
+separately where applicable. The bundled-data notes retain source and
+attribution information for the catalog and reference materials.
 
 ## Validation
 

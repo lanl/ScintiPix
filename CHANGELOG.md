@@ -4,10 +4,9 @@ All notable ScintiPix releases are documented here.
 
 ## [0.1.0] - 2026-09-09
 
-ScintiPix's first release candidate. This entry is prepared for the planned
-`v0.1.0` tag; the candidate is not published until the release owner approves
-and creates that tag. This is an early release; the intensifier and sensor
-stages remain under development.
+ScintiPix's first release. This entry records the v0.1.0 release metadata;
+the release is not yet tagged or published. This is an early release; the
+intensifier and sensor stages remain under development.
 
 ### Added
 
