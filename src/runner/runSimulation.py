@@ -237,12 +237,13 @@ def run_simulation(
     if not config.metadata.run_controls.geant4_simulation:
         return None
 
+    logger = get_logger()
+
     # Run auto-focus routine if enabled
     if config.metadata.run_controls.auto_focus_lens:
         if config.optical is None or not config.optical.lenses:
             raise ValueError("Autofocus requires an optical lens configuration.")
 
-        logger = get_logger()
         logger.info("Running automatic lens focusing routine...")
         primary_lens = next(lens for lens in config.optical.lenses if lens.primary)
         original_z_mm = config.optical.interface.position_mm.z_mm
@@ -273,20 +274,20 @@ def run_simulation(
         # Mark autofocus as completed in the in-memory model
         config.metadata.run_controls.auto_focus_lens = False
 
-        # Save the autofocused configuration
-        run_environment = config.metadata.run_environment
-        if run_environment.config_directory:
-            focused_yaml_filename = (
-                f"{run_environment.simulation_run_id}_"
-                f"{run_environment.sub_run_number:03d}_focused.yaml"
-            )
-            focused_yaml_path = Path(run_environment.config_directory) / focused_yaml_filename
-            write_yaml(config, focused_yaml_path, overwrite=True)
-            logger.info(f"Saved autofocused configuration to: {focused_yaml_path}")
+    # Save the settings this run actually used, after any autofocus adjustments, so
+    # the run directory records how it was made and later steps can read it back.
+    run_environment = config.metadata.run_environment
+    if run_environment.config_directory:
+        config_filename = (
+            f"{run_environment.simulation_run_id}_"
+            f"{run_environment.sub_run_number:03d}.yaml"
+        )
+        config_path = Path(run_environment.config_directory) / config_filename
+        write_yaml(config, config_path, overwrite=True)
+        logger.info(f"Saved run configuration to: {config_path}")
 
     write_macro(config)
     completed = run(config, dry_run=dry_run, log_filename=log_filename)
-    logger = get_logger()
     if completed is None:
         logger.info("[simulation] Dry run requested; skipping scintipix launch.")
         return None

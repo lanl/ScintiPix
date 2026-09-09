@@ -8,24 +8,6 @@
 #include <string>
 #include <vector>
 
-/// Source timing modes applied to generated primary vertices.
-enum class SourceTimingMode {
-  None,
-  Continuous,
-  Pulsed,
-};
-
-/// Per-event source timing values in Geant4 internal time units.
-struct SourceTimingInfo {
-  G4bool enabled = false;
-  G4double creationTime = 0.0;
-  G4double startTime = 0.0;
-  G4double offsetTime = 0.0;
-  G4double pulseTimeWidth = 0.0;
-  G4double timeInPulse = 0.0;
-  G4int pulseId = -1;
-};
-
 /// One isotope and its atom fraction within an enriched element.
 struct ScintillatorIsotopeConfig {
   G4int massNumber = 0;
@@ -213,27 +195,6 @@ class Config {
   /// Enable or disable photon output rows.
   void SetWritePhotonsOutput(G4bool value);
 
-  /// Get configured source timing mode.
-  SourceTimingMode GetSourceTimingMode() const;
-  /// Set source timing mode from UI/config token: none, continuous, or pulsed.
-  void SetSourceTimingMode(const std::string& value);
-  /// Set source timing start time in Geant4 internal units.
-  void SetSourceTimingStartTime(G4double value);
-  /// Set fixed event spacing for continuous source timing.
-  void SetSourceTimingEventSpacing(G4double value);
-  /// Set pulse period for pulsed source timing.
-  void SetSourceTimingPulsePeriod(G4double value);
-  /// Set number of Geant4 events assigned to each pulse.
-  void SetSourceTimingNeutronsPerPulse(G4int value);
-  /// Set offset between T-zero and pulse start for pulsed source timing.
-  void SetSourceTimingPulseTimeOffset(G4double value);
-  /// Set finite pulse width for pulsed source timing.
-  void SetSourceTimingPulseTimeWidth(G4double value);
-  /// Set pulsed source-time distribution shape.
-  void SetSourceTimingPulseShape(const std::string& value);
-  /// Compute per-event source timing values in Geant4 internal units.
-  SourceTimingInfo GetSourceTimingForEvent(G4int eventID) const;
-
   /// Return true if photon culling optimization is enabled.
   G4bool GetPhotonCullingEnabled() const;
   /// Enable or disable photon culling optimization.
@@ -304,16 +265,6 @@ class Config {
   G4bool fWritePrimariesOutput = true;
   G4bool fWriteSecondariesOutput = true;
   G4bool fWritePhotonsOutput = true;
-
-  /// Source timing settings in Geant4 internal units.
-  SourceTimingMode fSourceTimingMode = SourceTimingMode::None;
-  G4double fSourceTimingStartTime = 0.0;
-  G4double fSourceTimingEventSpacing = 0.0;
-  G4double fSourceTimingPulsePeriod = 0.0;
-  G4int fSourceTimingNeutronsPerPulse = 1;
-  G4double fSourceTimingPulseTimeOffset = 0.0;
-  G4double fSourceTimingPulseTimeWidth = 0.0;
-  std::string fSourceTimingPulseShape = "uniform";
 
   /// Photon culling settings.
   G4bool fPhotonCullingEnabled = false;

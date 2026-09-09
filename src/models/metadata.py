@@ -143,11 +143,9 @@ class WorkingDirectoryLayout(StrictModel):
     def apply_stage_defaults(self, controls: RunControls) -> None:
         """Fill defaults for stage directories required by enabled run controls."""
 
-        if controls.auto_focus_lens:
-            self.config_directory = _default_if_blank(
-                self.config_directory,
-                "config",
-            )
+        # Every run records the configuration that produced it, so the run can be
+        # repeated and so later steps can read the settings back off disk.
+        self.config_directory = _default_if_blank(self.config_directory, "config")
         if controls.geant4_simulation:
             self.primaries_directory = _default_if_blank(
                 self.primaries_directory,

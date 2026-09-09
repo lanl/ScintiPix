@@ -5,7 +5,8 @@ This example demonstrates the complete workflow:
 2. Geant4 simulation to generate scintillation photons
 3. Optical transport through the lens system to the photocathode
 
-The autofocused configuration is saved to the config directory for reference.
+The settings the run used, including any autofocus adjustments, are saved to the
+config directory for reference.
 """
 
 from __future__ import annotations
@@ -55,10 +56,9 @@ def main() -> None:
     run_env = config.metadata.run_environment
     print(f"\nOutput directory: {run_env.run_directory}")
 
-    if run_controls.auto_focus_lens:
-        print(f"\nAutofocused config will be saved to:")
-        print(f"  {run_env.config_directory}/")
-        print(f"  {run_env.simulation_run_id}_{run_env.sub_run_number:03d}_focused.yaml")
+    print(f"\nSettings used will be saved to:")
+    print(f"  {run_env.config_directory}/")
+    print(f"  {run_env.simulation_run_id}_{run_env.sub_run_number:03d}.yaml")
 
     print("\nStarting simulation...\n")
     run_simulation(config)
@@ -73,8 +73,8 @@ def main() -> None:
         print(f"  Simulated photons: {run_env.simulated_photons_directory}/")
     if run_controls.transportation:
         print(f"  Transported photons: {run_env.transported_photons_directory}/")
-    if run_controls.auto_focus_lens and run_env.config_directory:
-        print(f"  Focused config: {run_env.config_directory}/")
+    if run_env.config_directory:
+        print(f"  Settings used: {run_env.config_directory}/")
 
     # Generate scintillator exit image if simulation was enabled
     if run_controls.geant4_simulation:

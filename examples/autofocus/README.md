@@ -69,7 +69,8 @@ The simulation and analysis scripts write the following outputs under
 `data/{SimulationRunID}_{SubRunNumber:03d}/`:
 
 ### Configuration
-- `config/{RunID}_000_focused.yaml` - Optimized lens configuration with `auto_focus_lens: false`
+- `config/{RunID}_000.yaml` - The settings this run used, including the optimized lens
+  values, with `auto_focus_lens: false`. Every run saves this file.
 
 ### Geant4 Outputs
 - `primaries/primaries.bin` - Primary particle information
@@ -100,7 +101,7 @@ The automatic lens focusing routine:
    - `optical.interface.position_mm.z_mm` (working distance)
    - `optical.lenses[primary].focus_adjustment_mm` (internal focus)
    - `optical.lenses[primary].back_focus_mm` (back focal distance)
-5. **Saves the focused configuration** for reproducibility
+5. **Saves the settings used** for reproducibility
 
 ## Understanding the Output
 
@@ -125,13 +126,13 @@ The transport stage will log:
 - Number of photons that reach the photocathode
 - Output file location and size
 
-## Reusing the Focused Configuration
+## Reusing the Saved Configuration
 
-The saved `*_focused.yaml` file has `auto_focus_lens: false` to prevent re-running the optimization. To use it:
+The saved configuration has `auto_focus_lens: false` to prevent re-running the optimization. To use it:
 
 ```bash
 pixi run python examples/autofocus/run_autofocus_with_transport.py \
-    data/EJ200_siemens_50mm_000/config/EJ200_siemens_50mm_000_focused.yaml
+    data/EJ200_siemens_50mm_000/config/EJ200_siemens_50mm_000.yaml
 ```
 
 This will skip autofocus and use the pre-optimized lens parameters directly.

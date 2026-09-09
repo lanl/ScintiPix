@@ -9,7 +9,6 @@ Public API:
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 import sys
 
@@ -20,9 +19,6 @@ except ModuleNotFoundError:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
     from src.common.utilities import repo_root
     from src.models.simulation import Simulation
-
-NS_PER_SECOND = 1_000_000_000.0
-MM_PER_CM = 10.0
 
 # Angular types that send particles over a range of directions instead of one
 # fixed direction. Geant4 resets the angular type to "planar" whenever
@@ -124,81 +120,6 @@ def _correlated_gamma_commands(simulation: Simulation) -> list[str]:
         "/source/correlatedGamma/enabled 1",
         f"/source/correlatedGamma/probability {correlated_gamma.probability:g}",
     ]
-
-
-def _source_area_cm2(config: Simulation) -> float:
-    radius_cm = config.source.gps.position.radius_mm / MM_PER_CM
-    return math.pi * radius_cm * radius_cm
-
-
-def _source_particle_rate_per_second(config: Simulation) -> float:
-    timing = config.source.timing
-    if timing is None or timing.particle_flux is None:
-        raise ValueError(
-            "`source.timing.particle_flux` is required to derive source timing."
-        )
-    return timing.particle_flux * _source_area_cm2(config)
-
-
-def _source_event_spacing_ns(config: Simulation) -> float:
-    particle_rate_per_second = _source_particle_rate_per_second(config)
-    if particle_rate_per_second <= 0.0:
-        raise ValueError("Derived source particle rate must be greater than zero.")
-    return NS_PER_SECOND / particle_rate_per_second
-
-
-def _source_particles_per_pulse(config: Simulation) -> int:
-    timing = config.source.timing
-    if timing is None or timing.pulse_period_ns is None:
-        raise ValueError(
-            "`source.timing.pulse_period_ns` is required for pulsed source timing."
-        )
-    expected_particles = (
-        _source_particle_rate_per_second(config)
-        * timing.pulse_period_ns
-        / NS_PER_SECOND
-    )
-    return max(1, int(math.ceil(expected_particles - 1.0e-12)))
-
-
-def _source_timing_commands(simulation: Simulation) -> list[str]:
-    """Generate source timing configuration commands."""
-    timing = simulation.source.timing
-    if timing is None:
-        return []
-
-    commands = [
-        f"/source/timing/mode {timing.mode}",
-        f"/source/timing/startTime {_format_macro_scalar(timing.start_time_ns)} ns",
-    ]
-    if timing.mode == "continuous":
-        event_spacing_ns = _source_event_spacing_ns(simulation)
-        commands.append(
-            "/source/timing/eventSpacing "
-            f"{_format_macro_scalar(event_spacing_ns)} ns"
-        )
-    if timing.mode == "pulsed":
-        if timing.pulse_period_ns is None or timing.pulse_time_width_ns is None:
-            raise ValueError(
-                "`source.timing.pulse_period_ns`, "
-                "`source.timing.particle_flux`, and "
-                "`source.timing.pulse_time_width_ns` are required when mode is "
-                "'pulsed'."
-            )
-        particles_per_pulse = _source_particles_per_pulse(simulation)
-        commands.extend(
-            [
-                "/source/timing/pulsePeriod "
-                f"{_format_macro_scalar(timing.pulse_period_ns)} ns",
-                f"/source/timing/neutronsPerPulse {particles_per_pulse}",
-                "/source/timing/pulseTimeOffset "
-                f"{_format_macro_scalar(timing.pulse_time_offset_ns)} ns",
-                "/source/timing/pulseTimeWidth "
-                f"{_format_macro_scalar(timing.pulse_time_width_ns)} ns",
-                f"/source/timing/pulseShape {timing.pulse_shape}",
-            ]
-        )
-    return commands
 
 
 def _format_float_list(values: list[float]) -> str:
@@ -401,7 +322,6 @@ def _macro_commands(
     if include_run_initialize:
         commands.append("/run/initialize")
     commands.extend(_source_commands(simulation))
-    commands.extend(_source_timing_commands(simulation))
     commands.extend(_correlated_gamma_commands(simulation))
     if simulation.geant4runner is not None and simulation.geant4runner.number_of_particles is not None:
         commands.append(f"/run/beamOn {simulation.geant4runner.number_of_particles}")
