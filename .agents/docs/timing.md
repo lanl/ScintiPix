@@ -37,6 +37,36 @@ Notes:
 - Pulsed-only fields are optional in `Simulation` and are omitted or set to
   `None`/`null` for continuous sources.
 
+### Choosing `particle_flux`
+
+`particle_flux` is per square centimetre, so on its own it does not tell you the
+rate. The rate depends on how large the source disc is:
+
+    particles per second = particle_flux * pi * (radius_mm / 10)^2
+
+To get a rate you have in mind, divide it by that area. This is where the values
+in the examples come from, and it is why they look arbitrary:
+`79577.47154594767` from a 2 mm radius disc means 10,000 particles per second,
+but from a 10 mm disc the same number would mean 250,000.
+
+### How long a run covers
+
+The flux also sets how much time the run covers, which is worth working out
+before starting a long run:
+
+    particles per pulse = ceil(rate * pulse_period_ns / 1e9)
+
+    continuous: span = event count * 1e9 / rate
+    pulsed:     span = (event count / particles per pulse) * pulse_period_ns
+
+`pulsed_neutron_source_timing.yaml` fires 5000 events at 10 per pulse with pulses
+1 ms apart, so it covers 500 ms. Lowering the flux does not shorten the run; it
+spreads the same events over more time.
+
+For continuous sources this is an average, because the gaps between events are
+random. The span of any one run scatters around it by roughly one over the square
+root of the event count, so the 200-event continuous example lands about 7% out.
+
 ## Stage2: Timing information within the GEANT4 Framework
 The GEANT4 framework handles the processing of timing information for all primaries, secondaries, and scintillation photons, with each event timed from its own start. Every binary output file keeps those event-relative times, and so does the transported photon file that optical transport writes from them.
 
