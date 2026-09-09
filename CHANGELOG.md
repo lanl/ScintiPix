@@ -4,9 +4,8 @@ All notable ScintiPix releases are documented here.
 
 ## [0.1.0] - 2026-09-09
 
-ScintiPix's first release. This entry records the v0.1.0 release metadata;
-the release is not yet tagged or published. This is an early release; the
-intensifier and sensor stages remain under development.
+ScintiPix's first release. This is an early release; the intensifier and
+sensor stages remain under development.
 
 ### Added
 
@@ -32,6 +31,5 @@ intensifier and sensor stages remain under development.
 - The mixed AmBe event model currently does not apply the catalog's separate
   gamma scintillation profile to coincident neutron/gamma events. The release
   does not claim pulse-shape discrimination behavior.
-- Bundled lens prescriptions and reference data require the provenance and
-  redistribution notes in `THIRD_PARTY_NOTICES.md` to be reviewed before
-  redistribution outside the project.
+- Bundled lens prescriptions and reference data are documented with their
+  available provenance and attribution notes in `THIRD_PARTY_NOTICES.md`.

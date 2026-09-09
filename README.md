@@ -3,10 +3,10 @@
 ScintiPix is a Geant4-based simulation for scintillator and neutron-GPS
 workflows with optical-photon recording at an optical-interface plane.
 
-This source tree contains the **v0.1.0 release**. The release has not yet
-been tagged or published. The Geant4 simulation and binary optical transport
-workflows are available. The intensifier and sensor stages are still under
-development and are not part of the supported end-to-end workflow.
+This source tree contains the **v0.1.0 release**. The Geant4 simulation and
+binary optical transport workflows are available. The intensifier and sensor
+stages are still under development and are not part of the supported end-to-end
+workflow.
 
 ## Quick start
 
@@ -65,7 +65,7 @@ callers are preserved under `legacy/` and are not active code.
 - License: [`LICENSE`](LICENSE)
 - Bundled-data notes: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 
-The source archive and release tag will be linked here after publication. Cite
+The source archive and release tag will be linked here when published. Cite
 the software release using `CITATION.cff`, and cite the scientific source data
 separately where applicable. The bundled-data notes retain source and
 attribution information for the catalog and reference materials.
