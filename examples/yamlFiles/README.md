@@ -7,29 +7,27 @@ top-level model in `src/models/simulation.py`. YAML loading is implemented by
 
 Current files:
 - `CanonEF50mmf1p0L_example.yaml`: primary end-to-end example configuration
-- `continuous_neutron_source_timing.yaml`: lightweight continuous source timing
-  example for Geant4 `/primaries` timing. Uses `particle_flux` to derive fixed
-  event spacing.
+- `continuous_neutron_source_timing.yaml`: small continuous source timing
+  example. Uses `particle_flux` to set the average gap between events.
 - `EJ200.yaml`: catalog-driven scintillator example with overrides
 - `EJ276D.yaml`: catalog-driven EJ-276D timing-component example
-- `pulsed_neutron_source_timing.yaml`: lightweight pulsed source timing example
-  for Geant4 `/primaries` timing. Uses `particle_flux`, `pulse_period_ns`,
-  `pulse_time_offset_ns`, and `pulse_time_width_ns`.
+- `pulsed_neutron_source_timing.yaml`: small pulsed source timing example. Uses
+  `particle_flux`, `pulse_period_ns`, `pulse_time_offset_ns`, and
+  `pulse_time_width_ns`.
 
 Simulation example YAMLs include:
-- a `source.timing` block for source-time macro generation
+- a `source.timing` block describing when the source fires
 - an `intensifier` block defining the future photocathode image plane
 - a `sensor.timepix` block defining the future sensor model
 
-`source.timing` is emitted by the Python configuration layer as
-`/source/timing/*` macro commands and consumed by the Geant4 runtime when
-generating primary vertices.
+`source.timing` is applied after the run, not during it. Geant4 times every
+event from its own start, and `src/output/parquet.py` then works out when in the
+run each event fired and writes the parquet tables.
 
 The source-neutron timing examples are consumed by
-[`examples/sourceTiming/README.md`](../sourceTiming/README.md). They are
-Geant4-only inspection inputs; downstream optical, intensifier, and sensor
-blocks are present for schema and geometry completeness; their runtime stages
-are not active yet.
+[`examples/sourceTiming/README.md`](../sourceTiming/README.md). They do not run
+optical transport; downstream optical, intensifier, and sensor blocks are
+present for schema and geometry completeness.
 
 ## Schema Rules
 
@@ -184,11 +182,9 @@ Fields:
 
 ### `source.timing`
 
-Optional source-time model in global nanoseconds. When omitted, generated
-macros keep the current event-local Geant4 timing behavior. When present, the
-Python configuration layer emits `/source/timing/*` macro commands, and the
-Geant4 primary generator assigns the resulting source time to each generated
-primary vertex.
+Optional. Describes when in the run the source fires, in nanoseconds. It is read
+after the run, when the parquet tables are written; `mode: none` leaves every
+event at time zero, which is where Geant4 put it.
 
 Common fields:
 - `mode`: one of `none`, `continuous`, or `pulsed`. Defaults to `none`.
@@ -207,9 +203,8 @@ source:
 
 Fields:
 - `particle_flux`: required for `continuous`; particle flux in particles per
-  second per square centimeter. The Python configuration layer combines this
-  with the circular GPS source radius to derive the Geant4 event spacing.
-  Accepted alias: `particleFlux`.
+  second per square centimeter. Combined with the circular source area to get
+  the average gap between events. Accepted alias: `particleFlux`.
 
 Pulsed mode:
 
@@ -227,36 +222,33 @@ source:
 
 Fields:
 - `particle_flux`: required for `pulsed`; particle flux in particles per second
-  per square centimeter. The Python configuration layer combines this with the
-  circular GPS source radius and `pulse_period_ns` to derive Geant4 events per
-  pulse. Accepted alias: `particleFlux`.
+  per square centimeter. Combined with the circular source area and
+  `pulse_period_ns` to get the number of events per pulse. Accepted alias:
+  `particleFlux`.
 - `pulse_period_ns`: required for `pulsed`; time between pulse starts. Must be
   greater than zero. Accepted aliases include `pulsePeriodNs` and `pulsePeriod`.
 - `pulse_time_offset_ns`: optional for `pulsed`; offset from T-zero to pulse
   start. Defaults to `0.0`. Accepted aliases include `pulseTimeOffsetNs` and
   `pulseTimeOffset`.
-- `pulse_time_width_ns`: required for `pulsed`; neutron creation times are
-  randomly distributed over this window during Geant4 primary generation. Must
-  be non-negative. Accepted aliases include `pulseTimeWidthNs` and
-  `pulseTimeWidth`.
+- `pulse_time_width_ns`: required for `pulsed`; width of each pulse. Events are
+  spread randomly across it. Must be non-negative. Accepted aliases include
+  `pulseTimeWidthNs` and `pulseTimeWidth`.
 - `pulse_shape`: currently only `uniform` is accepted. Accepted alias:
   `pulseShape`.
 
-Pulsed event grouping uses:
+Events are shared out between pulses like this:
 
 ```text
 particles_per_pulse = ceil(particle_flux * source_area_cm2 * pulse_period_ns / 1e9)
 pulse_id = event_id // particles_per_pulse
 pulse_start_time = start_time + pulse_id * pulse_period
-creation_time = pulse_start_time + pulse_time_offset + random_uniform(0, pulse_time_width)
+event_time = pulse_start_time + pulse_time_offset + random_uniform(0, pulse_time_width)
 ```
 
-Geant4 transport determines the relativistic neutron time of flight from the
-configured source position to the scintillator interaction.
-
-The simulation uses the assigned source creation time internally as the Geant4
-primary vertex time. `/primaries` records only `primary_interaction_time_ns` for
-primary timing; source creation and pulse metadata are not persisted there.
+`primaries.bin` holds the time from the start of each event, so its interaction
+times start near zero. `primaries.parquet` holds the same times with
+`event_time` added, plus an `event_time_ns` column. See
+[.agents/docs/outputs.md](../../.agents/docs/outputs.md).
 
 ## `optical`
 
@@ -515,8 +507,10 @@ that initialize the simulation environment, geometry, source, and beam setup.
 3. scintillator and optical-interface geometry/material commands: physics models
 4. `/run/initialize`: initialize the Geant4 run
 5. `/gps/*` source commands: General Particle Source configuration
-6. `/source/timing/*` commands when `source.timing` is present: time structure
-7. `/run/beamOn <N>` when `geant4runner.numberOfParticles` is set: execute beam
+6. `/run/beamOn <N>` when `geant4runner.numberOfParticles` is set: execute beam
+
+No macro command carries `source.timing`. Geant4 times every event from its own
+start, and the time structure is applied afterwards.
 
 These YAMLs are consumed by scripts in:
 - [`configurations/`](../configurations/)
