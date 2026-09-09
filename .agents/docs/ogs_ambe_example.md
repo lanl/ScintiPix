@@ -55,7 +55,7 @@ pixi run python examples/runSimulation/run_simulation_from_yaml.py \
     examples/yamlFiles/OGS_50mm_AmBe.yaml
 ```
 
-This does four things in order:
+This does five things in order:
 
 1. Reads and checks the YAML file.
 2. Focuses the lens for the requested 40 x 40 mm patch, and saves the settings it will use so
@@ -64,6 +64,7 @@ This does four things in order:
    and the light they produce.
 4. Traces that light through the lens and keeps only the photons that land on the
    photocathode.
+5. Places every event on one clock covering the whole run and writes the parquet tables.
 
 With the 1000 incident particles the example asks for, this takes under ten seconds. It
 produces 19,718 photons leaving the scintillator toward the lens, of which 6,451 reach the
@@ -75,43 +76,29 @@ Everything lands in `data/OGS_50mm_AmBe_000/`:
 config/             the settings the run used, so it can be repeated
 macros/             the Geant4 command file that was run
 logs/               the simulator's output
+photons.parquet     one row per photon that reached the photocathode
 primaries/          one record per incident neutron or gamma that deposited energy
 secondaries/        particles produced inside the scintillator
 simulatedPhotons/   light leaving the scintillator toward the lens
 transportedPhotons/ light that reached the photocathode
 ```
 
-## Step 2: write the photon table
+The `.bin` files hold the times Geant4 recorded, each measured from the start of its own event.
+The `.parquet` files alongside them hold the same times moved onto one clock covering the whole
+run. See `.agents/docs/outputs.md` for the full list.
 
-Tracing photons and writing the photon table are separate steps, so the table is written with
-its own call. From the top of the repository:
-
-```python
-from pathlib import Path
-import sys
-
-sys.path.append(str(Path.cwd()))
-
-from src.output.photon_parquet import write_photon_parquet
-
-write_photon_parquet("data/OGS_50mm_AmBe_000")
-```
-
-This reads `transportedPhotons/photons.bin` and `primaries/primaries.bin` and writes
-`data/OGS_50mm_AmBe_000/photons.parquet`: one row per photon that reached the photocathode.
-
-If you write your own script that runs the simulation and writes the table together, put the
-work inside a `main()` function guarded by `if __name__ == "__main__":`, the way
+If you write your own script that runs the simulation, put the work inside a `main()` function
+guarded by `if __name__ == "__main__":`, the way
 `examples/runSimulation/run_simulation_from_yaml.py` does. Larger runs trace photons across
 several processes, and without that guard those processes fail to start.
 
 ## The photon table
 
 ```
-photon_id  x  y  timestamp_canonical  tot  quality_flags  cluster_id  primary_track_id  secondary_track_id  event_type
+photon_id  x  y  timestamp_canonical  tot  quality_flags  cluster_id  primary_track_id  secondary_track_id  event_time_ns  event_type
 ```
 
-The first six columns are what HERMES writes for real data. The last four are the answer key
+The first six columns are what HERMES writes for real data. The last five are the answer key
 and do not exist in real data.
 
 | Column | Meaning |
@@ -124,6 +111,7 @@ and do not exist in real data.
 | `cluster_id` | Which firing of the source this photon belongs to. |
 | `primary_track_id` | Which incident particle within that firing: the neutron is 1, its coincident gamma is 2. |
 | `secondary_track_id` | Which particle inside the scintillator actually made the light. |
+| `event_time_ns` | When in the run this photon's event fired, in nanoseconds. Subtract it from `timestamp_canonical` to get back the time Geant4 recorded. |
 | `event_type` | What the incident particle was: `n` for a neutron, `g` for a gamma. |
 
 `tot` and `quality_flags` are placeholders. In real data they come from the intensifier and
