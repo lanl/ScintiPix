@@ -680,8 +680,11 @@ metadata:
         assert "/gps/particle neutron" in commands
         assert "/gps/ene/type Arb" in commands
         assert "/gps/hist/type arb" in commands
-        assert "/gps/hist/inter/Lin" in commands
+        assert "/gps/hist/inter Lin" in commands
         assert "/gps/ang/type iso" in commands
+        # Geant4 resets the angular type to "planar" when /gps/direction is given,
+        # which would turn this isotropic source into a straight beam.
+        assert not any(cmd.startswith("/gps/direction") for cmd in commands)
 
         hist_points = [c for c in commands if c.startswith("/gps/hist/point ")]
         assert len(hist_points) == 240

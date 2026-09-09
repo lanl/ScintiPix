@@ -24,6 +24,12 @@ except ModuleNotFoundError:
 NS_PER_SECOND = 1_000_000_000.0
 MM_PER_CM = 10.0
 
+# Angular types that send particles over a range of directions instead of one
+# fixed direction. Geant4 resets the angular type to "planar" whenever
+# /gps/direction is given, so sending a direction to one of these types would
+# silently cancel it and fire a straight beam instead.
+ANGULAR_TYPES_WITHOUT_DIRECTION = frozenset({"iso", "cos"})
+
 AMBE_NEUTRON_SPECTRUM_PATH = (
     repo_root() / "catalogs" / "sources" / "AmBe" / "emerging_neutron_spectrum.csv"
 )
@@ -80,8 +86,13 @@ def _source_commands(simulation: Simulation) -> list[str]:
         f"/gps/ang/type {angular.type}",
         f"/gps/ang/rot1 {angular.rot1.x:g} {angular.rot1.y:g} {angular.rot1.z:g}",
         f"/gps/ang/rot2 {angular.rot2.x:g} {angular.rot2.y:g} {angular.rot2.z:g}",
-        f"/gps/direction {angular.direction.x:g} {angular.direction.y:g} {angular.direction.z:g}",
     ]
+
+    if angular.type.strip().lower() not in ANGULAR_TYPES_WITHOUT_DIRECTION:
+        commands.append(
+            f"/gps/direction {angular.direction.x:g} "
+            f"{angular.direction.y:g} {angular.direction.z:g}"
+        )
 
     energy_type = energy.type.strip().lower()
     if energy_type == "ambe":

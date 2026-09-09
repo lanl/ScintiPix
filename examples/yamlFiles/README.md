@@ -162,7 +162,10 @@ Fields:
 - `type`: GPS angular distribution type. Defaults to `beam2d`.
 - `rot1`: first angular rotation vector. Defaults to `{x: 1.0, y: 0.0, z: 0.0}`.
 - `rot2`: second angular rotation vector. Defaults to `{x: 0.0, y: 1.0, z: 0.0}`.
-- `direction`: beam direction vector. Defaults to `{x: 0.0, y: 0.0, z: 1.0}`.
+- `direction`: beam direction vector. Defaults to `{x: 0.0, y: 0.0, z: 1.0}`. Only used by the
+  types that point one way, such as `beam1d`, `beam2d` and `planar`. It is left out of the macro
+  for `iso` and `cos`, because Geant4 resets the angular type to `planar` whenever a direction is
+  given, which would turn a source meant to emit over a range of directions into a straight beam.
 
 Each vector uses:
 - `x`
