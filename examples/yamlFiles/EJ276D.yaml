@@ -94,7 +94,7 @@ geant4runner:
 metadata:
   author: Alex Long
   date: 2026-02-25
-  version: ScintiPix v0.1.0
+  version: ScintiPix v0.2.0
   description: EJ-276D catalog example with explicit 3-component time schema, intensifier, and Timepix3 sensor.
   RunControls:
     geant4_simulation: true

@@ -1,6 +1,6 @@
 # Third-party and reference-data notes
 
-This file records the project's review of bundled non-code data for the v0.1.0
+This file records the project's review of bundled non-code data for the v0.2.0
 release. To the best of the ScintiPix team's knowledge, the catalog properties
 and derived reference data were assembled by project contributors from public
 research and publicly available resources. The project team has reviewed this
@@ -18,7 +18,7 @@ project does not hold.
 The files under `catalogs/lenses/mxFiles/` are Zemax prescriptions and optional
 SMX sidecars. The files identify external sources or references, including Bill
 Claff / PhotonsToPhotos URLs, G4LumaCam, and a Canon patent example. The catalog
-and lens README do not state redistribution terms. For v0.1.0, the project team
+and lens README do not state redistribution terms. For v0.2.0, the project team
 reviewed the available source information and retained the known references and
 attribution notes for these project reference materials. This review does not
 make a legal determination about rights held by external sources.
@@ -28,7 +28,7 @@ make a legal determination about rights held by external sources.
 The files under `catalogs/scintillators/` contain material compositions and
 optical curves. The material YAML files identify sources for several values,
 including SSLG4-derived entries and published OGS measurements or estimates.
-The project team reviewed these references for v0.1.0 and retained the cited
+The project team reviewed these references for v0.2.0 and retained the cited
 source information. The project license does not change the terms of an
 external source dataset.
 

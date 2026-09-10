@@ -2,6 +2,32 @@
 
 All notable ScintiPix releases are documented here.
 
+## [0.2.0] - 2026-09-09
+
+This release improves installation, first-run guidance, and continuous
+validation while preserving the supported Geant4 and RayOptics workflow.
+
+### Added
+
+- Quick-install and getting-started instructions for the OGS/AmBe example.
+- Published release, source archive, and checksum links in the README.
+- GitHub Actions CI on Linux x86_64 and Apple Silicon macOS.
+
+### Known limitations
+
+- The intensifier and sensor runtime stages are not supported end to end.
+- Geant4 uses fresh random seeds by default. Exact replay requires the relevant
+  seeds, process setup, runtime configuration, software environment, and worker
+  behavior; identical configuration files do not by themselves guarantee
+  identical physics output.
+- The locked environment currently targets Linux x86_64 and Apple Silicon
+  macOS only.
+- The mixed AmBe event model currently does not apply the catalog's separate
+  gamma scintillation profile to coincident neutron/gamma events. The release
+  does not claim pulse-shape discrimination behavior.
+- Bundled lens prescriptions and reference data are documented with their
+  available provenance and attribution notes in `THIRD_PARTY_NOTICES.md`.
+
 ## [0.1.0] - 2026-09-09
 
 ScintiPix's first release. This is an early release; the intensifier and

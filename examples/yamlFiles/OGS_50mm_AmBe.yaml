@@ -84,7 +84,7 @@ geant4runner:
 metadata:
   author: Alex Long
   date: 2026-09-03
-  version: ScintiPix v0.1.0
+  version: ScintiPix v0.2.0
   description: OGS 100 x 100 x 20 mm viewed by a Canon EF 50 mm f/1.0L lens, illuminated by an AmBe source, producing the truth-labeled HERMES-style photon parquet.
   RunControls:
     auto_focus_lens: true

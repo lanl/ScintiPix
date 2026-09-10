@@ -143,7 +143,7 @@ geant4runner:
 metadata:
   author: Alex Long
   date: 2026-07-12
-  version: ScintiPix v0.1.0
+  version: ScintiPix v0.2.0
   description: Auto-focus demonstration with EJ-426 enriched lithium scintillator, Siemens star, and Canon EF 50mm f/1.0L lens.
   RunControls:
     auto_focus_lens: true
