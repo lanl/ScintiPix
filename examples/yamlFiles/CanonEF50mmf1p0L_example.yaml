@@ -115,7 +115,7 @@ geant4runner:
 metadata:
   author: Alex Long
   date: 2026-02-19
-  version: ScintiPix v0.1.0
+  version: ScintiPix v0.2.0
   description: Canon EF 50 mm f/1.0L simulation configuration with intensifier and Timepix3 sensor.
   RunControls:
     geant4_simulation: true

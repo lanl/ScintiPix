@@ -1,6 +1,6 @@
 [workspace]
 name = "scintipix"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python tooling for lens propagation studies using Geant4 optical-interface-hit output."
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64"]
