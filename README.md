@@ -1,5 +1,7 @@
 # ScintiPix
 
+[![CI](https://github.com/lanl/ScintiPix/actions/workflows/ci.yml/badge.svg)](https://github.com/lanl/ScintiPix/actions/workflows/ci.yml)
+
 ScintiPix is a Geant4-based simulation for scintillator and neutron-GPS
 workflows with optical-photon recording at an optical-interface plane.
 
