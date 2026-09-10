@@ -102,8 +102,7 @@ callers are preserved under `legacy/` and are not active code.
 - Bundled-data notes: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 
 - Previous published release: [`v0.1.0`](https://github.com/lanl/ScintiPix/releases/tag/v0.1.0)
-- v0.2.0 release page: pending publication
-- Source archive and checksum: published with each tagged release
+- v0.2.0 release page, source archive, and checksum: pending publication
 
 Cite the software release using `CITATION.cff`, and cite the scientific source
 data separately where applicable. The bundled-data notes retain source and

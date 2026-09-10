@@ -10,7 +10,8 @@ validation while preserving the supported Geant4 and RayOptics workflow.
 ### Added
 
 - Quick-install and getting-started instructions for the OGS/AmBe example.
-- Published release, source archive, and checksum links in the README.
+- README documents where the release page, source archive, and checksum will
+  appear when the v0.2.0 release is published.
 - GitHub Actions CI on Linux x86_64 and Apple Silicon macOS.
 
 ### Known limitations
