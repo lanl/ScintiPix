@@ -6,7 +6,9 @@ top-level model in `src/models/simulation.py`. YAML loading is implemented by
 `src.config.yaml.from_yaml(...)`.
 
 Current files:
-- `OGS_50mm_AmBe.yaml`: primary supported Geant4-plus-optics example
+- `OGS_50mm_AmBe.yaml`: primary supported Geant4-plus-optics example. Fires
+  continuously at about 2,200,000 neutrons per second, roughly a 1 curie
+  Am-241 AmBe source.
 - `CanonEF50mmf1p0L_example.yaml`: Canon configuration and Geant4 example;
   transportation is disabled in this file
 - `continuous_neutron_source_timing.yaml`: small continuous source timing

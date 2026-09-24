@@ -28,9 +28,39 @@ optical:
 
 Loading the file fills in the rest from `catalogs/`. For the source, that means the particle
 (neutron), the emission in all directions, the energy spectrum, and the coincident gamma. The
-only thing the example states about the source is where it sits.
+example only says where the source sits and how fast it fires, because both of those are
+specific to a simulation rather than properties of an AmBe source.
 
-Two settings are worth knowing about, because changing either can break the run:
+## How fast the source fires
+
+```yaml
+source:
+  timing:
+    mode: continuous
+    start_time_ns: 0.0
+    particle_flux: 175070.43740108487
+```
+
+AmBe is a radioisotope, so it emits steadily rather than in pulses, and `continuous` puts
+random gaps between neutrons the way a steady source arrives. `particle_flux` is per square
+centimetre per second, and the source disc has a radius of 20 mm and so an area of
+pi * 2^2 = 12.566 cm2, which makes this 2,200,000 neutrons per second — roughly a 1 curie
+Am-241 AmBe source. On average that is one neutron every 455 ns, so the 1000 neutrons the
+example fires are spread over about 0.45 ms.
+
+This is the setting that decides how hard the clustering problem is, and it is the one to
+change when you want a harder one. Only about one neutron in a hundred puts light on the
+photocathode, and the light from one of those lasts a few hundred nanoseconds, so at this rate
+the events that are seen land tens of microseconds apart and almost never overlap — an easy
+starting point. Raising the flux packs them closer until they start running into each other,
+which is when a clustering algorithm has to work for its answer. Lowering it separates them
+further.
+
+Leaving the block out, or setting `mode: none`, puts every event at time zero, stacking the
+whole run on top of itself. That is occasionally what you want when looking at one event, but
+it is not a run.
+
+Two other settings are worth knowing about, because changing either can break the run:
 
 - **`fieldOfView` is 40 x 40 mm.** The lens can only image a patch of the scintillator onto
   the 18 mm photocathode circle. The full 100 x 100 mm face does not fit, so the example asks

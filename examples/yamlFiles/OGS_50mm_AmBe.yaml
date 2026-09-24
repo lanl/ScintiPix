@@ -43,6 +43,22 @@ source:
         y_mm: 0.0
         z_mm: -100.0
       radiusMm: 20.0
+  # AmBe is a radioisotope, so it emits steadily rather than in pulses and the
+  # gaps between neutrons are random. `particle_flux` is per square centimetre
+  # per second, and the source disc above has a radius of 20 mm and so an area
+  # of pi * 2^2 = 12.566 cm2, which makes this 2,200,000 neutrons per second --
+  # roughly a 1 curie Am-241 AmBe source. On average that is one neutron every
+  # 455 ns, so the 1000 neutrons below are spread over about 0.45 ms.
+  #
+  # Only about one neutron in a hundred puts light on the photocathode, and the
+  # light from one of those lasts a few hundred nanoseconds, so at this rate the
+  # events that are seen land far apart and rarely overlap. Raising the flux
+  # packs them closer together and makes them start to run into each other,
+  # which is what makes clustering hard; lowering it separates them further.
+  timing:
+    mode: continuous
+    start_time_ns: 0.0
+    particle_flux: 175070.43740108487
 
 optical:
   lenses:

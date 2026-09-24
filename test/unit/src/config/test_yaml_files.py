@@ -1,5 +1,6 @@
 """Unit tests for YAML example files with nested scintillator structure."""
 
+import math
 from pathlib import Path
 
 import pytest
@@ -116,6 +117,27 @@ class TestYamlExampleFiles:
             if "scintillator.properties" in str(e):
                 pytest.fail(f"Scintillator structure validation failed: {e}")
             pytest.skip(f"File has unrelated validation errors: {e}")
+
+    def test_ogs_ambe_example_fires_continuously(self, examples_dir):
+        """The AmBe example spreads its neutrons out over the run.
+
+        AmBe is a radioisotope, so it emits steadily rather than in pulses. The
+        flux and the source disc together set how fast it fires, and without a
+        timing block every event would sit at time zero instead.
+        """
+
+        sim = from_yaml(examples_dir / "OGS_50mm_AmBe.yaml")
+
+        timing = sim.source.timing
+        assert timing is not None
+        assert timing.mode == "continuous"
+        assert timing.start_time_ns == 0.0
+
+        # The flux is per square centimetre per second, and the 20 mm radius
+        # disc has an area of pi * 2^2 cm2, so the source fires 2,200,000
+        # neutrons per second: roughly a 1 curie Am-241 AmBe source.
+        area_cm2 = math.pi * (sim.source.gps.position.radius_mm / 10.0) ** 2
+        assert timing.particle_flux * area_cm2 == pytest.approx(2.2e6)
 
     def test_pulsed_neutron_timing_example(self, examples_dir):
         """Test pulsed_neutron_source_timing.yaml with inline nested properties."""
