@@ -5,7 +5,7 @@
 ScintiPix is a Geant4-based simulation for scintillator and neutron-GPS
 workflows with optical-photon recording at an optical-interface plane.
 
-This source tree prepares the **v0.2.0 release**. The Geant4 simulation and
+This source tree is **ScintiPix v0.2.1**. The Geant4 simulation and
 binary optical transport workflows are available. The intensifier and sensor
 stages are still under development and are not part of the supported end-to-end
 workflow.
@@ -101,8 +101,9 @@ callers are preserved under `legacy/` and are not active code.
 - License: [`LICENSE`](LICENSE)
 - Bundled-data notes: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 
-- Previous published release: [`v0.1.0`](https://github.com/lanl/ScintiPix/releases/tag/v0.1.0)
-- v0.2.0 release page, source archive, and checksum: pending publication
+- Release: [`v0.2.1`](https://github.com/lanl/ScintiPix/releases/tag/v0.2.1)
+- Source archive: [`ScintiPix-0.2.1.tar.gz`](https://github.com/lanl/ScintiPix/releases/download/v0.2.1/ScintiPix-0.2.1.tar.gz)
+- SHA-256 checksum: [`ScintiPix-0.2.1.tar.gz.sha256`](https://github.com/lanl/ScintiPix/releases/download/v0.2.1/ScintiPix-0.2.1.tar.gz.sha256)
 
 Cite the software release using `CITATION.cff`, and cite the scientific source
 data separately where applicable. The bundled-data notes retain source and
