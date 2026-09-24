@@ -79,6 +79,10 @@ rather than nanoseconds. `event_id` is the same event id the other tables call `
 Its arrival times are on the run clock with no `event_time_ns` column to undo that; join on
 `event_id` to `primaries/primaries.parquet` to get the offset back.
 
+Its `photon_id` column numbers the rows in the order `transportedPhotons/photons.bin` holds
+them, which is the order Geant4 stepped the photons and not the order they arrived. Sort by
+`timestamp_canonical` for arrival order.
+
 A primary that never interacted has no interaction time, and adding an event time to that
 leaves it just as empty, so those rows stay empty in the parquet table too.
 
@@ -233,6 +237,10 @@ successfully to the active photocathode area.
 
 Blocked, missed, invalid, and out-of-bounds rays are omitted rather than stored
 as transported photons.
+
+Records are in the order Geant4 stepped the photons through the optical interface, which
+optical transport preserves. Geant4 tracks the most recently created photon first, so the
+records are not in order of `photocathode_hit_time_ns`.
 
 ---
 
