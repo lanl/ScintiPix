@@ -104,7 +104,7 @@ and do not exist in real data.
 
 | Column | Meaning |
 | --- | --- |
-| `photon_id` | Row number, counting from 0. |
+| `photon_id` | Row number, counting from 0. Not in order of arrival time — see below. |
 | `x`, `y` | Where the photon landed on the photocathode, in millimetres from the centre. |
 | `timestamp_canonical` | When the photon landed, counted in HERMES time ticks. One tick is 25 ns divided by 12288, about 2.03 picoseconds. Multiply by that to get nanoseconds. |
 | `tot` | Always 0 for now. |
@@ -119,6 +119,31 @@ so code reading a HERMES table finds the columns it expects.
 Nothing else is in the table. `transportedPhotons/photons.bin` holds more about each photon,
 including which particle inside the scintillator made it, if you need to go further than the
 two answer-key columns.
+
+### `photon_id` is not in order of arrival time
+
+A real detector reads photons out as they arrive, so its row order is time order. This table
+is not built that way, and the difference matters as soon as you plot anything against
+`photon_id`.
+
+`photon_id` is the row number, and the rows are in the order the simulator recorded the
+photons. Geant4 records each photon as it steps it through the optical interface, and it
+steps the most recently created photon first. Scintillation also makes a whole batch of
+photons at once, and a batch is not internally sorted by time either. The result is that
+`photon_id` and arrival time are close to unrelated: plotting one against the other gives a
+featureless cloud rather than a rising line, and a larger `photon_id` does not mean a later
+photon.
+
+So treat `photon_id` as a label for a row, nothing more. Anywhere you want time order, sort
+by `timestamp_canonical` yourself:
+
+```python
+photons = pd.read_parquet("data/OGS_50mm_AmBe_000/photons.parquet")
+photons = photons.sort_values("timestamp_canonical")
+```
+
+The same applies to `transportedPhotons/photons.bin` and its
+`photocathode_hit_time_ns` column, which is where this row order comes from.
 
 ### What `event_id` means
 
@@ -195,10 +220,12 @@ The usual way to use this is:
 2. Compare the groups it returns against `event_id`.
 3. Split that comparison by `event_type` to see how it does on neutrons against gammas.
 
-Two things to keep in mind when comparing against real HERMES data. `tot` and `quality_flags`
-are zeros here, so anything reading them sees nothing useful. And these photons have not been
-through an intensifier or a sensor, so there is no gain spread, no dead time, and no readout
-noise. This table is the light arriving at the photocathode, not what a camera would report.
+Three things to keep in mind when comparing against real HERMES data. `tot` and
+`quality_flags` are zeros here, so anything reading them sees nothing useful. The rows are not
+in order of arrival time, unlike a real readout, so sort by `timestamp_canonical` if your code
+assumes they are. And these photons have not been through an intensifier or a sensor, so there
+is no gain spread, no dead time, and no readout noise. This table is the light arriving at the
+photocathode, not what a camera would report.
 
 ## Making a bigger run
 

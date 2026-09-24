@@ -37,6 +37,11 @@ the other tables call `gun_call_id`. `event_type` is what the incident particle
 was. `tot` and `quality_flags` are placeholders (0): the intensifier and sensor
 stages that would fill them are not implemented yet. The columns are present so
 downstream HERMES code reads the same columns it always does.
+
+`photon_id` numbers the rows in the order the transported photon file holds them,
+which is the order Geant4 stepped the photons, not the order they arrived. Geant4
+tracks the most recently created photon first, so a later `photon_id` does not
+mean a later arrival time. Sort by `timestamp_canonical` to get arrival order.
 """
 
 import math
@@ -336,6 +341,8 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
 
     photon_table = pd.DataFrame(
         {
+            # Row number in the order the binary file holds the photons, which is
+            # the order Geant4 stepped them rather than the order they arrived.
             "photon_id": np.arange(len(photons), dtype=np.uint64),
             "x": photons["photocathode_hit_x_mm"].astype(np.float64),
             "y": photons["photocathode_hit_y_mm"].astype(np.float64),
