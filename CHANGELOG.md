@@ -2,9 +2,9 @@
 
 All notable ScintiPix releases are documented here.
 
-## [0.2.1] - 2026-09-24
+## [0.3.0] - 2026-09-24
 
-This patch release corrects source timing in the supported OGS/AmBe example
+This feature release corrects source timing in the supported OGS/AmBe example
 and clarifies how photon row order relates to arrival time.
 
 ### Fixed

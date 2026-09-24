@@ -1,7 +1,7 @@
 # Releasing ScintiPix
 
 This project uses annotated SemVer tags. The commands below are for
-`v0.2.1`; the intensifier and sensor stages are still under development.
+`v0.3.0`; the intensifier and sensor stages are still under development.
 
 ## Before tagging
 
@@ -32,11 +32,11 @@ This project uses annotated SemVer tags. The commands below are for
 After the release commit is approved:
 
 ```bash
-git tag -a v0.2.1 -m "ScintiPix v0.2.1"
-git push origin v0.2.1
-git archive --format=tar.gz --prefix=ScintiPix-0.2.1/ \
-  --output=ScintiPix-0.2.1.tar.gz v0.2.1
-shasum -a 256 ScintiPix-0.2.1.tar.gz > ScintiPix-0.2.1.tar.gz.sha256
+git tag -a v0.3.0 -m "ScintiPix v0.3.0"
+git push origin v0.3.0
+git archive --format=tar.gz --prefix=ScintiPix-0.3.0/ \
+  --output=ScintiPix-0.3.0.tar.gz v0.3.0
+shasum -a 256 ScintiPix-0.3.0.tar.gz > ScintiPix-0.3.0.tar.gz.sha256
 ```
 
 Create the GitHub release from the tag, attach the source archive and its

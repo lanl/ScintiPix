@@ -167,7 +167,7 @@ Defines run metadata, directory layout, and which simulation stages to execute.
 metadata:
   author: Alex Long
   date: 2026-07-09
-  version: ScintiPix v0.2.1
+  version: ScintiPix v0.3.0
   description: Example simulation with EJ-276D scintillator
   RunControls:
     auto_focus_lens: false
