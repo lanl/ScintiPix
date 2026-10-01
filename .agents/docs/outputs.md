@@ -79,9 +79,10 @@ rather than nanoseconds. `event_id` is the same event id the other tables call `
 Its arrival times are on the run clock with no `event_time_ns` column to undo that; join on
 `event_id` to `primaries/primaries.parquet` to get the offset back.
 
-Its `photon_id` column numbers the rows in the order `transportedPhotons/photons.bin` holds
-them, which is the order Geant4 stepped the photons and not the order they arrived. Sort by
-`timestamp_canonical` for arrival order.
+Its rows are sorted by `timestamp_canonical`, and `photon_id` counts them in that order, so a
+later `photon_id` means a later arrival. Photons that arrived at exactly the same time keep the
+order `transportedPhotons/photons.bin` holds them in. The binary file itself is not sorted; see
+the note on record order below.
 
 A primary that never interacted has no interaction time, and adding an event time to that
 leaves it just as empty, so those rows stay empty in the parquet table too.
