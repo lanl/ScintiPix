@@ -2,6 +2,42 @@
 
 All notable ScintiPix releases are documented here.
 
+## [0.3.1] - 2026-10-01
+
+This patch release numbers the photons in the HERMES photon table in the order
+they arrived.
+
+### Changed
+
+- `photons.parquet` is now sorted by `timestamp_canonical` before `photon_id`
+  is assigned, so a later `photon_id` means a later arrival, as in a real
+  readout. Photons that arrived at exactly the same time keep the order the
+  transported photon file holds them in (#64).
+- The binary files and the primaries and simulated-photon tables keep the order
+  the simulator wrote them in.
+
+### Documentation
+
+- Replaced the v0.3.0 note that `photon_id` is not in order of arrival with a
+  description of the sorted order. The docs also say that real HERMES data is
+  up to about 100 ns out of order, which this table does not copy yet.
+
+### Known limitations
+
+- The intensifier and sensor runtime stages are not supported end to end.
+- Real HERMES data numbers photons by their earliest pixel and then corrects
+  the time for brightness, so neighbouring photons can be slightly out of
+  order. The simulated table is in exact time order.
+- Geant4 uses fresh random seeds by default. Exact replay requires the relevant
+  seeds, process setup, runtime configuration, software environment, and worker
+  behavior; identical configuration files do not by themselves guarantee
+  identical physics output.
+- The locked environment targets Linux x86_64 and Apple Silicon macOS only.
+- The mixed AmBe event model does not apply the catalog's separate gamma
+  scintillation profile to coincident neutron/gamma events. This release does
+  not claim pulse-shape discrimination behavior.
+- Bundled lens prescriptions and reference data are unchanged from v0.2.0.
+
 ## [0.3.0] - 2026-09-24
 
 This feature release corrects source timing in the supported OGS/AmBe example
