@@ -38,10 +38,11 @@ was. `tot` and `quality_flags` are placeholders (0): the intensifier and sensor
 stages that would fill them are not implemented yet. The columns are present so
 downstream HERMES code reads the same columns it always does.
 
-`photon_id` numbers the rows in the order the transported photon file holds them,
-which is the order Geant4 stepped the photons, not the order they arrived. Geant4
-tracks the most recently created photon first, so a later `photon_id` does not
-mean a later arrival time. Sort by `timestamp_canonical` to get arrival order.
+The photon table is sorted by `timestamp_canonical`, and `photon_id` counts the
+photons in that order, so a later `photon_id` means a later arrival. The
+transported photon file is not in that order: it holds the photons in the order
+Geant4 stepped them, which is most recently created first, and the event times
+are added only after the run.
 """
 
 import math
@@ -341,9 +342,6 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
 
     photon_table = pd.DataFrame(
         {
-            # Row number in the order the binary file holds the photons, which is
-            # the order Geant4 stepped them rather than the order they arrived.
-            "photon_id": np.arange(len(photons), dtype=np.uint64),
             "x": photons["photocathode_hit_x_mm"].astype(np.float64),
             "y": photons["photocathode_hit_y_mm"].astype(np.float64),
             "timestamp_canonical": (
@@ -359,6 +357,15 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
         }
     )
 
+    # The binary file holds the photons in the order Geant4 stepped them, not the
+    # order they arrived, so sort by arrival time before numbering them. A stable
+    # sort keeps photons with the same time in file order, so the numbering is the
+    # same every time the table is written.
+    photon_table = photon_table.sort_values(
+        "timestamp_canonical", kind="stable", ignore_index=True
+    )
+    photon_table.insert(0, "photon_id", np.arange(len(photon_table), dtype=np.uint64))
+
     # Label each photon with the species of the incident particle that caused it.
     primaries_path = _binary_path(
         run_environment.primaries_directory,
@@ -373,6 +380,8 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
         ["gun_call_id", "primary_track_id", "primary_species"]
     ].rename(columns={"gun_call_id": "event_id", "primary_species": "event_type"})
 
+    # A left merge keeps the rows in the order of `photon_table`, so the photons
+    # stay in arrival order.
     labeled = photon_table.merge(
         primary_species,
         on=["event_id", "primary_track_id"],

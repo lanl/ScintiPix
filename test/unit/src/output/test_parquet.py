@@ -154,19 +154,58 @@ def test_photon_table_labels_each_photon(tmp_path) -> None:
     assert table["x"].dtype == np.float64
     assert table["timestamp_canonical"].dtype == np.float64
 
+    # The rows are sorted by arrival time, so the photon that arrived at 12.5 ns
+    # comes first even though it is last in the binary file.
     assert table["photon_id"].tolist() == [0, 1, 2]
-    assert table["x"].tolist() == [1.0, -3.0, 0.5]
-    assert table["y"].tolist() == [2.0, 4.0, -1.0]
-    assert table["event_id"].tolist() == [10, 11, 10]
+    assert table["x"].tolist() == [0.5, 1.0, -3.0]
+    assert table["y"].tolist() == [-1.0, 2.0, 4.0]
+    assert table["event_id"].tolist() == [10, 10, 11]
     assert (table["tot"] == 0).all()
     assert (table["quality_flags"] == 0).all()
 
     # Without a timing block every event stays at zero, so the recorded arrival
     # times are converted straight to ticks.
-    expected_ticks = np.array([25.0, 50.0, 12.5]) / CANONICAL_TICK_NS
+    expected_ticks = np.array([12.5, 25.0, 50.0]) / CANONICAL_TICK_NS
     np.testing.assert_allclose(table["timestamp_canonical"].to_numpy(), expected_ticks)
 
-    assert table["event_type"].tolist() == ["neutron", "gamma", "neutron"]
+    assert table["event_type"].tolist() == ["neutron", "neutron", "gamma"]
+
+
+def test_photon_id_follows_arrival_time_across_events(tmp_path) -> None:
+    """Photons are numbered in the order they arrived on the run clock.
+
+    The binary file lists a later event first, the way Geant4 can, and photons
+    that arrived at the same moment keep the order the file holds them in.
+    """
+
+    config = _config(tmp_path, _continuous_timing(), event_count=200)
+
+    photons = np.zeros(5, dtype=TRANSPORTED_PHOTON_DTYPE)
+    photons["gun_call_id"] = [150, 10, 150, 10, 10]
+    photons["primary_track_id"] = [1, 1, 1, 1, 1]
+    photons["photocathode_hit_x_mm"] = [1.0, 2.0, 3.0, 4.0, 5.0]
+    photons["photocathode_hit_time_ns"] = [9.0, 30.0, 2.0, 7.0, 7.0]
+    _write_transported_photons(config, photons)
+
+    primaries = np.zeros(2, dtype=PRIMARY_DTYPE)
+    primaries["gun_call_id"] = [10, 150]
+    primaries["primary_track_id"] = [1, 1]
+    primaries["primary_species"] = [b"neutron", b"neutron"]
+    _write_primaries(config, primaries)
+
+    write_parquet_tables(config)
+
+    table = pd.read_parquet(
+        config.metadata.run_environment.run_directory / "photons.parquet"
+    )
+
+    # Event 150 fires about 150 microseconds after event 10, so all of event 10's
+    # photons come first. Within event 10 the two photons at 7 ns keep their
+    # file order (x = 4 then x = 5).
+    assert table["photon_id"].tolist() == [0, 1, 2, 3, 4]
+    assert table["event_id"].tolist() == [10, 10, 10, 150, 150]
+    assert table["x"].tolist() == [4.0, 5.0, 2.0, 3.0, 1.0]
+    assert (np.diff(table["timestamp_canonical"].to_numpy()) >= 0.0).all()
 
 
 def test_two_incident_particles_in_one_firing_share_an_event_id(tmp_path) -> None:
@@ -242,22 +281,25 @@ def test_photon_times_shift_with_their_own_event(tmp_path) -> None:
     )
 
     # The photon table does not carry the event time, so look it up by event id.
-    # The two photons from event 10 share one event time; event 11 gets its own.
-    event_times = _event_times_ns(config)[table["event_id"].to_numpy()]
-    assert event_times[0] == event_times[2]
-    assert event_times[1] != event_times[0]
-    assert (event_times > 0.0).all()
+    # Event 10 and event 11 each get their own time.
+    event_times = _event_times_ns(config)
+    assert event_times[10] != event_times[11]
+    assert event_times[10] > 0.0
 
-    # Each timestamp is the event time plus the time Geant4 recorded.
+    # Each timestamp is the event time plus the time Geant4 recorded, and the
+    # table holds them in arrival order.
     recorded_ns = np.array([25.0, 50.0, 12.5])
+    expected_ticks = (event_times[[10, 11, 10]] + recorded_ns) / CANONICAL_TICK_NS
     np.testing.assert_allclose(
-        table["timestamp_canonical"].to_numpy(),
-        (event_times + recorded_ns) / CANONICAL_TICK_NS,
+        table["timestamp_canonical"].to_numpy(), np.sort(expected_ticks)
     )
 
     # The spread within event 10 is untouched by the shift.
-    ticks = table["timestamp_canonical"].to_numpy()
-    np.testing.assert_allclose(ticks[0] - ticks[2], (25.0 - 12.5) / CANONICAL_TICK_NS)
+    event_10_ticks = table.loc[table["event_id"] == 10, "timestamp_canonical"]
+    np.testing.assert_allclose(
+        event_10_ticks.max() - event_10_ticks.min(),
+        (25.0 - 12.5) / CANONICAL_TICK_NS,
+    )
 
 
 def test_primaries_table_shifts_interaction_times(tmp_path) -> None:
