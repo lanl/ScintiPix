@@ -8,12 +8,8 @@ from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
 
-try:
-    from src.common.utilities import ensure_directories
-    from src.common.utilities import resolve_path
-except ModuleNotFoundError:  # pragma: no cover - supports PYTHONPATH=src usage
-    from common.utilities import ensure_directories
-    from common.utilities import resolve_path
+from src.common.utilities import ensure_directories
+from src.common.utilities import resolve_path
 
 from .base import StrictModel
 

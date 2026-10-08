@@ -10,14 +10,8 @@ from pathlib import Path
 import tempfile
 from typing import Any
 
-try:
-    from pydantic import Field
-    from src.models.base import StrictModel
-except ModuleNotFoundError:
-    import sys
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from pydantic import Field
-    from src.models.base import StrictModel
+from pydantic import Field
+from src.models.base import StrictModel
 
 
 class ValueWithUnit(StrictModel):

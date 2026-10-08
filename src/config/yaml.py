@@ -6,18 +6,10 @@ from pathlib import Path
 
 import yaml
 
-try:
-    from src.config.LensCatalog import load_lens
-    from src.config.ScintillatorCatalog import load_scintillator
-    from src.config.SourceCatalog import load_source
-    from src.models.simulation import Simulation
-except ModuleNotFoundError:
-    import sys
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from src.config.LensCatalog import load_lens
-    from src.config.ScintillatorCatalog import load_scintillator
-    from src.config.SourceCatalog import load_source
-    from src.models.simulation import Simulation
+from src.config.LensCatalog import load_lens
+from src.config.ScintillatorCatalog import load_scintillator
+from src.config.SourceCatalog import load_source
+from src.models.simulation import Simulation
 
 
 def _hydrate_source_catalog(payload: dict) -> dict:
