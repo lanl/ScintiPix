@@ -7,17 +7,9 @@ from pathlib import Path
 import re
 from typing import Any
 
-try:
-    from src.common.utilities import repo_root
-    from src.models.catalogs import ScintillatorCatalogIndex
-    from src.models.scintillator import ScintillatorProperties
-except ModuleNotFoundError:
-    import sys
-
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from src.common.utilities import repo_root
-    from src.models.catalogs import ScintillatorCatalogIndex
-    from src.models.scintillator import ScintillatorProperties
+from src.common.utilities import repo_root
+from src.models.catalogs import ScintillatorCatalogIndex
+from src.models.scintillator import ScintillatorProperties
 
 try:
     import yaml

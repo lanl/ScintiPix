@@ -8,23 +8,13 @@ import shlex
 import subprocess
 import sys
 
-try:
-    from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
-    from src.config.macro import write_macro
-    from src.config.yaml import write_yaml
-    from src.models.simulation import Simulation
-    from src.optics.focus import auto_focus_lens
-    from src.optics.raytrace import transport_photons
-    from src.output.parquet import write_parquet_tables
-except ModuleNotFoundError:
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
-    from src.config.macro import write_macro
-    from src.config.yaml import write_yaml
-    from src.models.simulation import Simulation
-    from src.optics.focus import auto_focus_lens
-    from src.optics.raytrace import transport_photons
-    from src.output.parquet import write_parquet_tables
+from src.common.logger import DEFAULT_RUN_LOG_FILENAME, get_logger, log_stage
+from src.config.macro import write_macro
+from src.config.yaml import write_yaml
+from src.models.simulation import Simulation
+from src.optics.focus import auto_focus_lens
+from src.optics.raytrace import transport_photons
+from src.output.parquet import write_parquet_tables
 
 
 _SIMULATED_EVENTS_PATTERN = re.compile(r"Simulated\s+(\d+)\s+events\b")

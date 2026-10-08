@@ -6,15 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-try:
-    from src.common.utilities import repo_root
-    from src.models.catalogs import SourceCatalogEntry, SourceCatalogIndex
-except ModuleNotFoundError:
-    import sys
-
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from src.common.utilities import repo_root
-    from src.models.catalogs import SourceCatalogEntry, SourceCatalogIndex
+from src.common.utilities import repo_root
+from src.models.catalogs import SourceCatalogEntry, SourceCatalogIndex
 
 try:
     import yaml

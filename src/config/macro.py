@@ -10,15 +10,9 @@ Public API:
 from __future__ import annotations
 
 from pathlib import Path
-import sys
 
-try:
-    from src.common.utilities import repo_root
-    from src.models.simulation import Simulation
-except ModuleNotFoundError:
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from src.common.utilities import repo_root
-    from src.models.simulation import Simulation
+from src.common.utilities import repo_root
+from src.models.simulation import Simulation
 
 # Angular types that send particles over a range of directions instead of one
 # fixed direction. Geant4 resets the angular type to "planar" whenever
