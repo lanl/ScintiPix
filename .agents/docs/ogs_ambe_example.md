@@ -126,7 +126,7 @@ several processes, and without that guard those processes fail to start.
 ## The photon table
 
 ```
-photon_id  x  y  timestamp_canonical  tot  quality_flags  event_id  event_type
+photon_id  x  y  timestamp_canonical  tot  quality_flags  event_id  primary_species
 ```
 
 The first six columns are what HERMES writes for real data. The last two are the answer key
@@ -140,7 +140,7 @@ and do not exist in real data.
 | `tot` | Always 0 for now. |
 | `quality_flags` | Always 0 for now. |
 | `event_id` | Which firing of the source this photon belongs to. |
-| `event_type` | What the incident particle was: `n` for a neutron, `g` for a gamma. |
+| `primary_species` | What the incident particle that made this photon was: `n` for a neutron, `g` for a gamma. |
 
 `tot` and `quality_flags` are placeholders. In real data they come from the intensifier and
 the sensor, and neither of those stages is implemented yet. They are written anyway, as zeros,
@@ -186,11 +186,16 @@ count should not be treated as a fixed one-to-one relationship.
 Because `event_id` is the firing number, values are not consecutive. A run of 1000 particles
 produces values spread across 0 to 999, with gaps where a firing produced no detected light.
 
-### What `event_type` means
+### What `primary_species` means
 
-`event_type` says what kind of particle arrived: `n` for a neutron, `g` for a gamma. This lets
+`primary_species` says what kind of particle arrived: `n` for a neutron, `g` for a gamma. This lets
 you check whether a clustering algorithm behaves differently on the two, which matters because
 they leave different amounts of light in different patterns.
+
+It is the same column, with the same values, as `primary_species` in
+`primaries/primaries.parquet`, copied onto each photon from the incident particle that made it.
+It names that incident particle, not whatever deposited the energy: light from the protons a
+neutron knocks loose is still labelled `n`.
 
 The labels are short because that is what the simulator writes into `primaries.bin`. Expect
 `n` and `g`, not `neutron` and `gamma`.
@@ -200,15 +205,15 @@ Gamma-labeled rows may be less common than neutron-labeled rows because a
 make detectable light. The exact balance depends on the run configuration and
 random sampling.
 
-An empty `event_type` means a photon could not be matched back to an incident particle. That
+An empty `primary_species` means a photon could not be matched back to an incident particle. That
 should not happen; if it does, the writer logs a warning saying how many rows are affected.
 
 ### A neutron and its gamma share one `event_id`
 
 When the source emits a neutron and its coincident gamma, both belong to the same firing, so
-photons from both carry the **same** `event_id`. `event_type` is recorded per particle, so the
+photons from both carry the **same** `event_id`. `primary_species` is recorded per particle, so the
 two sets of rows are still correctly labelled `n` and `g`, and grouping by `event_id` and
-`event_type` together separates them.
+`primary_species` together separates them.
 
 This is the interesting case for clustering. The neutron and the gamma start at the same place
 at the same time but fly off in unrelated directions, so they can deposit energy in different
@@ -233,14 +238,14 @@ photon_id  x  y  timestamp_canonical  tot  quality_flags
 ```
 
 `photons.parquet` has exactly those, with the same names, units, and order, so HERMES can read
-it directly. `event_id` and `event_type` sit after them and are ignored by code that does not
+it directly. `event_id` and `primary_species` sit after them and are ignored by code that does not
 ask for them.
 
 The usual way to use this is:
 
 1. Hand the first six columns to the clustering code, exactly as if they were real data.
 2. Compare the groups it returns against `event_id`.
-3. Split that comparison by `event_type` to see how it does on neutrons against gammas.
+3. Split that comparison by `primary_species` to see how it does on neutrons against gammas.
 
 Two things to keep in mind when comparing against real HERMES data. `tot` and
 `quality_flags` are zeros here, so anything reading them sees nothing useful. And these photons
