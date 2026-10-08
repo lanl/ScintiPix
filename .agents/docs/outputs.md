@@ -74,10 +74,12 @@ Secondary particles record no time, so no parquet table is written for them.
 
 `photons.parquet` sits at the top of the run directory rather than beside its binary because it
 is the table HERMES reads. It is not a plain copy: it holds only the six HERMES columns plus
-`event_id` and `event_type`, and its arrival times are in canonical ticks of 25 ns / 12288
+`event_id` and `primary_species`, and its arrival times are in canonical ticks of 25 ns / 12288
 rather than nanoseconds. `event_id` is the same event id the other tables call `gun_call_id`.
-Its arrival times are on the run clock with no `event_time_ns` column to undo that; join on
-`event_id` to `primaries/primaries.parquet` to get the offset back.
+`primary_species` is copied from the primaries table for the incident particle that made each
+photon, so photons from a neutron and its coincident gamma share an `event_id` but not a
+`primary_species`. Its arrival times are on the run clock with no `event_time_ns` column to
+undo that; join on `event_id` to `primaries/primaries.parquet` to get the offset back.
 
 Its rows are sorted by `timestamp_canonical`, and `photon_id` counts them in that order, so a
 later `photon_id` means a later arrival. Photons that arrived at exactly the same time keep the
@@ -143,7 +145,7 @@ The `primaries/` dataset contains information about the primary particles genera
 | gun_call_id                                    | int64     | 0      | 8    | Identifier for the GEANT4 event |
 | primary_track_id                               | int32     | 8      | 4    | Primary particle track ID in GEANT4 |
 | _padding_                                      | -         | 12     | 4    | Alignment padding |
-| primary_species                                | char[24]  | 16     | 24   | Particle species (e.g., "neutron", "gamma", "proton") |
+| primary_species                                | char[24]  | 16     | 24   | Particle species label (e.g., "n" for neutron, "g" for gamma, "p" for proton) |
 | primary_x_mm                                   | double    | 40     | 8    | X-coordinate of primary position (mm) |
 | primary_y_mm                                   | double    | 48     | 8    | Y-coordinate of primary position (mm) |
 | primary_energy_MeV                             | double    | 56     | 8    | Energy of primary particle (MeV) |
@@ -166,7 +168,7 @@ The `secondaries/` dataset contains information about secondary particles produc
 | gun_call_id                  | int64     | 0      | 8    | GEANT4 event identifier (links to primary) |
 | primary_track_id             | int32     | 8      | 4    | Primary particle track ID |
 | secondary_track_id           | int32     | 12     | 4    | Secondary particle track ID |
-| secondary_species            | char[24]  | 16     | 24   | Particle species (e.g., "neutron", "electron") |
+| secondary_species            | char[24]  | 16     | 24   | Particle species label (e.g., "n" for neutron, "electron") |
 | secondary_origin_x_mm        | double    | 40     | 8    | X-coordinate of secondary origin (mm) |
 | secondary_origin_y_mm        | double    | 48     | 8    | Y-coordinate of secondary origin (mm) |
 | secondary_origin_z_mm        | double    | 56     | 8    | Z-coordinate of secondary origin (mm) |
