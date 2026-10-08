@@ -137,7 +137,7 @@ def test_photon_table_labels_each_photon(tmp_path) -> None:
     output_path = config.metadata.run_environment.run_directory / "photons.parquet"
     table = pd.read_parquet(output_path)
 
-    # The six HERMES columns, then the event id and the event type. Nothing else.
+    # The six HERMES columns, then the event id and the primary species. Nothing else.
     assert list(table.columns) == [
         "photon_id",
         "x",
@@ -146,7 +146,7 @@ def test_photon_table_labels_each_photon(tmp_path) -> None:
         "tot",
         "quality_flags",
         "event_id",
-        "event_type",
+        "primary_species",
     ]
     assert table["photon_id"].dtype == np.uint64
     assert table["tot"].dtype == np.uint64
@@ -168,7 +168,7 @@ def test_photon_table_labels_each_photon(tmp_path) -> None:
     expected_ticks = np.array([12.5, 25.0, 50.0]) / CANONICAL_TICK_NS
     np.testing.assert_allclose(table["timestamp_canonical"].to_numpy(), expected_ticks)
 
-    assert table["event_type"].tolist() == ["neutron", "neutron", "gamma"]
+    assert table["primary_species"].tolist() == ["neutron", "neutron", "gamma"]
 
 
 def test_photon_id_follows_arrival_time_across_events(tmp_path) -> None:
@@ -209,7 +209,7 @@ def test_photon_id_follows_arrival_time_across_events(tmp_path) -> None:
 
 
 def test_two_incident_particles_in_one_firing_share_an_event_id(tmp_path) -> None:
-    """A neutron and its coincident gamma are told apart by `event_type` alone.
+    """A neutron and its coincident gamma are told apart by `primary_species` alone.
 
     Both belong to the same firing, so they share one `event_id`. The table no
     longer says which incident particle each photon came from, so the labelling
@@ -237,10 +237,10 @@ def test_two_incident_particles_in_one_firing_share_an_event_id(tmp_path) -> Non
 
     assert len(table) == 3
     assert table["event_id"].tolist() == [10, 10, 10]
-    assert table["event_type"].tolist() == ["neutron", "gamma", "neutron"]
+    assert table["primary_species"].tolist() == ["neutron", "gamma", "neutron"]
 
 
-def test_photon_table_leaves_unmatched_event_type_empty(tmp_path) -> None:
+def test_photon_table_leaves_unmatched_primary_species_empty(tmp_path) -> None:
     config = _config(tmp_path, None, event_count=100)
 
     photons = np.zeros(1, dtype=TRANSPORTED_PHOTON_DTYPE)
@@ -259,7 +259,7 @@ def test_photon_table_leaves_unmatched_event_type_empty(tmp_path) -> None:
     table = pd.read_parquet(
         config.metadata.run_environment.run_directory / "photons.parquet"
     )
-    assert table["event_type"].tolist() == [""]
+    assert table["primary_species"].tolist() == [""]
 
 
 def test_photon_times_shift_with_their_own_event(tmp_path) -> None:

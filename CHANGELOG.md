@@ -2,6 +2,22 @@
 
 All notable ScintiPix releases are documented here.
 
+## [Unreleased]
+
+### Changed
+
+- Renamed the `event_type` column of `photons.parquet` to `primary_species`.
+  It always held the species of the incident particle that made each photon,
+  copied from `primary_species` in the primaries table, not a label for the
+  whole event. A neutron and its coincident gamma share one `event_id` but have
+  different `primary_species`. Code that reads `event_type` must read
+  `primary_species` instead.
+
+### Documentation
+
+- The species examples in the outputs doc now show the short labels the
+  simulator writes (`n`, `g`, `p`), not `neutron`, `gamma`, `proton`.
+
 ## [0.3.1] - 2026-10-01
 
 This patch release numbers the photons in the HERMES photon table in the order

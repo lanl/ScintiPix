@@ -30,13 +30,16 @@ HERMES reads. HERMES writes one row per detected optical photon with the columns
 and two more are added here, so photon-clustering algorithms can be checked
 against a known answer:
 
-    event_id, event_type
+    event_id, primary_species
 
 `event_id` is which firing of the source the photon came from, the same event id
-the other tables call `gun_call_id`. `event_type` is what the incident particle
-was. `tot` and `quality_flags` are placeholders (0): the intensifier and sensor
-stages that would fill them are not implemented yet. The columns are present so
-downstream HERMES code reads the same columns it always does.
+the other tables call `gun_call_id`. `primary_species` is what the incident
+particle that made the photon was, copied from the primaries table. One firing
+can hold more than one incident particle, such as a neutron and its gamma, so
+photons sharing an `event_id` can have different `primary_species`. `tot` and
+`quality_flags` are placeholders (0): the intensifier and sensor stages that
+would fill them are not implemented yet. The columns are present so downstream
+HERMES code reads the same columns it always does.
 
 The photon table is sorted by `timestamp_canonical`, and `photon_id` counts the
 photons in that order, so a later `photon_id` means a later arrival. The
@@ -378,7 +381,7 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
         )
     primary_species = _read_primaries(primaries_path)[
         ["gun_call_id", "primary_track_id", "primary_species"]
-    ].rename(columns={"gun_call_id": "event_id", "primary_species": "event_type"})
+    ].rename(columns={"gun_call_id": "event_id"})
 
     # A left merge keeps the rows in the order of `photon_table`, so the photons
     # stay in arrival order.
@@ -388,15 +391,16 @@ def _write_photon_table(config: Simulation, event_times_ns: np.ndarray) -> None:
         how="left",
     )
 
-    unlabeled_count = int(labeled["event_type"].isna().sum())
+    unlabeled_count = int(labeled["primary_species"].isna().sum())
     if unlabeled_count:
         logger.warning(
-            "{} of {} photons had no matching primary in {}; their event_type is empty.",
+            "{} of {} photons had no matching primary in {}; their primary_species "
+            "is empty.",
             unlabeled_count,
             len(labeled),
             primaries_path.name,
         )
-    labeled["event_type"] = labeled["event_type"].fillna("")
+    labeled["primary_species"] = labeled["primary_species"].fillna("")
     labeled = labeled.drop(columns="primary_track_id")
 
     output_path = Path(run_environment.run_directory) / PHOTON_TABLE_FILENAME
