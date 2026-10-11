@@ -4,6 +4,7 @@
 #include "utils.hh"
 
 #include "G4ApplicationState.hh"
+#include "G4Exception.hh"
 #include "G4RunManager.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4UIcmdWithADouble.hh"
@@ -641,6 +642,12 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     return;
   }
 
+  const auto commandFailed = [command](const std::string& message) {
+    G4ExceptionDescription description;
+    description << message;
+    command->CommandFailed(description);
+  };
+
   if (command == fGeomMaterialCmd) {
     fConfig->SetScintMaterial(newValue);
     G4cout << "Scintillator material set to '" << newValue
@@ -723,7 +730,7 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     std::vector<ScintillatorElementConfig> elements;
     std::string error;
     if (!ParseElementComposition(newValue, &elements, &error)) {
-      G4cerr << "Invalid scintillator elements command: " << error << G4endl;
+      commandFailed("Invalid scintillator elements command: " + error);
       return;
     }
     fConfig->SetScintElements(elements);
@@ -736,7 +743,7 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     std::string error;
     if (!ParseIsotopeComposition(newValue, fConfig->GetScintElements(),
                                  &elements, &error)) {
-      G4cerr << "Invalid scintillator isotopes command: " << error << G4endl;
+      commandFailed("Invalid scintillator isotopes command: " + error);
       return;
     }
     fConfig->SetScintElements(elements);
@@ -748,11 +755,11 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     std::vector<G4double> values;
     std::string unit = "eV";
     if (!ParseListWithOptionalUnit(newValue, &values, &unit)) {
-      G4cout << "Failed to parse photonEnergy list: '" << newValue << "'." << G4endl;
+      commandFailed("Failed to parse photonEnergy list: '" + newValue + "'.");
       return;
     }
     if (!G4UnitDefinition::IsUnitDefined(unit)) {
-      G4cout << "Unknown photonEnergy unit '" << unit << "'." << G4endl;
+      commandFailed("Unknown photonEnergy unit '" + unit + "'.");
       return;
     }
     const G4double factor = G4UIcommand::ValueOf(unit.c_str());
@@ -768,11 +775,11 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     std::vector<G4double> values;
     std::string unit;
     if (!ParseListWithOptionalUnit(newValue, &values, &unit)) {
-      G4cout << "Failed to parse rIndex list: '" << newValue << "'." << G4endl;
+      commandFailed("Failed to parse rIndex list: '" + newValue + "'.");
       return;
     }
     if (!unit.empty() && unit != "unitless") {
-      G4cout << "rIndex list does not accept unit token '" << unit << "'." << G4endl;
+      commandFailed("rIndex list does not accept unit token '" + unit + "'.");
       return;
     }
     fConfig->SetScintRIndex(values);
@@ -784,11 +791,11 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     std::vector<G4double> values;
     std::string unit = "cm";
     if (!ParseListWithOptionalUnit(newValue, &values, &unit)) {
-      G4cout << "Failed to parse absLength list: '" << newValue << "'." << G4endl;
+      commandFailed("Failed to parse absLength list: '" + newValue + "'.");
       return;
     }
     if (!G4UnitDefinition::IsUnitDefined(unit)) {
-      G4cout << "Unknown absLength unit '" << unit << "'." << G4endl;
+      commandFailed("Unknown absLength unit '" + unit + "'.");
       return;
     }
     const G4double factor = G4UIcommand::ValueOf(unit.c_str());
@@ -804,12 +811,11 @@ void Messenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     std::vector<G4double> values;
     std::string unit;
     if (!ParseListWithOptionalUnit(newValue, &values, &unit)) {
-      G4cout << "Failed to parse scintSpectrum list: '" << newValue << "'." << G4endl;
+      commandFailed("Failed to parse scintSpectrum list: '" + newValue + "'.");
       return;
     }
     if (!unit.empty() && unit != "unitless") {
-      G4cout << "scintSpectrum list does not accept unit token '" << unit << "'."
-             << G4endl;
+      commandFailed("scintSpectrum list does not accept unit token '" + unit + "'.");
       return;
     }
     fConfig->SetScintSpectrum(values);
