@@ -36,9 +36,14 @@ int main(int argc, char** argv) {
   visManager->Initialize();
 
   auto* uiManager = G4UImanager::GetUIpointer();
+  int exitCode = 0;
   if (argc > 1) {
     G4String command = "/control/execute ";
-    uiManager->ApplyCommand(command + argv[1]);
+    if (uiManager->ApplyCommand(command + argv[1]) != 0) {
+      G4cerr << "Macro " << argv[1] << " stopped at a command that failed."
+             << G4endl;
+      exitCode = 1;
+    }
   } else {
     auto* ui = new G4UIExecutive(argc, argv);
     G4cout << "Interactive session started without auto-running a visualization macro."
@@ -51,5 +56,5 @@ int main(int argc, char** argv) {
 
   delete visManager;
   delete runManager;
-  return 0;
+  return exitCode;
 }
